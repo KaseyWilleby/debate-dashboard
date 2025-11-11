@@ -16,6 +16,9 @@
 # next.js
 /.next/
 /out/
+/server/
+/cache/
+*-manifest.json
 
 # production
 /build
