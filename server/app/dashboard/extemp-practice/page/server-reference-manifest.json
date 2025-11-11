@@ -1,0 +1,16 @@
+{
+  "node": {
+    "409aacc881f6d2eab9e0a17768c6a7779da43366b6": {
+      "workers": {
+        "app/dashboard/extemp-practice/page": {
+          "moduleId": "[project]/.next-internal/server/app/dashboard/extemp-practice/page/actions.js { ACTIONS_MODULE0 => \"[project]/src/ai/flows/generate-practice-topics-flow.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/dashboard/extemp-practice/page": "action-browser"
+      }
+    }
+  },
+  "edge": {}
+}

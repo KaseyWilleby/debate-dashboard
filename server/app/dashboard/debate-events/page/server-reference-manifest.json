@@ -1,0 +1,16 @@
+{
+  "node": {
+    "003c5757750094a4b4d5e1a0599a02fd40bdb670f5": {
+      "workers": {
+        "app/dashboard/debate-events/page": {
+          "moduleId": "[project]/.next-internal/server/app/dashboard/debate-events/page/actions.js { ACTIONS_MODULE0 => \"[project]/src/ai/flows/extract-nsda-topics-flow.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/dashboard/debate-events/page": "action-browser"
+      }
+    }
+  },
+  "edge": {}
+}

@@ -1,0 +1,199 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the WorkSessionScheduler application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role within the application (e.g., admin, varsity, novice)."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "email",
+        "role"
+      ]
+    },
+    "Session": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Session",
+      "type": "object",
+      "description": "Represents a scheduled work session.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Session entity."
+        },
+        "hostId": {
+          "type": "string",
+          "description": "Reference to the User hosting the session. (Relationship: User 1:N Session as Host)"
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to the User attending the session as a client. (Relationship: User 1:N Session as Client)"
+        },
+        "date": {
+          "type": "string",
+          "description": "The date of the session.",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the session."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the session (e.g., scheduled, completed, cancelled)."
+        }
+      },
+      "required": [
+        "id",
+        "hostId",
+        "clientId",
+        "date",
+        "description",
+        "status"
+      ]
+    },
+    "Message": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Message",
+      "type": "object",
+      "description": "Represents a message within a session.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Message entity."
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Reference to the Session this message belongs to. (Relationship: Session 1:N Message)"
+        },
+        "senderId": {
+          "type": "string",
+          "description": "Reference to the User who sent the message. (Relationship: User 1:N Message as Sender)"
+        },
+        "content": {
+          "type": "string",
+          "description": "The content of the message."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The timestamp of when the message was sent.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "senderId",
+        "content",
+        "timestamp"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Access is restricted to the user themselves.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/sessions/{sessionId}",
+        "definition": {
+          "entityName": "Session",
+          "schema": {
+            "$ref": "#/backend/entities/Session"
+          },
+          "description": "Stores sessions owned by a specific user (either as host or client). Includes denormalized 'hostId' and 'clientId' from the User entity for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "sessionId",
+              "description": "The unique identifier of the session."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/sessions/{sessionId}/messages/{messageId}",
+        "definition": {
+          "entityName": "Message",
+          "schema": {
+            "$ref": "#/backend/entities/Message"
+          },
+          "description": "Stores messages within a session. Includes denormalized 'senderId' from the User entity for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "sessionId",
+              "description": "The unique identifier of the session."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique identifier of the message."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores admin roles. The existence of a document in this collection grants admin privileges. Existence over content is leveraged.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user with admin privileges."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to address the 'Missing or insufficient permissions' error by enforcing authorization independence and role-based access control. The structure uses path-based ownership for user data and a dedicated collection for admin roles. Denormalization is employed to avoid using `get()` in security rules, enabling atomic operations and improving debuggability. Segregation of data into collections with homogeneous security postures simplifies rules and supports secure list operations.\n\n*   `/users/{userId}`: Stores user profiles. Access is restricted to the user themselves (path-based ownership). This addresses the user list error by restricting access.\n*   `/users/{userId}/sessions/{sessionId}`: Stores sessions owned by a specific user (either as host or client). This uses path-based ownership to ensure only the user can access their sessions. The `hostId` and `clientId` fields are denormalized from the `User` entity.\n*   `/users/{userId}/sessions/{sessionId}/messages/{messageId}`: Stores messages within a session. This continues the path-based ownership, restricting access to participants of the session. The `senderId` is denormalized from the `User` entity.\n*   `/roles_admin/{userId}`: A dedicated collection to store admin roles. The existence of a document in this collection grants admin privileges. Existence over content is leveraged.\n\nThis structure achieves Authorization Independence by denormalizing authorization-related data (e.g., `hostId`, `clientId`, `senderId`) into subcollections. This eliminates the need for `get()` calls in security rules, enabling atomic operations and improving scalability. The structure supports the required QAPs by segregating data based on access control requirements. Path-based ownership and role-based access using the `/roles_admin` collection ensure that only authorized users can access specific data."
+  }
+}

@@ -1,0 +1,170 @@
+/**
+ * @fileoverview Firestore Security Rules for Debate Dashboard.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a role-based access control with admin privileges
+ * and user-ownership model for user profiles.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores individual user profiles
+ * - /sessions/{sessionId}: Stores session data
+ * - /tournaments/{tournamentId}: Stores tournament information
+ * - /savedSpeeches/{speechId}: Stores user speeches
+ * - /writtenSpeeches/{speechId}: Stores written speeches
+ * - /debateCases/{caseId}: Stores debate cases
+ * - /debateTopics/{topicId}: Stores debate topics
+ * - /congressDockets/{docketId}: Stores congress dockets
+ * - /practiceRounds/{roundId}: Stores practice rounds
+ *
+ * Key Security Decisions:
+ * - Admin users (role === 'admin') can list and read all users
+ * - Users can only manage their own profile
+ * - Admins can manage tournaments and global resources
+ * - Users can manage their own content (speeches, cases, etc.)
+ *
+ * Last updated: 2025-11-05
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Manages access to user profiles.
+     * @path /users/{userId}
+     * All authenticated users can list and read users (for display purposes).
+     * Unauthenticated users can query by username for login purposes.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isSignedIn();
+      allow list: if isSignedIn() || request.auth == null; // Allow authenticated users and unauthenticated username lookup for login
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    /**
+     * @description Manages access to session documents.
+     * @path /sessions/{sessionId}
+     * All authenticated users can list sessions. Hosts, clients, and admins can modify.
+     * Users can book themselves as clients.
+     */
+    match /sessions/{sessionId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.hostId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.hostId == request.auth.uid ||
+        resource.data.clientId == request.auth.uid ||
+        request.resource.data.clientId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isSignedIn() && (resource.data.hostId == request.auth.uid || isAdmin());
+    }
+
+    /**
+     * @description Manages access to tournament documents.
+     * @path /tournaments/{tournamentId}
+     * All authenticated users can read and update entries. Only admins can create, delete, and modify other fields.
+     */
+    match /tournaments/{tournamentId} {
+      allow get, list: if isSignedIn();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        isSignedIn() &&
+        // Only allow updating the entries field, not other tournament fields
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['entries'])
+      );
+    }
+
+    /**
+     * @description Manages access to saved speeches.
+     * @path /savedSpeeches/{speechId}
+     * Users can manage their own speeches. Shared speeches are readable.
+     */
+    match /savedSpeeches/{speechId} {
+      allow get: if isSignedIn() && (resource.data.ownerId == request.auth.uid || request.auth.uid in resource.data.get('sharedWith', []));
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    /**
+     * @description Manages access to written speeches.
+     * @path /writtenSpeeches/{speechId}
+     */
+    match /writtenSpeeches/{speechId} {
+      allow get: if isSignedIn() && (resource.data.ownerId == request.auth.uid || request.auth.uid in resource.data.get('sharedWith', []));
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    /**
+     * @description Manages access to debate cases.
+     * @path /debateCases/{caseId}
+     */
+    match /debateCases/{caseId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    /**
+     * @description Manages access to debate topics.
+     * @path /debateTopics/{topicId}
+     */
+    match /debateTopics/{topicId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Manages access to congress dockets.
+     * @path /congressDockets/{docketId}
+     */
+    match /congressDockets/{docketId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Manages access to practice rounds.
+     * @path /practiceRounds/{roundId}
+     */
+    match /practiceRounds/{roundId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && (request.auth.uid in request.resource.data.participants || isAdmin());
+      allow update, delete: if isSignedIn() && (request.auth.uid in resource.data.participants || isAdmin());
+    }
+
+    // ---- Helper functions ----
+
+    /**
+     * @description Checks if the user is signed in.
+     * @return {boolean} True if the user is signed in, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the user is the owner of the document.
+     * @param {string} userId - The user ID to compare against the request's auth UID.
+     * @return {boolean} True if the user is the owner, false otherwise.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the user is an admin by reading their user document.
+     * @return {boolean} True if the user is an admin, false otherwise.
+     */
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}

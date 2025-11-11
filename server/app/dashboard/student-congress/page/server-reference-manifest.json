@@ -1,0 +1,16 @@
+{
+  "node": {
+    "40a4b58233a7e02bae08c71558945c45ad345871fb": {
+      "workers": {
+        "app/dashboard/student-congress/page": {
+          "moduleId": "[project]/.next-internal/server/app/dashboard/student-congress/page/actions.js { ACTIONS_MODULE0 => \"[project]/src/ai/flows/extract-bills-from-pdf-flow.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/dashboard/student-congress/page": "action-browser"
+      }
+    }
+  },
+  "edge": {}
+}

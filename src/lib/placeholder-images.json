@@ -1,0 +1,40 @@
+{
+  "placeholderImages": [
+    {
+      "id": "user1",
+      "description": "Admin user avatar",
+      "imageUrl": "",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "user2",
+      "description": "Varsity user avatar",
+      "imageUrl": "",
+      "imageHint": "person smiling"
+    },
+    {
+      "id": "user3",
+      "description": "Novice user avatar",
+      "imageUrl": "",
+      "imageHint": "student profile"
+    },
+    {
+      "id": "user4",
+      "description": "Another varsity user avatar",
+      "imageUrl": "",
+      "imageHint": "professional headshot"
+    },
+    {
+      "id": "user5",
+      "description": "Another novice user avatar",
+      "imageUrl": "",
+      "imageHint": "casual portrait"
+    },
+    {
+      "id": "user6",
+      "description": "User Mr. Willeby",
+      "imageUrl": "",
+      "imageHint": "gentleman portrait"
+    }
+  ]
+}

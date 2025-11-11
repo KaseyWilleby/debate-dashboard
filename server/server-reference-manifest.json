@@ -1,0 +1,28 @@
+{
+  "node": {
+    "40116517478ea70778b760c0c56342b9e2878910b7": {
+      "workers": {
+        "app/dashboard/tournament-scheduler/page": {
+          "moduleId": "[project]/.next-internal/server/app/dashboard/tournament-scheduler/page/actions.js { ACTIONS_MODULE0 => \"[project]/src/ai/flows/extract-tournament-info-flow.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/src/ai/flows/scrape-tabroom-flow.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/dashboard/tournament-scheduler/page": "action-browser"
+      }
+    },
+    "0088e38cb55f845900f909190885eec4e266c52873": {
+      "workers": {
+        "app/dashboard/tournament-scheduler/page": {
+          "moduleId": "[project]/.next-internal/server/app/dashboard/tournament-scheduler/page/actions.js { ACTIONS_MODULE0 => \"[project]/src/ai/flows/extract-tournament-info-flow.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/src/ai/flows/scrape-tabroom-flow.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/dashboard/tournament-scheduler/page": "action-browser"
+      }
+    }
+  },
+  "edge": {},
+  "encryptionKey": "5/1PzOkfnJmoMdKpNVLdAu0adgnLhQR8fK5I3bQDWnk="
+}

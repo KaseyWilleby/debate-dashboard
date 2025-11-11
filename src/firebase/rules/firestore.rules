@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users can read and write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    // Authenticated users can read/write sessions and messages.
+    // More granular rules would be needed in production.
+    match /sessions/{sessionId}/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Authenticated users can read/write tournaments.
+    match /tournaments/{tournamentId}/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

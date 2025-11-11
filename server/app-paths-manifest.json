@@ -1,0 +1,8 @@
+{
+  "/dashboard/my-sessions/page": "app/dashboard/my-sessions/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/session-manager/page": "app/dashboard/session-manager/page.js",
+  "/dashboard/tournament-scheduler/page": "app/dashboard/tournament-scheduler/page.js",
+  "/dashboard/tournament-signup/page": "app/dashboard/tournament-signup/page.js",
+  "/page": "app/page.js"
+}
