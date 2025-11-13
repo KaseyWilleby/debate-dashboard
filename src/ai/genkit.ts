@@ -1,15 +1,8 @@
-// Only load dotenv in development (when .env file exists)
-if (process.env.NODE_ENV !== 'production') {
-  try {
-    require('dotenv/config');
-  } catch (e) {
-    // Ignore - dotenv not available or .env doesn't exist
-  }
-}
-
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/google-genai';
 
+// In production (Firebase), env vars are provided by the platform
+// In development, they come from .env via Next.js
 export const ai = genkit({
   plugins: [
     googleAI({
