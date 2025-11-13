@@ -61,8 +61,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { Input } from "@/components/ui/input";
-// TODO: Re-enable when Genkit is configured for Vercel
-// import { extractBillsFromPdf } from "@/ai/flows/extract-bills-from-pdf-flow";
+import { extractBillsFromPdf } from "@/ai/flows/extract-bills-from-pdf-flow";
 
 
 type Topic = { id: string; text: string };
@@ -1645,12 +1644,27 @@ function UploadDocketDialog({ onUpload }: { onUpload: (docket: CongressDocket) =
             return;
         }
 
-        // TODO: Re-enable when Genkit is configured for Vercel
-        toast({
-            variant: 'destructive',
-            title: 'Feature Unavailable',
-            description: 'AI-powered PDF bill extraction is currently unavailable. Please create bills manually.',
-        });
+        setIsParsing(true);
+        try {
+            const extractedBills = await extractBillsFromPdf({ docketName, pdfDataUri: fileDataUri });
+            
+            const newDocket: CongressDocket = {
+                id: `docket-${Date.now()}`,
+                name: docketName,
+                items: extractedBills,
+            };
+            onUpload(newDocket);
+            setIsOpen(false);
+        } catch (error) {
+            console.error("AI Parsing Error:", error);
+            toast({
+                variant: 'destructive',
+                title: 'AI Parsing Failed',
+                description: (error as Error).message || "Could not extract bills from the PDF. Please check the PDF format.",
+            });
+        } finally {
+            setIsParsing(false);
+        }
     };
 
     React.useEffect(() => {

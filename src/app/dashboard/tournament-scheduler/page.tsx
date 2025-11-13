@@ -65,9 +65,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Tournament, ScrapedTournament } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-// TODO: Re-enable when Genkit is configured for Vercel
-// import { extractTournamentInfo } from "@/ai/flows/extract-tournament-info-flow";
-// import { scrapeTabroomTournaments } from "@/ai/flows/scrape-tabroom-flow";
+import { extractTournamentInfo } from "@/ai/flows/extract-tournament-info-flow";
+import { scrapeTabroomTournaments } from "@/ai/flows/scrape-tabroom-flow";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
@@ -291,12 +290,43 @@ function AddTournamentDialog({ onTournamentCreated }: { onTournamentCreated: (to
         return;
     }
 
-    // TODO: Re-enable when Genkit is configured for Vercel
-    toast({
-        variant: "destructive",
-        title: "Feature Unavailable",
-        description: "AI-powered tournament info extraction is currently unavailable. Please fill in the details manually.",
-    });
+    setIsFetching(true);
+    try {
+        const result = await extractTournamentInfo(url);
+        if (result.name) form.setValue('name', result.name);
+        if (result.date) {
+            const parsedDate = parse(result.date, 'MMMM d, yyyy', new Date());
+            if (!isNaN(parsedDate.getTime())) {
+                form.setValue('date', parsedDate);
+            }
+        }
+        if (result.registrationCloseDate) {
+            const parsedCloseDate = parse(result.registrationCloseDate, 'MMMM d, yyyy', new Date());
+            if (!isNaN(parsedCloseDate.getTime())) {
+                form.setValue('registrationCloseDate', parsedCloseDate);
+            }
+        }
+        if (result.scheduleUrl) form.setValue('scheduleUrl', result.scheduleUrl);
+        if (result.isSwing !== undefined) form.setValue('isSwing', result.isSwing);
+        if (result.schools && result.schools.length > 0) {
+            form.setValue('schools', result.schools.join(', '));
+        }
+        toast({
+            title: "Information Extracted!",
+            description: result.isSwing
+                ? `Swing tournament detected with ${result.schools?.length || 0} schools.`
+                : "The tournament details have been filled in.",
+        });
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Extraction Failed",
+            description: "Could not extract information from the URL. Please fill in the details manually.",
+        });
+        console.error(error);
+    } finally {
+        setIsFetching(false);
+    }
   };
 
   function onSubmit(values: z.infer<typeof tournamentSchema>) {
@@ -830,8 +860,7 @@ function ImportFromUrlDialog({ onTournamentCreated }: { onTournamentCreated: (to
 
         setIsImporting(true);
         try {
-            // TODO: AI disabled
-            // const result = await extractTournamentInfo(url);
+            const result = await extractTournamentInfo(url);
 
             const parsedDate = parse(result.date, 'MMMM d, yyyy', new Date());
             const parsedCloseDate = result.registrationCloseDate ? parse(result.registrationCloseDate, 'MMMM d, yyyy', new Date()) : undefined;
@@ -925,8 +954,7 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
     const fetchAndFilterTournaments = React.useCallback(async () => {
         setIsScraping(true);
         try {
-            // TODO: AI disabled
-            // const results = await scrapeTabroomTournaments();
+            const results = await scrapeTabroomTournaments();
             const existingUrls = new Set(existingTournaments.map(t => t.webpageUrl));
             const availableTournaments = results.filter(t => !existingUrls.has(t.url));
             setScrapedTournaments(availableTournaments);
@@ -959,8 +987,7 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
 
     const handleAddTournament = async (scrapedTournament: ScrapedTournament) => {
         try {
-            // TODO: AI disabled
-            // const result = await extractTournamentInfo(scrapedTournament.url);
+            const result = await extractTournamentInfo(scrapedTournament.url);
             
             const parsedDate = parse(result.date, 'MMMM d, yyyy', new Date());
             const parsedCloseDate = result.registrationCloseDate ? parse(result.registrationCloseDate, 'MMMM d, yyyy', new Date()) : undefined;

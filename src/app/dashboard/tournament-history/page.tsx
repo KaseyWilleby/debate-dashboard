@@ -20,8 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-// TODO: Re-enable when Genkit is configured for Vercel
-// import { extractTournamentResults } from '@/ai/flows/extract-tournament-results-flow';
+import { extractTournamentResults } from '@/ai/flows/extract-tournament-results-flow';
 
 const TOURNAMENT_RESULTS_STORAGE_KEY = 'tournament-results';
 
