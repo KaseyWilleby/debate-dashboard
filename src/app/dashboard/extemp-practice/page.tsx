@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Play, Pause, RefreshCw, Loader2, Video, StopCircle, Save, ChevronsRight, Trash2, VideoIcon, Repeat, Camera, CameraOff, ArrowUp, ArrowDown, Share, FilePenLine, Minus, Plus } from "lucide-react";
 import { cn, getRoleBasedColor, formatTime } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { generatePracticeTopics, type GeneratePracticeTopicsInput } from "@/ai/flows/generate-practice-topics-flow";
+// TODO: Re-enable when Genkit is configured for Vercel
+// import { generatePracticeTopics, type GeneratePracticeTopicsInput } from "@/ai/flows/generate-practice-topics-flow";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Accordion,
@@ -425,27 +426,12 @@ export default function ExtempPracticePage() {
     };
 
     const handleGenerateTopics = async () => {
-        setIsLoadingTopics(true);
-        setTopics([]);
-        try {
-            const input: GeneratePracticeTopicsInput = { 
-                type: mode as "extemp" | "impromptu",
-            };
-            if (mode === 'extemp') {
-                input.extempCategory = extempCategory;
-            }
-            const result = await generatePracticeTopics(input);
-            setTopics(result.topics.map((text, id) => ({ id: id.toString(), text })));
-        } catch (error) {
-            console.error("Failed to generate topics:", error);
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Could not generate topics. Please try again.",
-            });
-        } finally {
-            setIsLoadingTopics(false);
-        }
+        // TODO: Re-enable when Genkit is configured for Vercel
+        toast({
+            variant: "destructive",
+            title: "Feature Unavailable",
+            description: "AI-powered topic generation is currently unavailable. Please enter topics manually.",
+        });
     };
     
     const handleConfirmTopic = () => {
