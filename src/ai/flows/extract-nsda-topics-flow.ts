@@ -50,6 +50,7 @@ const getWebpageTextContentTool = ai.defineTool(
 
 const prompt = ai.definePrompt({
   name: 'extractNsdaTopicsPrompt',
+  model: 'googleai/gemini-1.5-flash-latest',
   input: { schema: z.object({ url: z.string().url() }) },
   output: { schema: ExtractNsdaTopicsOutputSchema },
   tools: [getWebpageTextContentTool],
