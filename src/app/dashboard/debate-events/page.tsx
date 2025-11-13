@@ -52,7 +52,8 @@ import { Separator } from "@/components/ui/separator";
 import { FlowSheet } from "@/components/dashboard/flow-sheet";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
-import { extractNsdaTopics } from "@/ai/flows/extract-nsda-topics-flow";
+// TODO: Re-enable when Genkit is configured for Vercel
+// import { extractNsdaTopics } from "@/ai/flows/extract-nsda-topics-flow";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc, addDoc } from "firebase/firestore";
@@ -317,46 +318,12 @@ export default function DebateEventsPage() {
   }
 
   const handleImportNsdaTopics = async () => {
-    setIsImporting(true);
-    try {
-      const fetchedTopics = await extractNsdaTopics();
-      const existingResolutions = new Set(topics.map(t => t.resolution));
-      const newUniqueTopics: DebateTopic[] = [];
-
-      fetchedTopics.forEach(topic => {
-        if (!existingResolutions.has(topic.resolution)) {
-          newUniqueTopics.push({
-            ...topic,
-            id: `topic-${Date.now()}-${newUniqueTopics.length}`,
-            createdAt: new Date().toISOString(),
-            isArchived: false,
-          });
-          existingResolutions.add(topic.resolution);
-        }
-      });
-      
-      if (newUniqueTopics.length > 0) {
-        setTopics(prev => [...newUniqueTopics, ...prev]);
-        toast({
-          title: "Topics Imported",
-          description: `Successfully imported ${newUniqueTopics.length} new topic(s) from the NSDA.`
-        });
-      } else {
-        toast({
-          title: "No New Topics",
-          description: "All current NSDA topics are already in your list."
-        });
-      }
-    } catch (error) {
-      console.error("Failed to import NSDA topics:", error);
-      toast({
-        variant: "destructive",
-        title: "Import Failed",
-        description: (error as Error).message || "Could not fetch topics from the NSDA website."
-      });
-    } finally {
-      setIsImporting(false);
-    }
+    // TODO: Re-enable when Genkit is configured for Vercel
+    toast({
+      variant: "destructive",
+      title: "Feature Unavailable",
+      description: "AI-powered topic import is currently unavailable. Please add topics manually."
+    });
   }
 
   const userCases = React.useMemo(() => {
