@@ -9,5 +9,5 @@ export const ai = genkit({
       apiKey: process.env.GOOGLE_GENAI_API_KEY,
     })
   ],
-  // Don't specify a default model - let each flow specify its own
+  model: 'googleai/gemini-2.5-flash',
 });
