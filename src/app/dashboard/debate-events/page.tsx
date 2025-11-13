@@ -52,8 +52,7 @@ import { Separator } from "@/components/ui/separator";
 import { FlowSheet } from "@/components/dashboard/flow-sheet";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
-// TODO: Re-enable when Genkit is configured for Vercel
-// import { extractNsdaTopics } from "@/ai/flows/extract-nsda-topics-flow";
+import { extractNsdaTopics } from "@/ai/flows/extract-nsda-topics-flow";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc, addDoc } from "firebase/firestore";
@@ -318,12 +317,46 @@ export default function DebateEventsPage() {
   }
 
   const handleImportNsdaTopics = async () => {
-    // TODO: Re-enable when Genkit is configured for Vercel
-    toast({
-      variant: "destructive",
-      title: "Feature Unavailable",
-      description: "AI-powered topic import is currently unavailable. Please add topics manually."
-    });
+    setIsImporting(true);
+    try {
+      const fetchedTopics = await extractNsdaTopics();
+      const existingResolutions = new Set(topics.map(t => t.resolution));
+      const newUniqueTopics: DebateTopic[] = [];
+
+      fetchedTopics.forEach(topic => {
+        if (!existingResolutions.has(topic.resolution)) {
+          const newTopic: DebateTopic = {
+            id: `topic-${Date.now()}-${Math.random()}`,
+            createdAt: new Date().toISOString(),
+            isArchived: false,
+            ...topic,
+          };
+          newUniqueTopics.push(newTopic);
+        }
+      });
+
+      if (newUniqueTopics.length > 0) {
+        setTopics(prev => [...newUniqueTopics, ...prev]);
+        toast({
+          title: "Topics Imported",
+          description: `Successfully imported ${newUniqueTopics.length} new topic(s) from NSDA.`
+        });
+      } else {
+        toast({
+          title: "No New Topics",
+          description: "All NSDA topics are already in your list."
+        });
+      }
+    } catch (error) {
+      console.error("Failed to import NSDA topics:", error);
+      toast({
+        variant: "destructive",
+        title: "Import Failed",
+        description: "Failed to import NSDA topics. Please try again."
+      });
+    } finally {
+      setIsImporting(false);
+    }
   }
 
   const userCases = React.useMemo(() => {
