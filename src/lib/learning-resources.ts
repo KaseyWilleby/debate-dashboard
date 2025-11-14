@@ -286,7 +286,7 @@ Points of Information (POIs) may be offered after the first minute and before th
     event: 'All Debate',
     title: 'TFA Standing Rules - Debate',
     description: 'The official TFA rules for all debate events.',
-    url: 'https://www.texasforensicassociation.org/constitution-and-standing-rules',
+    url: 'https://www.texasforensicassociation.com/constitution-and-standing-rules',
     rules: {
       TFA: `Refer to the official TFA Constitution and Standing Rules for detailed regulations on all events.`
     }
@@ -371,7 +371,7 @@ export const speechResources: LearningResource[] = [
     event: 'Speech (General)',
     title: 'TFA Standing Rules - Speech',
     description: 'The official TFA rules for all speech events.',
-    url: 'https://www.texasforensicassociation.org/constitution-and-standing-rules',
+    url: 'https://www.texasforensicassociation.com/constitution-and-standing-rules',
     rules: {
       TFA: `Refer to the official TFA Constitution and Standing Rules for detailed regulations on all events.`
     }
@@ -504,7 +504,7 @@ export const interpResources: LearningResource[] = [
     event: 'Interpretation (General)',
     title: 'TFA Standing Rules - Interpretation',
     description: 'The official TFA rules for all interpretation events.',
-    url: 'https://www.texasforensicassociation.org/constitution-and-standing-rules',
+    url: 'https://www.texasforensicassociation.com/constitution-and-standing-rules',
     rules: {
       TFA: `Refer to the official TFA Constitution and Standing Rules for detailed regulations on all events.`
     }
@@ -561,7 +561,7 @@ export const congressResources: LearningResource[] = [
     event: 'Student Congress',
     title: 'TFA Standing Rules - Congress',
     description: 'The official TFA rules for Student Congress.',
-    url: 'https://www.texasforensicassociation.org/constitution-and-standing-rules',
+    url: 'https://www.texasforensicassociation.com/constitution-and-standing-rules',
     rules: {
       TFA: `Refer to the official TFA Constitution and Standing Rules for detailed regulations on all events.`
     }
