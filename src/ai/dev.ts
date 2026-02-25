@@ -5,3 +5,4 @@ import "./flows/scrape-tabroom-flow";
 import "./flows/generate-practice-topics-flow";
 import "./flows/extract-bills-from-pdf-flow";
 import "./flows/extract-nsda-topics-flow";
+import "./flows/fetch-tabroom-fee-sheet-flow";

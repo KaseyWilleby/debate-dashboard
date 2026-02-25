@@ -12,6 +12,8 @@ export interface User {
   approved: boolean;
   studentId?: string;
   nsdaId?: string; // NSDA membership ID for matching tabroom results
+  tabroomEmail?: string; // Tabroom.com login email
+  tabroomPassword?: string; // Tabroom.com password (should be encrypted in production)
 }
 
 export interface Message {
@@ -83,6 +85,65 @@ export interface Tournament {
   notes?: string;
   isSwing?: boolean;
   schools?: string[]; // e.g., ["Cy-Fair High School", "Cy-Creek High School"]
+  feeSheet?: FeeSheet; // Fee data from Tabroom
+  paperwork?: TournamentPaperwork; // Checklist and documents
+}
+
+export interface FeeSheet {
+  entries: FeeSheetEntry[];
+  totalAmount: number;
+  currency: string;
+  extractedAt: string;
+  tabroomUrl?: string;
+}
+
+export interface FeeSheetEntry {
+  category: string; // e.g., "Entry Fees", "Judge Fees", "Late Fees"
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface TournamentPaperwork {
+  checklist: ChecklistItem[];
+  documents: DocumentAttachment[];
+}
+
+export type ChecklistItemType =
+  | 'travel-request'
+  | 'purchase-order'
+  | 'transfer-form'
+  | 'payment-received'
+  | 'attendance-form'
+  | 'travel-card-request'
+  | 'hotel-information'
+  | 'overnight-forms'
+  | 'custom';
+
+export interface ChecklistItem {
+  id: string;
+  type: ChecklistItemType;
+  label: string;
+  completed: boolean;
+  completedAt?: string;
+  completedBy?: string;
+  required: boolean;
+  isOvernightOnly: boolean; // Only show if tournament requires overnight stay
+  attachmentIds: string[]; // References to DocumentAttachment ids
+  notes?: string;
+}
+
+export interface DocumentAttachment {
+  id: string;
+  name: string;
+  type: string; // MIME type
+  size: number; // bytes
+  storagePath: string; // Firebase Storage path
+  downloadUrl: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  checklistItemId?: string; // Optional link to checklist item
 }
 
 export interface ScrapedTournament {
