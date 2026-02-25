@@ -58,8 +58,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/multi-select";
-import { ExternalLink, CheckCircle, Calendar } from "lucide-react";
+import { ExternalLink, CheckCircle, Calendar, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 
 interface TournamentSignupCardProps {
   tournament: Tournament;
@@ -574,10 +575,18 @@ export default function TournamentSignupCard({ tournament, onTournamentUpdate, a
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
             <CardTitle className="font-headline">{tournament.name}</CardTitle>
-            <div className="flex flex-wrap gap-1 justify-end">
+            <div className="flex flex-wrap gap-1 justify-end items-center">
               {userEntry && !userEntry.dropped && <Badge variant="secondary" className={cn(registrationClosed ? "bg-gray-200 text-gray-600" : "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800")}><CheckCircle className="mr-1 h-3 w-3" />Registered</Badge>}
               {!userEntry && partnershipInfo && <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800"><CheckCircle className="mr-1 h-3 w-3" />Partner</Badge>}
               {userEntry?.dropped && <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/50 dark:text-orange-300 dark:border-orange-800">Dropped</Badge>}
+              {user?.role === 'admin' && (
+                <Link href={`/dashboard/tournaments/${tournament.id}`}>
+                  <Button variant="outline" size="sm">
+                    <FileText className="mr-1 h-3 w-3" />
+                    Manage
+                  </Button>
+                </Link>
+              )}
             </div>
         </div>
         <CardDescription>
