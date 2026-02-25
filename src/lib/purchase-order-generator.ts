@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview Utility for generating Purchase Orders from fee sheet data
  */
