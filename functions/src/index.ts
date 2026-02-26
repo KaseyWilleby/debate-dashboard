@@ -76,29 +76,49 @@ export const fetchTabroomFeeSheet = functions
         timeout: 30000,
       });
 
-      // Wait for page to be ready
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Wait longer for dynamic content to load
+      functions.logger.info('Waiting for page to fully load...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
 
-      // Debug: Log page content to understand structure
-      const pageContent = await page.evaluate(() => {
+      // Wait for any form or input to appear
+      try {
+        await page.waitForSelector('form, input, button', { timeout: 10000 });
+      } catch (e) {
+        functions.logger.warn('No form elements detected after waiting');
+      }
+
+      // Debug: Get full page HTML and structure
+      const pageInfo = await page.evaluate(() => {
         const inputs = Array.from(document.querySelectorAll('input'));
         const buttons = Array.from(document.querySelectorAll('button, input[type="submit"]'));
+        const forms = Array.from(document.querySelectorAll('form'));
+
         return {
+          url: window.location.href,
+          title: document.title,
+          bodyText: document.body.textContent?.substring(0, 500),
           inputs: inputs.map(i => ({
             type: (i as HTMLInputElement).type,
             name: (i as HTMLInputElement).name,
             id: i.id,
+            className: i.className,
             placeholder: (i as HTMLInputElement).placeholder,
           })),
           buttons: buttons.map(b => ({
             type: (b as HTMLButtonElement | HTMLInputElement).type,
             textContent: b.textContent?.trim(),
             id: b.id,
+            className: b.className,
           })),
-          formAction: document.querySelector('form')?.action,
+          forms: forms.map(f => ({
+            action: (f as HTMLFormElement).action,
+            method: (f as HTMLFormElement).method,
+            id: f.id,
+          })),
+          bodyHTML: document.body.innerHTML.substring(0, 1000),
         };
       });
-      functions.logger.info('Page structure:', JSON.stringify(pageContent));
+      functions.logger.info('Page structure:', JSON.stringify(pageInfo, null, 2));
 
       // Try multiple selector strategies
       try {
