@@ -196,15 +196,16 @@ export const fetchTabroomFeeSheet = functions
         },
       });
 
-      // Make the file publicly accessible
-      await file.makePublic();
+      // Generate a signed URL that expires in 7 days
+      const [signedUrl] = await file.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
 
-      // Get public URL
-      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-      functions.logger.info(`PDF uploaded successfully: ${publicUrl}`);
+      functions.logger.info(`PDF uploaded successfully with signed URL`);
 
       return {
-        pdfUrl: publicUrl,
+        pdfUrl: signedUrl,
         fileName,
         uploadedAt: new Date().toISOString(),
         tabroomUrl: tournamentUrl,

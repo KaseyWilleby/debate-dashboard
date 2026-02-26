@@ -7,7 +7,7 @@ import { useParams, notFound, useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ArrowLeft, Calendar, ExternalLink, Globe, Loader2, DollarSign, FileDown, RefreshCw } from "lucide-react";
+import { ArrowLeft, Calendar, ExternalLink, Globe, Loader2, DollarSign, FileDown, RefreshCw, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
@@ -83,6 +83,24 @@ export default function TournamentDetailsPage() {
       alert(`Failed to fetch fee sheet: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsFetchingFees(false);
+    }
+  };
+
+  const handleDeleteFeeSheet = async () => {
+    if (!confirm('Are you sure you want to delete this fee sheet?')) {
+      return;
+    }
+
+    if (!firestore) return;
+
+    try {
+      await updateDoc(doc(firestore, 'tournaments', tournament.id), {
+        feeSheet: null,
+      });
+      alert('Fee sheet deleted successfully!');
+    } catch (error) {
+      console.error('Failed to delete fee sheet:', error);
+      alert('Failed to delete fee sheet. Please try again.');
     }
   };
 
@@ -235,11 +253,16 @@ export default function TournamentDetailsPage() {
                               </p>
                             </div>
                           </div>
-                          <Button variant="outline" size="sm" asChild>
-                            <a href={tournament.feeSheet.pdfUrl} target="_blank" rel="noopener noreferrer" download>
-                              <FileDown className="mr-2 h-4 w-4" /> Download PDF
-                            </a>
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" asChild>
+                              <a href={tournament.feeSheet.pdfUrl} target="_blank" rel="noopener noreferrer" download>
+                                <FileDown className="mr-2 h-4 w-4" /> Download
+                              </a>
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={handleDeleteFeeSheet}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </Button>
+                          </div>
                         </div>
 
                         <div className="border rounded-lg overflow-hidden" style={{ height: '600px' }}>
