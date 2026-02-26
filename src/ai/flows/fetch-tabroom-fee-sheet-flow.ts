@@ -8,8 +8,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import type { FeeSheet } from '@/lib/types';
-import puppeteer, { Browser, Page } from 'puppeteer';
-import pdf from 'pdf-parse';
+import type { Browser, Page } from 'puppeteer';
 
 const FetchFeeSheetInputSchema = z.object({
   tournamentUrl: z.string().url().describe('The Tabroom tournament URL'),
@@ -122,6 +121,9 @@ async function downloadFeeSheetPDF(page: Page, tournamentUrl: string): Promise<B
  */
 async function parseFeeSheetPDF(pdfBuffer: Buffer): Promise<FeeSheet> {
   try {
+    // Dynamically import pdf-parse
+    const pdf = (await import('pdf-parse')).default;
+
     // Parse PDF to extract text
     const pdfData = await pdf(pdfBuffer);
     const pdfText = pdfData.text;
@@ -195,6 +197,9 @@ const fetchTabroomFeeSheetFlow = ai.defineFlow(
     let browser: Browser | null = null;
 
     try {
+      // Dynamically import puppeteer
+      const puppeteer = (await import('puppeteer')).default;
+
       // Launch browser
       browser = await puppeteer.launch({
         headless: true,
