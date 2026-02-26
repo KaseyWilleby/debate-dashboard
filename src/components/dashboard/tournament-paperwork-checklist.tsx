@@ -269,7 +269,11 @@ export default function TournamentPaperworkChecklist({
                       ref={fileInputRef}
                       type="file"
                       className="hidden"
-                      onChange={(e) => handleFileSelect(e, item.id)}
+                      onChange={(e) => {
+                        if (selectedItem) {
+                          handleFileSelect(e, selectedItem);
+                        }
+                      }}
                       accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
                     />
                     <Button
