@@ -14,9 +14,9 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, updateDoc } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { useAuth } from "@/contexts/auth-context";
 import TournamentPaperworkChecklist from "@/components/dashboard/tournament-paperwork-checklist";
-import { fetchTabroomFeeSheet } from "@/ai/flows/fetch-tabroom-fee-sheet-flow";
 import { generatePurchaseOrder, generatePOFilename, extractVendorFromTournament } from "@/lib/purchase-order-generator";
 import { saveAs } from "file-saver";
 
@@ -54,13 +54,24 @@ export default function TournamentDetailsPage() {
       return;
     }
 
+    if (!firebaseApp) {
+      alert('Firebase not initialized');
+      return;
+    }
+
     setIsFetchingFees(true);
     try {
-      const feeSheet = await fetchTabroomFeeSheet(
-        tournament.webpageUrl,
-        user.tabroomEmail,
-        user.tabroomPassword
-      );
+      // Call Cloud Function
+      const functions = getFunctions(firebaseApp);
+      const fetchTabroomFeeSheetFn = httpsCallable(functions, 'fetchTabroomFeeSheet');
+
+      const result = await fetchTabroomFeeSheetFn({
+        tournamentUrl: tournament.webpageUrl,
+        email: user.tabroomEmail,
+        password: user.tabroomPassword,
+      });
+
+      const feeSheet = result.data as any;
 
       // Update tournament with fee sheet
       if (firestore) {
