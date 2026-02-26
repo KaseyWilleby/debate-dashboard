@@ -189,6 +189,7 @@ export const fetchTabroomFeeSheet = functions
       await file.save(pdfBuffer, {
         metadata: {
           contentType: 'application/pdf',
+          cacheControl: 'public, max-age=31536000',
           metadata: {
             tournamentUrl,
             uploadedAt: new Date().toISOString(),
@@ -196,16 +197,12 @@ export const fetchTabroomFeeSheet = functions
         },
       });
 
-      // Generate a signed URL that expires in 7 days
-      const [signedUrl] = await file.getSignedUrl({
-        action: 'read',
-        expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
-
-      functions.logger.info(`PDF uploaded successfully with signed URL`);
+      // Use public URL (storage rules allow public read for fee-sheets/*)
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+      functions.logger.info(`PDF uploaded successfully: ${publicUrl}`);
 
       return {
-        pdfUrl: signedUrl,
+        pdfUrl: publicUrl,
         fileName,
         uploadedAt: new Date().toISOString(),
         tabroomUrl: tournamentUrl,
