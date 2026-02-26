@@ -17,6 +17,15 @@ service firebase.storage {
          resource.metadata.uploadedBy == request.auth.uid);
     }
 
+    // Fee sheet PDFs - public read access for iframe embedding
+    match /fee-sheets/{document=**} {
+      // Allow public read access (needed for iframe embedding)
+      allow read: if true;
+
+      // Only Cloud Functions can write (via Admin SDK)
+      allow write: if false;
+    }
+
     // Default: deny all other access
     match /{allPaths=**} {
       allow read, write: if false;
