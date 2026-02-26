@@ -51,24 +51,20 @@ export const fetchTabroomFeeSheet = functions
     let browser: Browser | null = null;
 
     try {
-      // Dynamically import Puppeteer
-      const puppeteer = (await import('puppeteer')).default;
+      // Dynamically import Puppeteer and Chromium
+      const puppeteer = (await import('puppeteer-core')).default;
+      const chromium = (await import('@sparticuz/chromium')).default;
 
-      // Launch Puppeteer with Chrome
+      // Launch Puppeteer with serverless Chrome
       browser = await puppeteer.launch({
+        args: chromium.args,
+        executablePath: await chromium.executablePath(),
         headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-        ],
       });
 
       const page = await browser.newPage();
 
-      // Set viewport and user agent
-      await page.setViewport({ width: 1920, height: 1080 });
+      // Set user agent
       await page.setUserAgent(
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       );
