@@ -72,34 +72,55 @@ export const fetchTabroomFeeSheet = functions
       // Login to Tabroom
       functions.logger.info('Logging into Tabroom...');
       await page.goto('https://www.tabroom.com/user/login/login_save.mhtml', {
-        waitUntil: 'networkidle0',
+        waitUntil: 'networkidle2',
         timeout: 30000,
       });
 
-      await page.type('input[name="username"]', email);
-      await page.type('input[name="password"]', password);
+      // Wait for login form elements to be visible
+      try {
+        await page.waitForSelector('input[name="username"]', { visible: true, timeout: 10000 });
+        await page.waitForSelector('input[name="password"]', { visible: true, timeout: 10000 });
 
-      await Promise.all([
-        page.click('input[type="submit"]'),
-        page.waitForNavigation({ waitUntil: 'networkidle0' }),
-      ]);
+        functions.logger.info('Login form found, filling credentials...');
 
-      // Verify login
-      const isLoggedIn = await page.evaluate(() => {
-        return (
-          document.body.textContent?.includes('Logout') ||
-          document.querySelector('a[href*="logout"]') !== null
-        );
-      });
+        await page.type('input[name="username"]', email, { delay: 50 });
+        await page.type('input[name="password"]', password, { delay: 50 });
 
-      if (!isLoggedIn) {
+        // Find and click submit button
+        await page.waitForSelector('input[type="submit"]', { visible: true, timeout: 10000 });
+
+        functions.logger.info('Submitting login form...');
+
+        await Promise.all([
+          page.click('input[type="submit"]'),
+          page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }),
+        ]);
+
+        functions.logger.info('Login navigation complete, verifying...');
+
+        // Verify login
+        const isLoggedIn = await page.evaluate(() => {
+          return (
+            document.body.textContent?.includes('Logout') ||
+            document.querySelector('a[href*="logout"]') !== null
+          );
+        });
+
+        if (!isLoggedIn) {
+          throw new functions.https.HttpsError(
+            'unauthenticated',
+            'Tabroom login failed - credentials may be incorrect'
+          );
+        }
+
+        functions.logger.info('Successfully logged into Tabroom');
+      } catch (error) {
+        functions.logger.error('Login error:', error);
         throw new functions.https.HttpsError(
           'unauthenticated',
-          'Tabroom login failed - credentials may be incorrect'
+          `Failed to login to Tabroom: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
       }
-
-      functions.logger.info('Successfully logged into Tabroom');
 
       // Navigate to fee sheet URL
       functions.logger.info(`Navigating to fee sheet: ${tournamentUrl}`);
