@@ -17,8 +17,6 @@ import { doc, updateDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { useAuth } from "@/contexts/auth-context";
 import TournamentPaperworkChecklist from "@/components/dashboard/tournament-paperwork-checklist";
-import { generatePurchaseOrder, generatePOFilename, extractVendorFromTournament } from "@/lib/purchase-order-generator";
-import { saveAs } from "file-saver";
 
 export default function TournamentDetailsPage() {
   const params = useParams();
@@ -28,7 +26,6 @@ export default function TournamentDetailsPage() {
   const { user } = useAuth();
 
   const [isFetchingFees, setIsFetchingFees] = React.useState(false);
-  const [isGeneratingPO, setIsGeneratingPO] = React.useState(false);
 
   const tournamentDocRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -86,42 +83,6 @@ export default function TournamentDetailsPage() {
       alert(`Failed to fetch fee sheet: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsFetchingFees(false);
-    }
-  };
-
-  const handleGeneratePO = async () => {
-    if (!tournament.feeSheet) {
-      alert('Please fetch the fee sheet first before generating a Purchase Order.');
-      return;
-    }
-
-    setIsGeneratingPO(true);
-    try {
-      const poData = {
-        dateOfRequest: format(new Date(), 'MM/dd/yyyy'),
-        requestorName: user?.name || 'Kasey Willeby',
-        accountName: 'Speech & Debate',
-        budgetCode: 'TBD', // You can make this configurable
-        vendorName: extractVendorFromTournament(tournament),
-        reasonForPurchase: `Tournament Registration - ${tournament.name}`,
-        address: 'TBD', // Could be extracted from tournament info
-        roomToBeDelivered: 'Speech & Debate Room',
-        feeSheet: tournament.feeSheet,
-        tournament,
-      };
-
-      const poBuffer = await generatePurchaseOrder(poData);
-      const filename = generatePOFilename(tournament);
-
-      // Download the file
-      saveAs(new Blob([poBuffer]), filename);
-
-      alert('Purchase Order generated successfully!');
-    } catch (error) {
-      console.error('Failed to generate PO:', error);
-      alert(`Failed to generate Purchase Order: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsGeneratingPO(false);
     }
   };
 
@@ -247,31 +208,16 @@ export default function TournamentDetailsPage() {
                           Fetch and manage tournament fees from Tabroom
                         </CardDescription>
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={handleFetchFeeSheet}
-                          disabled={isFetchingFees || !tournament.webpageUrl}
-                        >
-                          {isFetchingFees ? (
-                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Fetching...</>
-                          ) : (
-                            <><RefreshCw className="mr-2 h-4 w-4" /> Fetch Fee Sheet</>
-                          )}
-                        </Button>
-                        {tournament.feeSheet && (
-                          <Button
-                            onClick={handleGeneratePO}
-                            disabled={isGeneratingPO}
-                            variant="outline"
-                          >
-                            {isGeneratingPO ? (
-                              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
-                            ) : (
-                              <><FileDown className="mr-2 h-4 w-4" /> Generate Purchase Order</>
-                            )}
-                          </Button>
+                      <Button
+                        onClick={handleFetchFeeSheet}
+                        disabled={isFetchingFees || !tournament.webpageUrl}
+                      >
+                        {isFetchingFees ? (
+                          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Fetching...</>
+                        ) : (
+                          <><RefreshCw className="mr-2 h-4 w-4" /> Fetch Fee Sheet</>
                         )}
-                      </div>
+                      </Button>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -279,47 +225,29 @@ export default function TournamentDetailsPage() {
                       <div className="space-y-4">
                         <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
                           <div className="flex items-center gap-3">
-                            <DollarSign className="h-6 w-6 text-green-600" />
+                            <FileDown className="h-6 w-6 text-green-600" />
                             <div>
                               <p className="font-semibold text-lg">
-                                ${tournament.feeSheet.totalAmount.toFixed(2)} {tournament.feeSheet.currency}
+                                Fee Sheet PDF
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                Fetched on {format(new Date(tournament.feeSheet.extractedAt), 'MMM d, yyyy h:mm a')}
+                                Fetched on {format(new Date(tournament.feeSheet.uploadedAt), 'MMM d, yyyy h:mm a')}
                               </p>
                             </div>
                           </div>
+                          <Button variant="outline" size="sm" asChild>
+                            <a href={tournament.feeSheet.pdfUrl} target="_blank" rel="noopener noreferrer" download>
+                              <FileDown className="mr-2 h-4 w-4" /> Download PDF
+                            </a>
+                          </Button>
                         </div>
 
-                        <div className="border rounded-lg overflow-hidden">
-                          <table className="w-full">
-                            <thead className="bg-muted">
-                              <tr>
-                                <th className="text-left p-3 text-sm font-semibold">Category</th>
-                                <th className="text-left p-3 text-sm font-semibold">Description</th>
-                                <th className="text-right p-3 text-sm font-semibold">Qty</th>
-                                <th className="text-right p-3 text-sm font-semibold">Unit Price</th>
-                                <th className="text-right p-3 text-sm font-semibold">Total</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {tournament.feeSheet.entries.map((entry, index) => (
-                                <tr key={index} className="border-t">
-                                  <td className="p-3 text-sm">{entry.category}</td>
-                                  <td className="p-3 text-sm">{entry.description}</td>
-                                  <td className="p-3 text-sm text-right">{entry.quantity}</td>
-                                  <td className="p-3 text-sm text-right">${entry.unitPrice.toFixed(2)}</td>
-                                  <td className="p-3 text-sm text-right font-semibold">${entry.totalPrice.toFixed(2)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                            <tfoot className="border-t-2 bg-muted">
-                              <tr>
-                                <td colSpan={4} className="p-3 text-sm font-semibold text-right">Grand Total:</td>
-                                <td className="p-3 text-sm font-bold text-right">${tournament.feeSheet.totalAmount.toFixed(2)}</td>
-                              </tr>
-                            </tfoot>
-                          </table>
+                        <div className="border rounded-lg overflow-hidden" style={{ height: '600px' }}>
+                          <iframe
+                            src={tournament.feeSheet.pdfUrl}
+                            className="w-full h-full"
+                            title="Fee Sheet PDF"
+                          />
                         </div>
                       </div>
                     ) : (

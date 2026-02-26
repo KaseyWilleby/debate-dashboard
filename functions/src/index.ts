@@ -5,22 +5,6 @@ import type { Browser } from 'puppeteer';
 // Initialize Firebase Admin
 admin.initializeApp();
 
-interface FeeSheetEntry {
-  category: string;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-}
-
-interface FeeSheet {
-  entries: FeeSheetEntry[];
-  totalAmount: number;
-  currency: string;
-  extractedAt: string;
-  tabroomUrl?: string;
-}
-
 /**
  * Cloud Function to fetch fee sheet from Tabroom
  * This runs with Puppeteer support in a proper Cloud Function environment
@@ -196,21 +180,35 @@ export const fetchTabroomFeeSheet = functions
       const pdfBuffer = await response.buffer();
       functions.logger.info(`Downloaded PDF (${pdfBuffer.length} bytes)`);
 
-      // Dynamically import pdf-parse
-      const pdfParseModule = await import('pdf-parse');
-      const pdfParse = (pdfParseModule.default || pdfParseModule) as any;
+      // Upload PDF to Firebase Storage
+      const bucket = admin.storage().bucket();
+      const fileName = `fee-sheets/${Date.now()}-${tournamentUrl.split('/').pop()}.pdf`;
+      const file = bucket.file(fileName);
 
-      // Parse PDF
-      const pdfData = await pdfParse(pdfBuffer);
-      const pdfText = pdfData.text;
-      functions.logger.info('Successfully extracted text from PDF');
+      functions.logger.info(`Uploading PDF to Storage: ${fileName}`);
+      await file.save(pdfBuffer, {
+        metadata: {
+          contentType: 'application/pdf',
+          metadata: {
+            tournamentUrl,
+            uploadedAt: new Date().toISOString(),
+          },
+        },
+      });
 
-      // Parse fee data using simple text extraction
-      // This is a basic parser - you can enhance it based on the actual PDF structure
-      const feeSheet: FeeSheet = await parseFeeSheetText(pdfText, tournamentUrl);
+      // Make the file publicly accessible
+      await file.makePublic();
 
-      functions.logger.info('Successfully parsed fee sheet');
-      return feeSheet;
+      // Get public URL
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+      functions.logger.info(`PDF uploaded successfully: ${publicUrl}`);
+
+      return {
+        pdfUrl: publicUrl,
+        fileName,
+        uploadedAt: new Date().toISOString(),
+        tabroomUrl: tournamentUrl,
+      };
     } catch (error) {
       functions.logger.error('Error fetching fee sheet:', error);
       throw new functions.https.HttpsError(
@@ -224,57 +222,3 @@ export const fetchTabroomFeeSheet = functions
     }
   });
 
-/**
- * Parse fee sheet text from PDF
- * This is a basic implementation - enhance based on actual PDF structure
- */
-async function parseFeeSheetText(
-  pdfText: string,
-  tabroomUrl: string
-): Promise<FeeSheet> {
-  // Basic parsing logic - this will need to be customized based on actual PDF format
-  const lines = pdfText.split('\n').map(line => line.trim()).filter(line => line);
-
-  const entries: FeeSheetEntry[] = [];
-  let totalAmount = 0;
-
-  // Look for common patterns in Tabroom fee sheets
-  // This is a placeholder - you'll need to adjust based on actual PDF format
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    // Look for lines with currency amounts
-    const amountMatch = line.match(/\$\s*(\d+\.?\d*)/);
-    if (amountMatch) {
-      const amount = parseFloat(amountMatch[1]);
-
-      // Try to extract description from previous or current line
-      const description = line.replace(/\$\s*\d+\.?\d*/, '').trim() || lines[i - 1] || 'Fee';
-
-      entries.push({
-        category: 'Tournament Fee',
-        description,
-        quantity: 1,
-        unitPrice: amount,
-        totalPrice: amount,
-      });
-
-      totalAmount += amount;
-    }
-  }
-
-  // Look for total in the last few lines
-  const lastLines = lines.slice(-5).join(' ');
-  const totalMatch = lastLines.match(/total[:\s]*\$?\s*(\d+\.?\d*)/i);
-  if (totalMatch) {
-    totalAmount = parseFloat(totalMatch[1]);
-  }
-
-  return {
-    entries,
-    totalAmount,
-    currency: 'USD',
-    extractedAt: new Date().toISOString(),
-    tabroomUrl,
-  };
-}
