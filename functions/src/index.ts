@@ -71,30 +71,122 @@ export const fetchTabroomFeeSheet = functions
 
       // Login to Tabroom
       functions.logger.info('Logging into Tabroom...');
-      await page.goto('https://www.tabroom.com/user/login/login_save.mhtml', {
+      await page.goto('https://www.tabroom.com/user/login/', {
         waitUntil: 'networkidle2',
         timeout: 30000,
       });
 
-      // Wait for login form elements to be visible
+      // Wait for page to be ready
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Debug: Log page content to understand structure
+      const pageContent = await page.evaluate(() => {
+        const inputs = Array.from(document.querySelectorAll('input'));
+        const buttons = Array.from(document.querySelectorAll('button, input[type="submit"]'));
+        return {
+          inputs: inputs.map(i => ({
+            type: (i as HTMLInputElement).type,
+            name: (i as HTMLInputElement).name,
+            id: i.id,
+            placeholder: (i as HTMLInputElement).placeholder,
+          })),
+          buttons: buttons.map(b => ({
+            type: (b as HTMLButtonElement | HTMLInputElement).type,
+            textContent: b.textContent?.trim(),
+            id: b.id,
+          })),
+          formAction: document.querySelector('form')?.action,
+        };
+      });
+      functions.logger.info('Page structure:', JSON.stringify(pageContent));
+
+      // Try multiple selector strategies
       try {
-        await page.waitForSelector('input[name="username"]', { visible: true, timeout: 10000 });
-        await page.waitForSelector('input[name="password"]', { visible: true, timeout: 10000 });
+        let usernameSelector: string | null = null;
+        let passwordSelector: string | null = null;
+
+        // Try different selectors for username field
+        const usernameSelectors = [
+          'input[name="username"]',
+          'input[name="email"]',
+          'input[type="email"]',
+          'input[id*="user"]',
+          'input[id*="email"]',
+          'input[placeholder*="mail"]',
+          'input[placeholder*="user"]',
+        ];
+
+        for (const selector of usernameSelectors) {
+          try {
+            await page.waitForSelector(selector, { visible: true, timeout: 2000 });
+            usernameSelector = selector;
+            functions.logger.info(`Found username field with selector: ${selector}`);
+            break;
+          } catch (e) {
+            // Try next selector
+          }
+        }
+
+        // Try different selectors for password field
+        const passwordSelectors = [
+          'input[name="password"]',
+          'input[type="password"]',
+          'input[id*="pass"]',
+        ];
+
+        for (const selector of passwordSelectors) {
+          try {
+            await page.waitForSelector(selector, { visible: true, timeout: 2000 });
+            passwordSelector = selector;
+            functions.logger.info(`Found password field with selector: ${selector}`);
+            break;
+          } catch (e) {
+            // Try next selector
+          }
+        }
+
+        if (!usernameSelector || !passwordSelector) {
+          throw new Error('Could not find login form fields');
+        }
 
         functions.logger.info('Login form found, filling credentials...');
 
-        await page.type('input[name="username"]', email, { delay: 50 });
-        await page.type('input[name="password"]', password, { delay: 50 });
+        await page.type(usernameSelector, email, { delay: 50 });
+        await page.type(passwordSelector, password, { delay: 50 });
 
         // Find and click submit button
-        await page.waitForSelector('input[type="submit"]', { visible: true, timeout: 10000 });
+        const submitSelectors = [
+          'input[type="submit"]',
+          'button[type="submit"]',
+          'button:has-text("Login")',
+          'button:has-text("Sign in")',
+        ];
 
-        functions.logger.info('Submitting login form...');
+        let submitClicked = false;
+        for (const selector of submitSelectors) {
+          try {
+            await page.waitForSelector(selector, { visible: true, timeout: 2000 });
+            functions.logger.info(`Submitting login form with: ${selector}`);
 
-        await Promise.all([
-          page.click('input[type="submit"]'),
-          page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }),
-        ]);
+            await Promise.all([
+              page.click(selector),
+              page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }),
+            ]);
+            submitClicked = true;
+            break;
+          } catch (e) {
+            // Try next selector
+          }
+        }
+
+        if (!submitClicked) {
+          // Try pressing Enter as fallback
+          functions.logger.info('Submitting form via Enter key...');
+          await Promise.all([
+            page.keyboard.press('Enter'),
+            page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }),
+          ]);
+        }
 
         functions.logger.info('Login navigation complete, verifying...');
 
