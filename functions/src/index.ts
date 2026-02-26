@@ -197,8 +197,11 @@ export const fetchTabroomFeeSheet = functions
         },
       });
 
-      // Use public URL (storage rules allow public read for fee-sheets/*)
-      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+      // Make file publicly accessible via ACL
+      await file.makePublic();
+
+      // Get public URL
+      const publicUrl = file.publicUrl();
       functions.logger.info(`PDF uploaded successfully: ${publicUrl}`);
 
       return {
