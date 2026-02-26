@@ -52,16 +52,28 @@ export default function TournamentPaperworkChecklist({
   const documents = tournament.paperwork?.documents || [];
 
   const handleChecklistToggle = (itemId: string) => {
-    const updatedChecklist = checklist.map(item =>
-      item.id === itemId
-        ? {
-            ...item,
-            completed: !item.completed,
-            completedAt: !item.completed ? new Date().toISOString() : undefined,
-            completedBy: !item.completed ? user?.id : undefined,
-          }
-        : item
-    );
+    const updatedChecklist = checklist.map(item => {
+      if (item.id === itemId) {
+        const newCompleted = !item.completed;
+        const updatedItem: ChecklistItem = {
+          ...item,
+          completed: newCompleted,
+        };
+
+        // Only set completedAt and completedBy if checking, remove them if unchecking
+        if (newCompleted) {
+          updatedItem.completedAt = new Date().toISOString();
+          updatedItem.completedBy = user?.id;
+        } else {
+          // Remove the optional fields by not including them
+          delete updatedItem.completedAt;
+          delete updatedItem.completedBy;
+        }
+
+        return updatedItem;
+      }
+      return item;
+    });
 
     onUpdate({
       ...tournament,
