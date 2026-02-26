@@ -24,7 +24,7 @@ export default function TournamentDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
-  const { firestore } = useFirebase();
+  const { firestore, firebaseApp } = useFirebase();
   const { user } = useAuth();
 
   const [isFetchingFees, setIsFetchingFees] = React.useState(false);
