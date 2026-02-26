@@ -71,8 +71,8 @@ service cloud.firestore {
       allow create, delete: if isAdmin();
       allow update: if isAdmin() || (
         isSignedIn() &&
-        // Only allow updating the entries field, not other tournament fields
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['entries'])
+        // Only allow updating the entries or paperwork field, not other tournament fields
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['entries', 'paperwork', 'feeSheet'])
       );
     }
 
