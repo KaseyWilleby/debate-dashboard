@@ -197,15 +197,16 @@ export const fetchTabroomFeeSheet = functions
         },
       });
 
-      // Make file publicly accessible via ACL
-      await file.makePublic();
+      // Generate a long-lived signed URL (valid for 7 days)
+      const [downloadUrl] = await file.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days from now
+      });
 
-      // Get public URL
-      const publicUrl = file.publicUrl();
-      functions.logger.info(`PDF uploaded successfully: ${publicUrl}`);
+      functions.logger.info(`PDF uploaded successfully with signed URL`);
 
       return {
-        pdfUrl: publicUrl,
+        pdfUrl: downloadUrl,
         fileName,
         uploadedAt: new Date().toISOString(),
         tabroomUrl: tournamentUrl,
