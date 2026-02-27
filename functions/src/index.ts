@@ -194,10 +194,10 @@ export const fetchTabroomFeeSheet = functions
         metadata: {
           contentType: 'application/pdf',
           cacheControl: 'public, max-age=31536000',
+          firebaseStorageDownloadTokens: downloadToken,
           metadata: {
             tournamentUrl,
             uploadedAt: new Date().toISOString(),
-            firebaseStorageDownloadTokens: downloadToken,
           },
         },
       });
