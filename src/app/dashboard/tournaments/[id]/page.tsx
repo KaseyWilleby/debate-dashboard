@@ -85,6 +85,7 @@ export default function TournamentDetailsPage() {
 
       const result = await fetchTabroomFeeSheetFn({
         tournamentUrl: tournament.webpageUrl,
+        tournamentName: tournament.name,
         email: user.tabroomEmail,
         password: user.tabroomPassword,
         chapterId: user.tabroomChapterId,

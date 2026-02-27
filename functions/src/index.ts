@@ -23,12 +23,12 @@ export const fetchTabroomFeeSheet = functions
       );
     }
 
-    const { tournamentUrl, email, password, chapterId } = data;
+    const { tournamentUrl, tournamentName, email, password, chapterId } = data;
 
-    if (!tournamentUrl || !email || !password || !chapterId) {
+    if (!tournamentUrl || !tournamentName || !email || !password || !chapterId) {
       throw new functions.https.HttpsError(
         'invalid-argument',
-        'tournamentUrl, email, password, and chapterId are required'
+        'tournamentUrl, tournamentName, email, password, and chapterId are required'
       );
     }
 
@@ -182,22 +182,87 @@ export const fetchTabroomFeeSheet = functions
         timeout: 30000,
       });
 
-      functions.logger.info('Searching for tournament with tourn_id: ' + tournId);
+      functions.logger.info(`Searching for tournament: "${tournamentName}" (tourn_id: ${tournId})`);
 
-      // Find the school_id for this tournament
-      const schoolId = await page.evaluate((targetTournId) => {
-        const links = Array.from(document.querySelectorAll('a'));
-        const tournLink = links.find(link => {
-          const href = link.href || '';
-          return href.includes(`tourn_id=${targetTournId}`) && href.includes('school_id=');
-        });
+      // Find the school_id for this tournament by matching tournament name
+      const { schoolId, debugInfo } = await page.evaluate((targetTournId, targetTournName) => {
+        let schoolId = null;
+        let matchedLink = null;
 
-        if (tournLink) {
-          const match = tournLink.href.match(/school_id=(\d+)/);
-          return match ? match[1] : null;
+        // Normalize tournament name for comparison (remove extra spaces, lowercase)
+        const normalizeText = (text: string) => {
+          return text.trim().toLowerCase().replace(/\s+/g, ' ');
+        };
+        const normalizedTargetName = normalizeText(targetTournName);
+
+        // Find all elements (rows, divs, etc.) on the page
+        const allElements = Array.from(document.querySelectorAll('tr, div, li, article'));
+
+        // Look for a container that mentions the tournament name
+        for (const element of allElements) {
+          const elementText = element.textContent || '';
+          const normalizedElementText = normalizeText(elementText);
+
+          // Check if this element's text contains the tournament name
+          if (normalizedElementText.includes(normalizedTargetName)) {
+            // Found a potential row/container with the tournament name
+            // Now look for a Results link within this same container
+            const linksInElement = Array.from(element.querySelectorAll('a'));
+            const resultsLink = linksInElement.find(link => {
+              const text = link.textContent?.trim().toLowerCase() || '';
+              const href = link.href || '';
+              return text.includes('result') && href.includes('school_id=');
+            });
+
+            if (resultsLink) {
+              matchedLink = resultsLink;
+              const match = resultsLink.href.match(/school_id=(\d+)/);
+              schoolId = match ? match[1] : null;
+              break;
+            }
+          }
         }
-        return null;
-      }, tournId);
+
+        // Fallback: If name matching didn't work, try tourn_id matching
+        if (!schoolId) {
+          const links = Array.from(document.querySelectorAll('a'));
+          const tournIdLinks = links.filter(link => {
+            const href = link.href || '';
+            return href.includes(`tourn_id=${targetTournId}`);
+          });
+
+          for (const tournLink of tournIdLinks) {
+            const parent = tournLink.closest('tr, div, li, article, tbody');
+            if (parent) {
+              const linksInParent = Array.from(parent.querySelectorAll('a'));
+              const resultsLink = linksInParent.find(link => {
+                const text = link.textContent?.trim().toLowerCase() || '';
+                const href = link.href || '';
+                return text.includes('result') && href.includes('school_id=');
+              });
+
+              if (resultsLink) {
+                matchedLink = resultsLink;
+                const match = resultsLink.href.match(/school_id=(\d+)/);
+                schoolId = match ? match[1] : null;
+                break;
+              }
+            }
+          }
+        }
+
+        // Debug info
+        const debugInfo = {
+          targetName: targetTournName,
+          normalizedTargetName: normalizedTargetName,
+          matchedLinkHref: matchedLink?.href || null,
+          matchedLinkText: matchedLink?.textContent || null,
+        };
+
+        return { schoolId, debugInfo };
+      }, tournId, tournamentName);
+
+      functions.logger.info('Debug info:', debugInfo);
 
       if (!schoolId) {
         throw new functions.https.HttpsError(
