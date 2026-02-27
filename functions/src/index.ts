@@ -162,21 +162,46 @@ export const fetchTabroomFeeSheet = functions
         );
       }
 
-      // Navigate to fee sheet URL
-      functions.logger.info(`Navigating to fee sheet: ${tournamentUrl}`);
-      const response = await page.goto(tournamentUrl, {
+      // Navigate to tournament page
+      functions.logger.info(`Navigating to tournament: ${tournamentUrl}`);
+      await page.goto(tournamentUrl, {
         waitUntil: 'networkidle0',
         timeout: 30000,
       });
 
-      if (!response) {
+      functions.logger.info('Looking for "Print Invoice / Receipt" link...');
+
+      // Find and click "Print Invoice / Receipt" link
+      const invoiceLink = await page.evaluateHandle(() => {
+        const links = Array.from(document.querySelectorAll('a'));
+        return links.find(link => link.textContent?.includes('Print Invoice / Receipt'));
+      });
+
+      if (!invoiceLink) {
         throw new functions.https.HttpsError(
           'not-found',
-          'Failed to load fee sheet page'
+          'Could not find "Print Invoice / Receipt" link on the page'
         );
       }
 
-      // Get PDF buffer
+      functions.logger.info('Found invoice link, clicking...');
+
+      // Click the link and wait for navigation to PDF
+      const [response] = await Promise.all([
+        page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }),
+        page.evaluate((link) => (link as HTMLElement).click(), invoiceLink),
+      ]);
+
+      if (!response) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'Failed to navigate to fee sheet PDF'
+        );
+      }
+
+      functions.logger.info(`Navigated to: ${response.url()}`);
+
+      // Download the PDF
       const pdfBuffer = await response.buffer();
       functions.logger.info(`Downloaded PDF (${pdfBuffer.length} bytes)`);
 
