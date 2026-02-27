@@ -1,7 +1,6 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import type { Browser } from 'puppeteer';
-import { randomUUID } from 'crypto';
 
 // Initialize Firebase Admin
 admin.initializeApp();
@@ -186,15 +185,13 @@ export const fetchTabroomFeeSheet = functions
       const fileName = `fee-sheets/${Date.now()}-${tournamentUrl.split('/').pop()}.pdf`;
       const file = bucket.file(fileName);
 
-      // Generate a download token for Firebase Storage
-      const downloadToken = randomUUID();
-
       functions.logger.info(`Uploading PDF to Storage: ${fileName}`);
+      functions.logger.info(`Bucket name: ${bucket.name}`);
+
       await file.save(pdfBuffer, {
         metadata: {
           contentType: 'application/pdf',
           cacheControl: 'public, max-age=31536000',
-          firebaseStorageDownloadTokens: downloadToken,
           metadata: {
             tournamentUrl,
             uploadedAt: new Date().toISOString(),
@@ -202,12 +199,15 @@ export const fetchTabroomFeeSheet = functions
         },
       });
 
-      // Construct Firebase Storage download URL with token
-      const bucketName = bucket.name;
-      const encodedFileName = encodeURIComponent(fileName);
-      const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedFileName}?alt=media&token=${downloadToken}`;
+      // Make file publicly readable via ACL
+      await file.makePublic();
 
-      functions.logger.info(`PDF uploaded successfully with download token`);
+      // Construct simple public URL
+      const bucketName = bucket.name;
+      const downloadUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`;
+
+      functions.logger.info(`PDF uploaded successfully`);
+      functions.logger.info(`Public URL: ${downloadUrl}`);
 
       return {
         pdfUrl: downloadUrl,
