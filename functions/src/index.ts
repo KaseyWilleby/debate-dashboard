@@ -182,7 +182,11 @@ export const fetchTabroomFeeSheet = functions
 
       // Upload PDF to Firebase Storage
       const bucket = admin.storage().bucket();
-      const fileName = `fee-sheets/${Date.now()}-${tournamentUrl.split('/').pop()}.pdf`;
+
+      // Extract tournament ID from URL (e.g., "tourn_id=37539")
+      const tournIdMatch = tournamentUrl.match(/tourn_id=(\d+)/);
+      const tournId = tournIdMatch ? tournIdMatch[1] : 'unknown';
+      const fileName = `fee-sheets/${Date.now()}-tournament-${tournId}.pdf`;
       const file = bucket.file(fileName);
 
       functions.logger.info(`Uploading PDF to Storage: ${fileName}`);
