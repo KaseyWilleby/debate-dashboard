@@ -1,6 +1,7 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import type { Browser } from 'puppeteer';
+import { randomUUID } from 'crypto';
 
 // Initialize Firebase Admin
 admin.initializeApp();
@@ -185,6 +186,9 @@ export const fetchTabroomFeeSheet = functions
       const fileName = `fee-sheets/${Date.now()}-${tournamentUrl.split('/').pop()}.pdf`;
       const file = bucket.file(fileName);
 
+      // Generate a download token for Firebase Storage
+      const downloadToken = randomUUID();
+
       functions.logger.info(`Uploading PDF to Storage: ${fileName}`);
       await file.save(pdfBuffer, {
         metadata: {
@@ -193,17 +197,17 @@ export const fetchTabroomFeeSheet = functions
           metadata: {
             tournamentUrl,
             uploadedAt: new Date().toISOString(),
+            firebaseStorageDownloadTokens: downloadToken,
           },
         },
       });
 
-      // Generate a long-lived signed URL (valid for 7 days)
-      const [downloadUrl] = await file.getSignedUrl({
-        action: 'read',
-        expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days from now
-      });
+      // Construct Firebase Storage download URL with token
+      const bucketName = bucket.name;
+      const encodedFileName = encodeURIComponent(fileName);
+      const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedFileName}?alt=media&token=${downloadToken}`;
 
-      functions.logger.info(`PDF uploaded successfully with signed URL`);
+      functions.logger.info(`PDF uploaded successfully with download token`);
 
       return {
         pdfUrl: downloadUrl,
