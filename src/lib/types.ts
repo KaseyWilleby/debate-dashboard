@@ -14,6 +14,7 @@ export interface User {
   nsdaId?: string; // NSDA membership ID for matching tabroom results
   tabroomEmail?: string; // Tabroom.com login email
   tabroomPassword?: string; // Tabroom.com password (should be encrypted in production)
+  tabroomChapterId?: string; // Tabroom chapter ID for accessing results
 }
 
 export interface Message {

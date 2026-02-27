@@ -46,8 +46,29 @@ export default function TournamentDetailsPage() {
   const isAdmin = user?.role === 'admin';
 
   const handleFetchFeeSheet = async () => {
-    if (!tournament.webpageUrl || !user?.tabroomEmail || !user?.tabroomPassword) {
-      alert('Please set your Tabroom credentials in Settings before fetching fee sheets.');
+    // Debug logging
+    console.log('Tournament data:', {
+      id: tournament.id,
+      name: tournament.name,
+      webpageUrl: tournament.webpageUrl,
+    });
+    console.log('User data:', {
+      id: user?.id,
+      name: user?.name,
+      tabroomEmail: user?.tabroomEmail,
+      tabroomPassword: user?.tabroomPassword ? '***' : undefined,
+      tabroomChapterId: user?.tabroomChapterId,
+    });
+
+    // Check each field individually for better error messages
+    const missingFields = [];
+    if (!tournament.webpageUrl) missingFields.push('Tournament webpage URL');
+    if (!user?.tabroomEmail) missingFields.push('Tabroom email');
+    if (!user?.tabroomPassword) missingFields.push('Tabroom password');
+    if (!user?.tabroomChapterId) missingFields.push('Tabroom chapter ID');
+
+    if (missingFields.length > 0) {
+      alert(`Missing required fields:\n${missingFields.join('\n')}\n\nPlease add these to your Firestore user document and refresh the page.`);
       return;
     }
 
@@ -66,6 +87,7 @@ export default function TournamentDetailsPage() {
         tournamentUrl: tournament.webpageUrl,
         email: user.tabroomEmail,
         password: user.tabroomPassword,
+        chapterId: user.tabroomChapterId,
       });
 
       const feeSheet = result.data as any;

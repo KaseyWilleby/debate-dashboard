@@ -23,12 +23,12 @@ export const fetchTabroomFeeSheet = functions
       );
     }
 
-    const { tournamentUrl, email, password } = data;
+    const { tournamentUrl, email, password, chapterId } = data;
 
-    if (!tournamentUrl || !email || !password) {
+    if (!tournamentUrl || !email || !password || !chapterId) {
       throw new functions.https.HttpsError(
         'invalid-argument',
-        'tournamentUrl, email, and password are required'
+        'tournamentUrl, email, password, and chapterId are required'
       );
     }
 
@@ -162,55 +162,81 @@ export const fetchTabroomFeeSheet = functions
         );
       }
 
-      // Navigate to tournament page
-      functions.logger.info(`Navigating to tournament: ${tournamentUrl}`);
-      await page.goto(tournamentUrl, {
+      // Extract tourn_id from tournament URL
+      const tournIdMatch = tournamentUrl.match(/tourn_id=(\d+)/);
+      if (!tournIdMatch) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'Could not extract tourn_id from tournament URL'
+        );
+      }
+      const tournId = tournIdMatch[1];
+      functions.logger.info(`Tournament ID: ${tournId}`);
+
+      // Navigate to results page with chapter ID
+      const resultsUrl = `https://www.tabroom.com/user/results/index.mhtml?chapter_id=${chapterId}`;
+      functions.logger.info(`Navigating to results: ${resultsUrl}`);
+
+      await page.goto(resultsUrl, {
         waitUntil: 'networkidle0',
         timeout: 30000,
       });
 
-      functions.logger.info('Looking for "Print Invoice / Receipt" link...');
+      functions.logger.info('Searching for tournament with tourn_id: ' + tournId);
 
-      // Find and click "Print Invoice / Receipt" link
-      const invoiceLink = await page.evaluateHandle(() => {
+      // Find the school_id for this tournament
+      const schoolId = await page.evaluate((targetTournId) => {
         const links = Array.from(document.querySelectorAll('a'));
-        return links.find(link => link.textContent?.includes('Print Invoice / Receipt'));
+        const tournLink = links.find(link => {
+          const href = link.href || '';
+          return href.includes(`tourn_id=${targetTournId}`) && href.includes('school_id=');
+        });
+
+        if (tournLink) {
+          const match = tournLink.href.match(/school_id=(\d+)/);
+          return match ? match[1] : null;
+        }
+        return null;
+      }, tournId);
+
+      if (!schoolId) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `Could not find school_id for tournament ${tournId}. Make sure you've registered for this tournament.`
+        );
+      }
+
+      functions.logger.info(`Found school_id: ${schoolId}`);
+
+      // Navigate to invoice page with school_id
+      const invoiceUrl = `https://www.tabroom.com/user/results/invoice_print.mhtml?school_id=${schoolId}`;
+      functions.logger.info(`Navigating to invoice: ${invoiceUrl}`);
+
+      await page.goto(invoiceUrl, {
+        waitUntil: 'networkidle0',
+        timeout: 30000,
       });
 
-      if (!invoiceLink) {
-        throw new functions.https.HttpsError(
-          'not-found',
-          'Could not find "Print Invoice / Receipt" link on the page'
-        );
-      }
+      functions.logger.info('Loaded invoice page, generating PDF from HTML...');
 
-      functions.logger.info('Found invoice link, clicking...');
+      // Generate PDF from the HTML page
+      const pdfBuffer = Buffer.from(await page.pdf({
+        format: 'Letter',
+        printBackground: true,
+        margin: {
+          top: '0.5in',
+          right: '0.5in',
+          bottom: '0.5in',
+          left: '0.5in',
+        },
+      }));
 
-      // Click the link and wait for navigation to PDF
-      const [response] = await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }),
-        page.evaluate((link) => (link as HTMLElement).click(), invoiceLink),
-      ]);
-
-      if (!response) {
-        throw new functions.https.HttpsError(
-          'not-found',
-          'Failed to navigate to fee sheet PDF'
-        );
-      }
-
-      functions.logger.info(`Navigated to: ${response.url()}`);
-
-      // Download the PDF
-      const pdfBuffer = await response.buffer();
-      functions.logger.info(`Downloaded PDF (${pdfBuffer.length} bytes)`);
+      functions.logger.info(`Generated PDF (${pdfBuffer.length} bytes)`);
 
       // Upload PDF to Firebase Storage
       const bucket = admin.storage().bucket();
 
-      // Extract tournament ID from URL (e.g., "tourn_id=37539")
-      const tournIdMatch = tournamentUrl.match(/tourn_id=(\d+)/);
-      const tournId = tournIdMatch ? tournIdMatch[1] : 'unknown';
+      // Use the tournId already extracted earlier
       const fileName = `fee-sheets/${Date.now()}-tournament-${tournId}.pdf`;
       const file = bucket.file(fileName);
 
