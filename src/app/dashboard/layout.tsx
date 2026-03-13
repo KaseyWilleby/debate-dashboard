@@ -47,17 +47,11 @@ const SchedulerNav = ({ pathname, isAdmin }: { pathname: string; isAdmin: boolea
 
             {isAdmin && (
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/tournament-scheduler")} tooltip="Tournament Scheduler">
-                  <Link href="/dashboard/tournament-scheduler"><Calendar /><span>Tournament Scheduler</span></Link>
+                <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/tournament-scheduler")} tooltip="Tournament Manager">
+                  <Link href="/dashboard/tournament-scheduler"><Calendar /><span>Tournament Manager</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/tournament-signup")} tooltip="Tournament Sign Up">
-                <Link href="/dashboard/tournament-signup"><ClipboardList /><span>Tournament Sign Up</span></Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
 
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/tournament-history")} tooltip="Tournament History">

@@ -195,20 +195,36 @@ export const fetchTabroomFeeSheet = functions
         };
         const normalizedTargetName = normalizeText(targetTournName);
 
-        // Find all elements (rows, divs, etc.) on the page
-        const allElements = Array.from(document.querySelectorAll('tr, div, li, article'));
+        // First, let's collect all Results links and their associated tournament info for debugging
+        const allResultsLinks: Array<{text: string, href: string, rowText: string}> = [];
+        const allRows = Array.from(document.querySelectorAll('tr'));
 
-        // Look for a container that mentions the tournament name
-        for (const element of allElements) {
-          const elementText = element.textContent || '';
-          const normalizedElementText = normalizeText(elementText);
+        for (const row of allRows) {
+          const links = Array.from(row.querySelectorAll('a'));
+          const resultsLink = links.find(link => {
+            const text = link.textContent?.trim().toLowerCase() || '';
+            const href = link.href || '';
+            return text.includes('result') && href.includes('school_id=');
+          });
 
-          // Check if this element's text contains the tournament name
-          if (normalizedElementText.includes(normalizedTargetName)) {
-            // Found a potential row/container with the tournament name
-            // Now look for a Results link within this same container
-            const linksInElement = Array.from(element.querySelectorAll('a'));
-            const resultsLink = linksInElement.find(link => {
+          if (resultsLink) {
+            allResultsLinks.push({
+              text: resultsLink.textContent?.trim() || '',
+              href: resultsLink.href,
+              rowText: normalizeText(row.textContent || '').substring(0, 200), // First 200 chars
+            });
+          }
+        }
+
+        // Try to match by tournament name in the row
+        for (const row of allRows) {
+          const rowText = row.textContent || '';
+          const normalizedRowText = normalizeText(rowText);
+
+          // Check if this row mentions the tournament name
+          if (normalizedRowText.includes(normalizedTargetName)) {
+            const links = Array.from(row.querySelectorAll('a'));
+            const resultsLink = links.find(link => {
               const text = link.textContent?.trim().toLowerCase() || '';
               const href = link.href || '';
               return text.includes('result') && href.includes('school_id=');
@@ -223,19 +239,20 @@ export const fetchTabroomFeeSheet = functions
           }
         }
 
-        // Fallback: If name matching didn't work, try tourn_id matching
+        // Fallback: Try partial matching with key words from tournament name
         if (!schoolId) {
-          const links = Array.from(document.querySelectorAll('a'));
-          const tournIdLinks = links.filter(link => {
-            const href = link.href || '';
-            return href.includes(`tourn_id=${targetTournId}`);
-          });
+          // Extract key words from tournament name (skip common words)
+          const skipWords = ['the', 'a', 'an', 'of', 'and', 'or', 'in', 'at', 'to'];
+          const targetWords = normalizedTargetName.split(' ').filter(w => w.length > 2 && !skipWords.includes(w));
 
-          for (const tournLink of tournIdLinks) {
-            const parent = tournLink.closest('tr, div, li, article, tbody');
-            if (parent) {
-              const linksInParent = Array.from(parent.querySelectorAll('a'));
-              const resultsLink = linksInParent.find(link => {
+          for (const row of allRows) {
+            const rowText = normalizeText(row.textContent || '');
+
+            // Check if row contains multiple key words from the target name
+            const matchedWords = targetWords.filter(word => rowText.includes(word));
+            if (matchedWords.length >= 2) { // At least 2 matching words
+              const links = Array.from(row.querySelectorAll('a'));
+              const resultsLink = links.find(link => {
                 const text = link.textContent?.trim().toLowerCase() || '';
                 const href = link.href || '';
                 return text.includes('result') && href.includes('school_id=');
@@ -255,6 +272,8 @@ export const fetchTabroomFeeSheet = functions
         const debugInfo = {
           targetName: targetTournName,
           normalizedTargetName: normalizedTargetName,
+          allResultsLinksCount: allResultsLinks.length,
+          allResultsLinks: allResultsLinks,
           matchedLinkHref: matchedLink?.href || null,
           matchedLinkText: matchedLink?.textContent || null,
         };
@@ -273,16 +292,119 @@ export const fetchTabroomFeeSheet = functions
 
       functions.logger.info(`Found school_id: ${schoolId}`);
 
-      // Navigate to invoice page with school_id
-      const invoiceUrl = `https://www.tabroom.com/user/results/invoice_print.mhtml?school_id=${schoolId}`;
-      functions.logger.info(`Navigating to invoice: ${invoiceUrl}`);
+      // Navigate to tournament results page
+      const resultsPageUrl = `https://www.tabroom.com/user/results/tourn.mhtml?school_id=${schoolId}`;
+      functions.logger.info(`Navigating to results page: ${resultsPageUrl}`);
 
-      await page.goto(invoiceUrl, {
-        waitUntil: 'networkidle0',
+      await page.goto(resultsPageUrl, {
+        waitUntil: 'domcontentloaded',
         timeout: 30000,
       });
 
-      functions.logger.info('Loaded invoice page, generating PDF from HTML...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      functions.logger.info('Results page loaded');
+
+      // Find the Print Invoice / Receipt link
+      functions.logger.info('Looking for Print Invoice / Receipt link...');
+
+      const invoiceLinkInfo = await page.evaluate(() => {
+        const links = Array.from(document.querySelectorAll('a'));
+
+        // First, let's collect all links for debugging
+        const allLinksInfo = links.map(link => ({
+          href: link.href,
+          text: link.textContent?.trim().substring(0, 50), // First 50 chars
+        })).slice(0, 20); // First 20 links
+
+        // Find link specifically with invoice_print.mhtml in href
+        const invoiceLink = links.find(link => {
+          const href = link.href || '';
+          return href.includes('invoice_print.mhtml');
+        });
+
+        if (invoiceLink) {
+          return {
+            found: true,
+            href: invoiceLink.href,
+            text: invoiceLink.textContent?.trim(),
+            target: (invoiceLink as HTMLAnchorElement).target,
+            allLinksInfo, // Include for debugging
+          };
+        }
+
+        // If not found by href, try by text
+        const invoiceLinkByText = links.find(link => {
+          const text = link.textContent?.trim().toLowerCase() || '';
+          return text.includes('print invoice') || text.includes('invoice');
+        });
+
+        if (invoiceLinkByText) {
+          return {
+            found: true,
+            href: invoiceLinkByText.href,
+            text: invoiceLinkByText.textContent?.trim(),
+            target: (invoiceLinkByText as HTMLAnchorElement).target,
+            foundBy: 'text',
+            allLinksInfo,
+          };
+        }
+
+        return { found: false, allLinksInfo };
+      });
+
+      if (!invoiceLinkInfo.found) {
+        throw new functions.https.HttpsError(
+          'internal',
+          'Could not find Print Invoice / Receipt link on results page'
+        );
+      }
+
+      functions.logger.info('Found invoice link:', invoiceLinkInfo);
+
+      // Just navigate directly to the invoice URL from the link href
+      // (we're already authenticated from the results page)
+      if (!invoiceLinkInfo.href) {
+        throw new functions.https.HttpsError(
+          'internal',
+          'Invoice link found but has no href'
+        );
+      }
+
+      const invoiceUrl = invoiceLinkInfo.href;
+      functions.logger.info(`Navigating to invoice URL: ${invoiceUrl}`);
+
+      try {
+        await page.goto(invoiceUrl, {
+          waitUntil: 'domcontentloaded',
+          timeout: 60000,
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        functions.logger.info('Invoice page loaded');
+      } catch (navError) {
+        functions.logger.warn('Navigation error:', navError);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+
+      // Check what page we're on
+      const currentUrl = page.url();
+      const pageContent = await page.content();
+
+      functions.logger.info('Invoice page info:', {
+        currentUrl,
+        contentLength: pageContent.length,
+        containsInvoice: pageContent.toLowerCase().includes('invoice'),
+        contentPreview: pageContent.substring(0, 300),
+      });
+
+      if (!currentUrl.includes('invoice_print.mhtml') && !currentUrl.includes('school_id')) {
+        throw new functions.https.HttpsError(
+          'internal',
+          `Expected invoice page but got: ${currentUrl}`
+        );
+      }
+
+      functions.logger.info('Invoice page loaded successfully, generating PDF...');
 
       // Generate PDF from the HTML page
       const pdfBuffer = Buffer.from(await page.pdf({

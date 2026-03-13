@@ -6,8 +6,8 @@ import { FirebaseClientProvider } from '@/firebase';
 import { AuthProvider } from '@/contexts/auth-context';
 
 export const metadata: Metadata = {
-  title: 'WorkSessionScheduler',
-  description: 'Schedule your work sessions efficiently.',
+  title: 'Debate Dashboard',
+  description: 'Manage your debate tournaments, practice sessions, and performance.',
 };
 
 export default function RootLayout({
