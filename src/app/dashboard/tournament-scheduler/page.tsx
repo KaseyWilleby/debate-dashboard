@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import NextLink from "next/link";
 import {
   Accordion,
   AccordionContent,
@@ -702,6 +703,11 @@ function TournamentItem({ tournament, onDelete, onUpdate }: { tournament: Tourna
                       </a>
                   </Button>
                   )}
+                  <Button variant="default" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                      <NextLink href={`/dashboard/tournaments/${tournament.id}`}>
+                      <ExternalLink className="mr-2 h-3 w-3"/> View Details
+                      </NextLink>
+                  </Button>
                   <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setEditOpen(true); }}>
                       <Pencil className="mr-2 h-3 w-3" /> Edit
                   </Button>
@@ -811,6 +817,11 @@ function TournamentListItem({ tournament, onDelete, onUpdate }: { tournament: To
                 </a>
               </Button>
             )}
+            <Button variant="default" size="sm" asChild>
+              <NextLink href={`/dashboard/tournaments/${tournament.id}`}>
+                <ExternalLink className="h-3 w-3" />
+              </NextLink>
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
               <Pencil className="h-3 w-3" />
             </Button>
