@@ -1,7 +1,6 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import type { Browser } from 'puppeteer';
-const pdfParse = require('pdf-parse');
 
 // Initialize Firebase Admin
 admin.initializeApp();
@@ -505,9 +504,12 @@ export const generatePurchaseOrder = functions
       const pdfBuffer = Buffer.from(await response.arrayBuffer());
       functions.logger.info(`Downloaded PDF (${pdfBuffer.length} bytes)`);
 
-      // Parse the PDF to extract text
-      const pdfData = await pdfParse(pdfBuffer);
-      const pdfText = pdfData.text;
+      // Parse the PDF to extract text using pdf-parse v2 API
+      functions.logger.info('Parsing PDF...');
+      const { PDFParse, VerbosityLevel } = require('pdf-parse');
+      const parser = new PDFParse(pdfBuffer, { verbosity: VerbosityLevel.ERRORS });
+      const pdfDoc = await parser.parse();
+      const pdfText = await pdfDoc.getText();
       functions.logger.info(`Extracted PDF text (${pdfText.length} characters)`);
 
       // Extract relevant information from PDF text
