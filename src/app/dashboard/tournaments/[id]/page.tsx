@@ -7,7 +7,7 @@ import { useParams, notFound, useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ArrowLeft, Calendar, ExternalLink, Globe, Loader2, DollarSign, FileDown, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, Calendar, ExternalLink, Globe, Loader2, DollarSign, FileDown, RefreshCw, Trash2, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
@@ -26,6 +26,7 @@ export default function TournamentDetailsPage() {
   const { user } = useAuth();
 
   const [isFetchingFees, setIsFetchingFees] = React.useState(false);
+  const [isGeneratingPO, setIsGeneratingPO] = React.useState(false);
 
   const tournamentDocRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -124,6 +125,48 @@ export default function TournamentDetailsPage() {
     } catch (error) {
       console.error('Failed to delete fee sheet:', error);
       alert('Failed to delete fee sheet. Please try again.');
+    }
+  };
+
+  const handleGeneratePO = async () => {
+    if (!tournament.feeSheet?.pdfUrl) {
+      alert('Please fetch the fee sheet first before generating a P.O.');
+      return;
+    }
+
+    if (!firebaseApp) {
+      alert('Firebase not initialized');
+      return;
+    }
+
+    setIsGeneratingPO(true);
+    try {
+      const functions = getFunctions(firebaseApp);
+      const generatePOFn = httpsCallable(functions, 'generatePurchaseOrder');
+
+      const result = await generatePOFn({
+        feeSheetUrl: tournament.feeSheet.pdfUrl,
+        tournamentName: tournament.name,
+        requestorName: user?.name || 'Debate Team',
+        accountName: 'Debate Team',
+        budgetCode: '', // Can be customized later
+      });
+
+      const poData = result.data as any;
+
+      // Update tournament with P.O. data
+      if (firestore) {
+        await updateDoc(doc(firestore, 'tournaments', tournament.id), {
+          purchaseOrder: poData,
+        });
+      }
+
+      alert('Purchase order generated successfully!');
+    } catch (error) {
+      console.error('Failed to generate P.O.:', error);
+      alert(`Failed to generate purchase order: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsGeneratingPO(false);
     }
   };
 
@@ -282,6 +325,18 @@ export default function TournamentDetailsPage() {
                                 <FileDown className="mr-2 h-4 w-4" /> Download
                               </a>
                             </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={handleGeneratePO}
+                              disabled={isGeneratingPO}
+                            >
+                              {isGeneratingPO ? (
+                                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
+                              ) : (
+                                <><FileText className="mr-2 h-4 w-4" /> Generate P.O.</>
+                              )}
+                            </Button>
                             <Button variant="outline" size="sm" onClick={handleDeleteFeeSheet}>
                               <Trash2 className="mr-2 h-4 w-4" /> Delete
                             </Button>
@@ -295,6 +350,39 @@ export default function TournamentDetailsPage() {
                             title="Fee Sheet PDF"
                           />
                         </div>
+
+                        {/* Purchase Order Section */}
+                        {(tournament as any).purchaseOrder && (
+                          <div className="mt-6 space-y-4">
+                            <h3 className="text-lg font-semibold">Purchase Order</h3>
+                            <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <FileText className="h-6 w-6 text-blue-600" />
+                                <div>
+                                  <p className="font-semibold text-lg">
+                                    Purchase Order PDF
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Generated on {format(new Date((tournament as any).purchaseOrder.uploadedAt), 'MMM d, yyyy h:mm a')}
+                                  </p>
+                                </div>
+                              </div>
+                              <Button variant="outline" size="sm" asChild>
+                                <a href={(tournament as any).purchaseOrder.poUrl} target="_blank" rel="noopener noreferrer" download>
+                                  <FileDown className="mr-2 h-4 w-4" /> Download P.O.
+                                </a>
+                              </Button>
+                            </div>
+
+                            <div className="border rounded-lg overflow-hidden" style={{ height: '600px' }}>
+                              <iframe
+                                src={(tournament as any).purchaseOrder.poUrl}
+                                className="w-full h-full"
+                                title="Purchase Order PDF"
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="text-center py-12 text-muted-foreground">
