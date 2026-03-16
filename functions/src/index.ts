@@ -501,13 +501,14 @@ export const generatePurchaseOrder = functions
         throw new Error(`Failed to download fee sheet: ${response.status} ${response.statusText}`);
       }
 
-      const pdfBuffer = Buffer.from(await response.arrayBuffer());
-      functions.logger.info(`Downloaded PDF (${pdfBuffer.length} bytes)`);
+      const arrayBuffer = await response.arrayBuffer();
+      const pdfData = new Uint8Array(arrayBuffer);
+      functions.logger.info(`Downloaded PDF (${pdfData.length} bytes)`);
 
       // Parse the PDF to extract text using pdf-parse v2 API
       functions.logger.info('Parsing PDF...');
       const { PDFParse, VerbosityLevel } = require('pdf-parse');
-      const parser = new PDFParse(pdfBuffer, { verbosity: VerbosityLevel.ERRORS });
+      const parser = new PDFParse(pdfData, { verbosity: VerbosityLevel.ERRORS });
       const pdfText = await parser.getText();
       functions.logger.info(`Extracted PDF text (${pdfText.length} characters)`);
 
