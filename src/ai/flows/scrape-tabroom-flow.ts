@@ -171,11 +171,6 @@ async function getTabroomTournaments(): Promise<ScrapedTournament[]> {
     };
 
     return allTournaments
-        .filter(t => {
-            // Filter by tournament date instead of registration close date
-            const tournamentDate = getTournamentDate(t.date, t.registrationCloseDate);
-            return tournamentDate >= today;
-        })
         .sort((a, b) => {
             const dateA = getTournamentDate(a.date, a.registrationCloseDate);
             const dateB = getTournamentDate(b.date, b.registrationCloseDate);
