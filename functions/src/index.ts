@@ -670,11 +670,38 @@ function extractFeeSheetData(pdfText: string, tournamentName: string): {
     }
   }
 
-  // Extract total amount
-  const totalMatch = pdfText.match(/Total[:\s]+\$?([\d,]+\.?\d*)/i) ||
-                     pdfText.match(/Amount Due[:\s]+\$?([\d,]+\.?\d*)/i) ||
-                     pdfText.match(/Grand Total[:\s]+\$?([\d,]+\.?\d*)/i);
+  // Extract total amount with multiple patterns
+  functions.logger.info('Attempting to extract total from PDF text...');
+
+  // Try various patterns for total amount
+  let totalMatch =
+    pdfText.match(/Total[:\s]+\$?\s*([\d,]+\.?\d*)/i) ||
+    pdfText.match(/Amount Due[:\s]+\$?\s*([\d,]+\.?\d*)/i) ||
+    pdfText.match(/Grand Total[:\s]+\$?\s*([\d,]+\.?\d*)/i) ||
+    pdfText.match(/Balance Due[:\s]+\$?\s*([\d,]+\.?\d*)/i) ||
+    pdfText.match(/Total Due[:\s]+\$?\s*([\d,]+\.?\d*)/i) ||
+    pdfText.match(/Amount Owed[:\s]+\$?\s*([\d,]+\.?\d*)/i) ||
+    // Look for "Total" followed by a dollar amount on the same or next line
+    pdfText.match(/Total[\s\n]+\$\s*([\d,]+\.?\d*)/i) ||
+    // Look for just a dollar amount after "Total"
+    pdfText.match(/Total[^\d]*\$?\s*([\d,]+\.\d{2})/i);
+
   const totalAmount = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : 0;
+
+  functions.logger.info(`Extracted total amount: $${totalAmount}`);
+
+  // Log surrounding text if no total found
+  if (totalAmount === 0) {
+    functions.logger.warn('Could not extract total amount. Searching for "Total" in text...');
+    const totalContext = pdfText.match(/.{0,100}Total.{0,100}/i);
+    if (totalContext) {
+      functions.logger.info('Context around "Total":', totalContext[0]);
+    } else {
+      functions.logger.warn('No "Total" keyword found in PDF text');
+      // Log first 500 chars to see what's in the PDF
+      functions.logger.info('First 500 chars of PDF:', pdfText.substring(0, 500));
+    }
+  }
 
   // Create a single line item for Tournament Entry Fees
   const lineItems: Array<{ description: string; quantity: number; unitPrice: number }> = [
