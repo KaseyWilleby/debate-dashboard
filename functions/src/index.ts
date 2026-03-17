@@ -509,7 +509,8 @@ export const generatePurchaseOrder = functions
       functions.logger.info('Parsing PDF...');
       const { PDFParse, VerbosityLevel } = require('pdf-parse');
       const parser = new PDFParse(pdfData, { verbosity: VerbosityLevel.ERRORS });
-      const pdfText = await parser.getText();
+      const textResult = await parser.getText();
+      const pdfText = textResult.text;
       functions.logger.info(`Extracted PDF text (${pdfText.length} characters)`);
 
       // Extract relevant information from PDF text
