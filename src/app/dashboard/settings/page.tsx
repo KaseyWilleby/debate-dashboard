@@ -23,6 +23,7 @@ export default function SettingsPage() {
   const [editedName, setEditedName] = useState(user?.name || "");
   const [editedUsername, setEditedUsername] = useState(user?.username || "");
   const [editedStudentId, setEditedStudentId] = useState(user?.studentId || "");
+  const [editedNsdaId, setEditedNsdaId] = useState(user?.nsdaId || "");
 
   // Update local state when user changes
   useEffect(() => {
@@ -30,6 +31,7 @@ export default function SettingsPage() {
       setEditedName(user.name || "");
       setEditedUsername(user.username || "");
       setEditedStudentId(user.studentId || "");
+      setEditedNsdaId(user.nsdaId || "");
     }
   }, [user]);
 
@@ -65,6 +67,7 @@ export default function SettingsPage() {
       const updateData: any = {
         name: editedName,
         username: editedUsername,
+        nsdaId: editedNsdaId,
       };
 
       // Only include studentId for non-admin users
@@ -95,6 +98,7 @@ export default function SettingsPage() {
     setEditedName(user.name || "");
     setEditedUsername(user.username || "");
     setEditedStudentId(user.studentId || "");
+    setEditedNsdaId(user.nsdaId || "");
     setIsEditing(false);
   };
 
@@ -162,6 +166,17 @@ export default function SettingsPage() {
                 />
               </div>
             )}
+            <div className="space-y-2">
+              <Label htmlFor="nsdaId">NSDA ID</Label>
+              <Input
+                id="nsdaId"
+                value={isEditing ? editedNsdaId : user.nsdaId || ""}
+                onChange={(e) => setEditedNsdaId(e.target.value)}
+                disabled={!isEditing}
+                placeholder="Enter your NSDA ID (e.g., 1234567)"
+              />
+              <p className="text-xs text-muted-foreground">Required for importing tournament results from Tabroom</p>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
               <Input id="role" value={user.role} disabled className="capitalize" />
