@@ -128,17 +128,12 @@ async function getTabroomTournaments(): Promise<ScrapedTournament[]> {
 
     return allTournaments
         .filter(t => {
-            const dateParts = t.date.split(' - ')[0].split('/');
-            const year = new Date().getFullYear(); // Assume current year for now
-            // Month is 0-indexed in JS Date
-            const tournamentDate = new Date(year, parseInt(dateParts[0]) - 1, parseInt(dateParts[1]));
+            // Use registrationCloseDate which has the full year
+            const regCloseDate = new Date(t.registrationCloseDate);
+            regCloseDate.setHours(0, 0, 0, 0);
 
-            // Simple logic to handle year crossover for tournaments in Jan/Feb but scraped in Oct/Nov/Dec
-            if (today.getMonth() > 8 && tournamentDate.getMonth() < 2) {
-              tournamentDate.setFullYear(year + 1);
-            }
-
-            return tournamentDate >= today;
+            // Show tournaments where registration hasn't closed yet
+            return regCloseDate >= today;
         })
         .sort((a, b) => {
             const getSortDate = (dateStr: string) => {
