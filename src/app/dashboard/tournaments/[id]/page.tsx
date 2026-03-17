@@ -133,6 +133,25 @@ export default function TournamentDetailsPage() {
     }
   };
 
+  const handleDeletePO = async () => {
+    if (!confirm('Are you sure you want to delete this purchase order?')) {
+      return;
+    }
+
+    if (!firestore) return;
+
+    try {
+      await updateDoc(doc(firestore, 'tournaments', tournament.id), {
+        purchaseOrder: null,
+        payment: null,
+      });
+      alert('Purchase order deleted successfully!');
+    } catch (error) {
+      console.error('Failed to delete purchase order:', error);
+      alert('Failed to delete purchase order. Please try again.');
+    }
+  };
+
   const handleGeneratePO = () => {
     if (!tournament.feeSheet?.pdfUrl) {
       alert('Please fetch the fee sheet first before generating a P.O.');
@@ -394,11 +413,16 @@ export default function TournamentDetailsPage() {
                                   </p>
                                 </div>
                               </div>
-                              <Button variant="outline" size="sm" asChild>
-                                <a href={(tournament as any).purchaseOrder.poUrl} target="_blank" rel="noopener noreferrer" download>
-                                  <FileDown className="mr-2 h-4 w-4" /> Download P.O.
-                                </a>
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button variant="outline" size="sm" asChild>
+                                  <a href={(tournament as any).purchaseOrder.poUrl} target="_blank" rel="noopener noreferrer" download>
+                                    <FileDown className="mr-2 h-4 w-4" /> Download P.O.
+                                  </a>
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={handleDeletePO}>
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                </Button>
+                              </div>
                             </div>
 
                             <div className="border rounded-lg overflow-hidden" style={{ height: '600px' }}>
