@@ -621,15 +621,50 @@ function extractFeeSheetData(pdfText: string, tournamentName: string): {
   lineItems: Array<{ description: string; quantity: number; unitPrice: number }>;
   totalAmount: number;
 } {
-  // Extract vendor name (typically the school/organization name)
-  const vendorMatch = pdfText.match(/Invoice for ([^\n]+)/i) ||
-                      pdfText.match(/Bill To:?\s*([^\n]+)/i) ||
-                      pdfText.match(/([A-Z][a-zA-Z\s]+High School)/);
-  const vendor = vendorMatch ? vendorMatch[1].trim() : 'Tournament Host';
+  // Extract vendor name from "Payable To:" section
+  let vendor = 'Tournament Host';
+  let address = '';
 
-  // Extract address if present
+  // Look for "Payable To:" section
+  const payableToMatch = pdfText.match(/Payable To:?\s*\n?\s*([^\n]+(?:\n(?!.*?:)[^\n]+)*)/i);
+
+  if (payableToMatch) {
+    // Get the text after "Payable To:"
+    let payableToText = payableToMatch[1].trim();
+
+    // Remove instructional text like "Please make all checks out to:"
+    payableToText = payableToText.replace(/Please make all checks (?:payable )?(?:out )?to:?\s*/gi, '');
+    payableToText = payableToText.replace(/Make checks payable to:?\s*/gi, '');
+
+    // Split into lines
+    const lines = payableToText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+    // Extract vendor name (first line that's not "Attn:")
+    const vendorLines: string[] = [];
+    const attnLines: string[] = [];
+
+    for (const line of lines) {
+      if (line.match(/^Attn:/i)) {
+        attnLines.push(line);
+      } else if (!line.match(/^(Address|City|State|Zip|Phone|Email):/i)) {
+        vendorLines.push(line);
+      }
+    }
+
+    // Combine vendor name with Attn if present
+    if (vendorLines.length > 0) {
+      vendor = vendorLines.join(' ');
+      if (attnLines.length > 0) {
+        vendor += '\n' + attnLines.join('\n');
+      }
+    }
+  }
+
+  // Extract address if present (look for explicit address field)
   const addressMatch = pdfText.match(/Address:?\s*([^\n]+)/i);
-  const address = addressMatch ? addressMatch[1].trim() : '';
+  if (addressMatch) {
+    address = addressMatch[1].trim();
+  }
 
   // Extract total amount
   const totalMatch = pdfText.match(/Total[:\s]+\$?([\d,]+\.?\d*)/i) ||
