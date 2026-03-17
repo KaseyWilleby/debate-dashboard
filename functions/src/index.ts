@@ -676,47 +676,20 @@ function extractFeeSheetData(pdfText: string, tournamentName: string): {
                      pdfText.match(/Grand Total[:\s]+\$?([\d,]+\.?\d*)/i);
   const totalAmount = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : 0;
 
-  // Extract line items (entry fees, etc.)
-  const lineItems: Array<{ description: string; quantity: number; unitPrice: number }> = [];
-
-  // Common patterns for tournament fees
-  const feePatterns = [
-    /Entry Fee[:\s]+\$?([\d,]+\.?\d*)/gi,
-    /([A-Z][a-zA-Z\s]+)\s+Entry\s+\$?([\d,]+\.?\d*)/gi,
-    /([A-Z][a-zA-Z\s]+)\s+Fee[:\s]+\$?([\d,]+\.?\d*)/gi,
-    /(\d+)\s+entries?\s+@\s+\$?([\d,]+\.?\d*)/gi,
-  ];
-
-  feePatterns.forEach(pattern => {
-    let match;
-    while ((match = pattern.exec(pdfText)) !== null) {
-      const description = match[1] ? match[1].trim() : 'Entry Fee';
-      const price = parseFloat((match[2] || match[1]).replace(/,/g, ''));
-
-      if (price > 0) {
-        lineItems.push({
-          description,
-          quantity: 1,
-          unitPrice: price,
-        });
-      }
-    }
-  });
-
-  // If no line items found, create a single item for the total
-  if (lineItems.length === 0 && totalAmount > 0) {
-    lineItems.push({
-      description: `Tournament Entry - ${tournamentName}`,
+  // Create a single line item for Tournament Entry Fees
+  const lineItems: Array<{ description: string; quantity: number; unitPrice: number }> = [
+    {
+      description: 'Tournament Entry Fees',
       quantity: 1,
       unitPrice: totalAmount,
-    });
-  }
+    }
+  ];
 
   return {
     vendor,
     address,
     lineItems,
-    totalAmount: totalAmount || lineItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0),
+    totalAmount,
   };
 }
 
