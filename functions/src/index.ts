@@ -711,6 +711,10 @@ function generatePurchaseOrderHtml(data: {
     })
     .join('');
 
+  const subtotal = data.totalAmount;
+  const shipping = 0;
+  const totalPurchase = subtotal + shipping;
+
   return `
     <!DOCTYPE html>
     <html>
@@ -721,45 +725,105 @@ function generatePurchaseOrderHtml(data: {
           font-family: Arial, sans-serif;
           margin: 0;
           padding: 20px;
+          font-size: 11pt;
         }
         .header {
           text-align: center;
-          font-size: 18px;
+          font-size: 14pt;
           font-weight: bold;
-          margin-bottom: 20px;
+          margin-bottom: 15px;
           padding: 10px;
           border: 2px solid #000;
         }
+        .instructions {
+          margin-bottom: 15px;
+          font-size: 9pt;
+          line-height: 1.4;
+        }
+        .instructions-title {
+          font-weight: bold;
+          margin-bottom: 8px;
+        }
+        .instruction-item {
+          margin-bottom: 4px;
+        }
         .info-section {
-          margin-bottom: 20px;
+          margin-bottom: 15px;
         }
         .info-row {
           display: flex;
-          margin-bottom: 10px;
+          margin-bottom: 8px;
         }
         .info-label {
           font-weight: bold;
-          width: 150px;
+          width: 140px;
+          font-size: 10pt;
         }
         .info-value {
           flex: 1;
           border-bottom: 1px solid #000;
+          padding-bottom: 2px;
+          font-size: 10pt;
+        }
+        .spacer {
+          width: 30px;
         }
         table {
           width: 100%;
           border-collapse: collapse;
-          margin-top: 20px;
+          margin-top: 15px;
         }
         th {
           background-color: #f0f0f0;
           border: 1px solid #000;
-          padding: 8px;
+          padding: 6px;
           text-align: center;
+          font-weight: bold;
+          font-size: 10pt;
+        }
+        td {
+          font-size: 10pt;
+        }
+        .subtotal-row {
+          background-color: #f9f9f9;
           font-weight: bold;
         }
         .total-row {
-          background-color: #f9f9f9;
+          background-color: #e0e0e0;
           font-weight: bold;
+        }
+        .internal-use {
+          margin-top: 20px;
+          padding: 10px;
+          background-color: #f5f5f5;
+          border: 2px solid #000;
+        }
+        .internal-use-header {
+          text-align: center;
+          font-weight: bold;
+          font-size: 11pt;
+          margin-bottom: 10px;
+        }
+        .internal-row {
+          display: flex;
+          margin-bottom: 8px;
+        }
+        .internal-label {
+          font-weight: bold;
+          width: 140px;
+          font-size: 10pt;
+        }
+        .internal-value {
+          flex: 1;
+          border-bottom: 1px solid #000;
+          padding-bottom: 2px;
+          font-size: 10pt;
+        }
+        .footer {
+          text-align: center;
+          margin-top: 15px;
+          font-size: 10pt;
+          font-style: italic;
         }
       </style>
     </head>
@@ -769,11 +833,22 @@ function generatePurchaseOrderHtml(data: {
         (CAMPUS/DEPARTMENT)
       </div>
 
+      <div class="instructions">
+        <div class="instructions-title">Instructions</div>
+        <div class="instruction-item">1) Before any purchase can be made, this form must be completed and provided to the Financial Secretary. Purchases include items or services paid by purchase orders, distribution orders, reimbursement, petty cash, or procurement cards (PCards). This form is not to be used for grant money purchases.</div>
+        <div class="instruction-item">2) For public money, purchases should be made from the Distribution Center, or from a bid or contracted vendor. If a different vendor is needed, contact Procurement Services at 281-897-4576.</div>
+        <div class="instruction-item">3) For agency money, purchases do not have to be from a bid or contracted vendor.</div>
+        <div class="instruction-item">4) For any fundraisers using public or agency money, the vendor must be on the approved fundraiser vendor list.</div>
+        <div class="instruction-item">5) The Financial Secretary will provide you a copy of the purchase order after it has been approved.</div>
+        <div class="instruction-item">6) When placing an order, provide a copy of the purchase order to the vendor.</div>
+        <div class="instruction-item">7) Orders should be placed only after the purchase order has been approved by Finance.</div>
+      </div>
+
       <div class="info-section">
         <div class="info-row">
           <div class="info-label">Date of Request:</div>
           <div class="info-value">${data.dateOfRequest}</div>
-          <div style="width: 50px;"></div>
+          <div class="spacer"></div>
           <div class="info-label">Requestor Name:</div>
           <div class="info-value">${data.requestorName}</div>
         </div>
@@ -781,7 +856,7 @@ function generatePurchaseOrderHtml(data: {
         <div class="info-row">
           <div class="info-label">Account Name:</div>
           <div class="info-value">${data.accountName}</div>
-          <div style="width: 50px;"></div>
+          <div class="spacer"></div>
           <div class="info-label">Budget Code:</div>
           <div class="info-value">${data.budgetCode}</div>
         </div>
@@ -789,7 +864,7 @@ function generatePurchaseOrderHtml(data: {
         <div class="info-row">
           <div class="info-label">Vendor Name:</div>
           <div class="info-value">${data.vendorName}</div>
-          <div style="width: 50px;"></div>
+          <div class="spacer"></div>
           <div class="info-label">Reason for Purchase:</div>
           <div class="info-value">${data.reasonForPurchase}</div>
         </div>
@@ -797,7 +872,7 @@ function generatePurchaseOrderHtml(data: {
         <div class="info-row">
           <div class="info-label">Address:</div>
           <div class="info-value">${data.address}</div>
-          <div style="width: 50px;"></div>
+          <div class="spacer"></div>
           <div class="info-label">Room to be Delivered:</div>
           <div class="info-value">${data.roomToDeliver}</div>
         </div>
@@ -815,12 +890,57 @@ function generatePurchaseOrderHtml(data: {
         </thead>
         <tbody>
           ${lineItemsHtml}
+          <tr class="subtotal-row">
+            <td colspan="4" style="border: 1px solid #000; padding: 8px; text-align: right;">Subtotal:</td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: right;">$${subtotal.toFixed(2)}</td>
+          </tr>
+          <tr class="subtotal-row">
+            <td colspan="4" style="border: 1px solid #000; padding: 8px; text-align: right;">Page 2 Subtotal (if needed):</td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: right;">$0.00</td>
+          </tr>
+          <tr class="subtotal-row">
+            <td colspan="4" style="border: 1px solid #000; padding: 8px; text-align: right;">Page 3 Subtotal (if needed):</td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: right;">$0.00</td>
+          </tr>
+          <tr class="subtotal-row">
+            <td colspan="4" style="border: 1px solid #000; padding: 8px; text-align: right;">Shipping:</td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: right;">$${shipping.toFixed(2)}</td>
+          </tr>
           <tr class="total-row">
-            <td colspan="4" style="border: 1px solid #000; padding: 8px; text-align: right;">TOTAL:</td>
-            <td style="border: 1px solid #000; padding: 8px; text-align: right;">$${data.totalAmount.toFixed(2)}</td>
+            <td colspan="4" style="border: 1px solid #000; padding: 8px; text-align: right;">Total of Purchase:</td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: right;">$${totalPurchase.toFixed(2)}</td>
           </tr>
         </tbody>
       </table>
+
+      <div class="internal-use">
+        <div class="internal-use-header">FINANCIAL SECRETARY USE ONLY</div>
+        <div class="internal-row">
+          <div class="internal-label">Requisition #:</div>
+          <div class="internal-value"></div>
+          <div class="spacer"></div>
+          <div class="internal-label">Contract # or Quotation #:</div>
+          <div class="internal-value"></div>
+        </div>
+        <div class="internal-row">
+          <div class="internal-label">Purchase Order #:</div>
+          <div class="internal-value"></div>
+          <div class="spacer"></div>
+          <div class="internal-label">Entered in General Fund</div>
+          <div class="internal-value"></div>
+        </div>
+        <div class="internal-row">
+          <div class="internal-label">Vendor #:</div>
+          <div class="internal-value"></div>
+          <div class="spacer"></div>
+          <div class="internal-label">Ledger / SchoolCash:</div>
+          <div class="internal-value"></div>
+        </div>
+      </div>
+
+      <div class="footer">
+        This is not an official CFISD purchase order.
+      </div>
     </body>
     </html>
   `;
