@@ -155,19 +155,99 @@ export default function TournamentHistoryPage() {
       return;
     }
 
+    if (!tournament.webpageUrl) {
+      toast({
+        title: 'No Tabroom URL',
+        description: 'This tournament does not have a Tabroom link.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Convert main tournament URL to results URL
+    // From: https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=XXXXX
+    // To: https://www.tabroom.com/index/tourn/results/index.mhtml?tourn_id=XXXXX
+    const resultsUrl = tournament.webpageUrl.replace(
+      '/index/tourn/index.mhtml',
+      '/index/tourn/results/index.mhtml'
+    );
+
     toast({
       title: 'Importing Results',
       description: `Fetching your results from Tabroom for ${tournament.name}...`,
     });
 
-    // TODO: Implement Tabroom results scraping
-    // For now, show a message that this feature is coming soon
-    setTimeout(() => {
+    try {
+      const extractedResults = await extractTournamentResults(
+        resultsUrl,
+        user.nsdaId,
+        user.name
+      );
+
+      if (!extractedResults.success || extractedResults.results.length === 0) {
+        toast({
+          title: 'No Results Found',
+          description: extractedResults.message || 'Could not find your results on Tabroom. You can add them manually instead.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Convert extracted results to TournamentResult format and add them
+      const newResults: TournamentResult[] = extractedResults.results.map(result => ({
+        id: `result-${Date.now()}-${Math.random()}`,
+        tournamentId: tournament.id,
+        tournamentName: tournament.name,
+        userId: user.id,
+        event: result.event,
+        placement: result.placement,
+        placementDetail: result.placementDetail,
+        partnerName: result.partnerName,
+        preliminaryRecord: result.preliminaryRecord,
+        speakerPoints: result.speakerPoints,
+        speakerRank: result.speakerRank,
+        totalCompetitors: result.totalCompetitors,
+        breakingCompetitors: result.breakingCompetitors,
+        notes: result.notes,
+        date: tournament.date,
+        createdAt: new Date().toISOString(),
+      }));
+
+      // Filter out any results that already exist for this tournament
+      const existingResultIds = results
+        .filter(r => r.tournamentId === tournament.id && r.userId === user.id)
+        .map(r => `${r.event}-${r.placement}`);
+
+      const uniqueNewResults = newResults.filter(
+        r => !existingResultIds.includes(`${r.event}-${r.placement}`)
+      );
+
+      if (uniqueNewResults.length === 0) {
+        toast({
+          title: 'Already Added',
+          description: 'These results have already been imported.',
+        });
+        return;
+      }
+
+      setResults([...uniqueNewResults, ...results]);
+
       toast({
-        title: 'Feature Coming Soon',
-        description: 'Automatic result import from Tabroom is being implemented. For now, please use "Add Results" to enter manually.',
+        title: 'Results Imported!',
+        description: `Successfully imported ${uniqueNewResults.length} result${uniqueNewResults.length !== 1 ? 's' : ''} from Tabroom.`,
       });
-    }, 1500);
+
+      // Switch to results tab to show the imported results
+      setActiveTab('results');
+
+    } catch (error) {
+      console.error('Error importing from Tabroom:', error);
+      toast({
+        title: 'Import Failed',
+        description: error instanceof Error ? error.message : 'Failed to import results from Tabroom. Please try again or add manually.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleImportFromTournament = (tournament: Tournament) => {
