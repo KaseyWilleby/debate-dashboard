@@ -621,7 +621,7 @@ function extractFeeSheetData(pdfText: string, tournamentName: string): {
   lineItems: Array<{ description: string; quantity: number; unitPrice: number }>;
   totalAmount: number;
 } {
-  // Extract vendor name from "Payable To:" section
+  // Extract vendor name and address from "Payable To:" section
   let vendor = 'Tournament Host';
   let address = '';
 
@@ -639,31 +639,35 @@ function extractFeeSheetData(pdfText: string, tournamentName: string): {
     // Split into lines
     const lines = payableToText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
-    // Extract vendor name (first line that's not "Attn:")
-    const vendorLines: string[] = [];
-    const attnLines: string[] = [];
+    if (lines.length > 0) {
+      // First line is the vendor name
+      vendor = lines[0];
 
-    for (const line of lines) {
-      if (line.match(/^Attn:/i)) {
-        attnLines.push(line);
-      } else if (!line.match(/^(Address|City|State|Zip|Phone|Email):/i)) {
-        vendorLines.push(line);
+      // Process remaining lines for address and Attn
+      const addressLines: string[] = [];
+      const attnLines: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.match(/^Attn:/i)) {
+          // Attn goes with vendor name
+          attnLines.push(line);
+        } else if (!line.match(/^(Phone|Email|Fax):/i)) {
+          // Everything else (except phone/email/fax) is address
+          addressLines.push(line);
+        }
       }
-    }
 
-    // Combine vendor name with Attn if present
-    if (vendorLines.length > 0) {
-      vendor = vendorLines.join(' ');
+      // Add Attn to vendor name if present
       if (attnLines.length > 0) {
         vendor += '\n' + attnLines.join('\n');
       }
-    }
-  }
 
-  // Extract address if present (look for explicit address field)
-  const addressMatch = pdfText.match(/Address:?\s*([^\n]+)/i);
-  if (addressMatch) {
-    address = addressMatch[1].trim();
+      // Join address lines
+      if (addressLines.length > 0) {
+        address = addressLines.join(', ');
+      }
+    }
   }
 
   // Extract total amount
