@@ -10,6 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ArrowLeft, Calendar, ExternalLink, Globe, Loader2, DollarSign, FileDown, RefreshCw, Trash2, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
@@ -27,6 +30,8 @@ export default function TournamentDetailsPage() {
 
   const [isFetchingFees, setIsFetchingFees] = React.useState(false);
   const [isGeneratingPO, setIsGeneratingPO] = React.useState(false);
+  const [showPODialog, setShowPODialog] = React.useState(false);
+  const [selectedAccount, setSelectedAccount] = React.useState<'Budget' | 'Activity' | 'Booster'>('Budget');
 
   const tournamentDocRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -128,18 +133,23 @@ export default function TournamentDetailsPage() {
     }
   };
 
-  const handleGeneratePO = async () => {
+  const handleGeneratePO = () => {
     if (!tournament.feeSheet?.pdfUrl) {
       alert('Please fetch the fee sheet first before generating a P.O.');
       return;
     }
+    setShowPODialog(true);
+  };
 
-    if (!firebaseApp) {
+  const confirmGeneratePO = async () => {
+    if (!firebaseApp || !firestore) {
       alert('Firebase not initialized');
       return;
     }
 
+    setShowPODialog(false);
     setIsGeneratingPO(true);
+
     try {
       const functions = getFunctions(firebaseApp);
       const generatePOFn = httpsCallable(functions, 'generatePurchaseOrder');
@@ -148,18 +158,35 @@ export default function TournamentDetailsPage() {
         feeSheetUrl: tournament.feeSheet.pdfUrl,
         tournamentName: tournament.name,
         requestorName: user?.name || 'Debate Team',
-        accountName: 'Debate Team',
-        budgetCode: '', // Can be customized later
+        accountName: selectedAccount,
+        budgetCode: '',
       });
 
       const poData = result.data as any;
 
-      // Update tournament with P.O. data
-      if (firestore) {
-        await updateDoc(doc(firestore, 'tournaments', tournament.id), {
-          purchaseOrder: poData,
-        });
-      }
+      // Create payment record for ledger tracking
+      const paymentRecord = {
+        tournamentId: tournament.id,
+        tournamentName: tournament.name,
+        account: selectedAccount,
+        amount: poData.extractedData?.totalAmount || 0,
+        date: new Date().toISOString(),
+        type: 'tournament_fee',
+        description: `Tournament Entry Fees - ${tournament.name}`,
+        purchaseOrderUrl: poData.poUrl,
+        feeSheetUrl: tournament.feeSheet.pdfUrl,
+        createdBy: user?.id || 'unknown',
+        createdAt: new Date().toISOString(),
+      };
+
+      // Update tournament with P.O. data and payment record
+      await updateDoc(doc(firestore, 'tournaments', tournament.id), {
+        purchaseOrder: {
+          ...poData,
+          account: selectedAccount,
+        },
+        payment: paymentRecord,
+      });
 
       alert('Purchase order generated successfully!');
     } catch (error) {
@@ -407,6 +434,62 @@ export default function TournamentDetailsPage() {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Account Selection Dialog */}
+      <Dialog open={showPODialog} onOpenChange={setShowPODialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generate Purchase Order</DialogTitle>
+            <DialogDescription>
+              Select which account this tournament expense should be paid from.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <Label className="text-base font-medium mb-4 block">Payment Account</Label>
+            <RadioGroup value={selectedAccount} onValueChange={(value: any) => setSelectedAccount(value)}>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3 rounded-lg border p-4 hover:bg-accent">
+                  <RadioGroupItem value="Budget" id="budget" />
+                  <Label htmlFor="budget" className="flex-1 cursor-pointer">
+                    <div className="font-medium">Budget</div>
+                    <div className="text-sm text-muted-foreground">School budget funds</div>
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-3 rounded-lg border p-4 hover:bg-accent">
+                  <RadioGroupItem value="Activity" id="activity" />
+                  <Label htmlFor="activity" className="flex-1 cursor-pointer">
+                    <div className="font-medium">Activity</div>
+                    <div className="text-sm text-muted-foreground">Activity account funds</div>
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-3 rounded-lg border p-4 hover:bg-accent">
+                  <RadioGroupItem value="Booster" id="booster" />
+                  <Label htmlFor="booster" className="flex-1 cursor-pointer">
+                    <div className="font-medium">Booster</div>
+                    <div className="text-sm text-muted-foreground">Booster club funds</div>
+                  </Label>
+                </div>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPODialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmGeneratePO} disabled={isGeneratingPO}>
+              {isGeneratingPO ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
+              ) : (
+                'Generate P.O.'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
