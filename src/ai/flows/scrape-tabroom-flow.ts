@@ -126,28 +126,67 @@ async function getTabroomTournaments(): Promise<ScrapedTournament[]> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // Helper function to get the tournament date from the date string and registration close date
+    const getTournamentDate = (dateStr: string, regCloseDateStr: string) => {
+        const dateParts = dateStr.split(' - ')[0].split('/');
+        const month = parseInt(dateParts[0]) - 1; // 0-indexed
+        const day = parseInt(dateParts[1]);
+
+        // Get year from registration close date
+        const regCloseDate = new Date(regCloseDateStr);
+        let year = regCloseDate.getFullYear();
+
+        // If tournament month is before registration month, it's the next year
+        if (month < regCloseDate.getMonth()) {
+            year = year + 1;
+        }
+
+        const tournamentDate = new Date(year, month, day);
+        tournamentDate.setHours(0, 0, 0, 0);
+        return tournamentDate;
+    };
+
+    // Helper function to format date with year for display
+    const formatDateWithYear = (dateStr: string, regCloseDateStr: string) => {
+        const parts = dateStr.split(' - ');
+        const startParts = parts[0].split('/');
+        const month = parseInt(startParts[0]) - 1;
+        const day = parseInt(startParts[1]);
+
+        const regCloseDate = new Date(regCloseDateStr);
+        let year = regCloseDate.getFullYear();
+
+        if (month < regCloseDate.getMonth()) {
+            year = year + 1;
+        }
+
+        if (parts.length === 2) {
+            // Date range
+            const endParts = parts[1].trim().split('/');
+            return `${parts[0]} - ${parts[1]}, ${year}`;
+        } else {
+            // Single date
+            return `${dateStr}, ${year}`;
+        }
+    };
+
     return allTournaments
         .filter(t => {
-            // Use registrationCloseDate which has the full year
-            const regCloseDate = new Date(t.registrationCloseDate);
-            regCloseDate.setHours(0, 0, 0, 0);
-
-            // Show tournaments where registration hasn't closed yet
-            return regCloseDate >= today;
+            // Filter by tournament date instead of registration close date
+            const tournamentDate = getTournamentDate(t.date, t.registrationCloseDate);
+            return tournamentDate >= today;
         })
         .sort((a, b) => {
-            const getSortDate = (dateStr: string) => {
-                const dateParts = dateStr.split(' - ')[0].split('/');
-                let year = new Date().getFullYear();
-                const d = new Date(year, parseInt(dateParts[0]) - 1, parseInt(dateParts[1]));
-                if (new Date().getMonth() > 8 && d.getMonth() < 2) {
-                    d.setFullYear(year + 1);
-                }
-                return d;
-            }
-            return getSortDate(a.date).getTime() - getSortDate(b.date).getTime();
+            const dateA = getTournamentDate(a.date, a.registrationCloseDate);
+            const dateB = getTournamentDate(b.date, b.registrationCloseDate);
+            return dateA.getTime() - dateB.getTime();
         })
-        .map(({ name, url, date, registrationCloseDate }) => ({ name, url, date, registrationCloseDate: registrationCloseDate || '' }));
+        .map(({ name, url, date, registrationCloseDate }) => ({
+            name,
+            url,
+            date: formatDateWithYear(date, registrationCloseDate),
+            registrationCloseDate: registrationCloseDate || ''
+        }));
 }
 
 const scrapeTabroomFlow = ai.defineFlow(
