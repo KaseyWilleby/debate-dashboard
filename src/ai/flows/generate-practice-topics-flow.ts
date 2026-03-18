@@ -158,28 +158,32 @@ If the type is 'extemp':
 - You MUST generate three UNIQUE and DISTINCT questions based SPECIFICALLY on the news headlines provided above
 - Each question must reference an actual event, development, or issue from the recent news
 - DO NOT generate generic or timeless questions - they must be tied to specific recent events
-- If the category is 'domestic', focus on US news items from the list above
-- If the category is 'foreign', focus on international news items from the list above
+- If the category is 'domestic', focus on US news items from the list above - PRIORITIZE POLITICAL NEWS (Congress, White House, elections, policies, courts, regulations, political conflicts)
+- If the category is 'foreign', focus on international news items from the list above - PRIORITIZE POLITICAL NEWS (international relations, diplomacy, elections, government policies, conflicts, geopolitical developments)
 - Questions should be ANALYTICAL and require evidence-based reasoning
 - Each question should be answerable with 1-3 clear points supported by articles, expert opinions, or empirical data
 - Questions should be suitable for high school extemp competitions (7-minute speeches)
+- YES/NO questions are ENCOURAGED if they invite analysis and evidence-based arguments
 - Preferred formats (clear but analytical):
-  * "What is driving [recent trend/event]?"
-  * "Why is [recent development] significant for [stakeholder/region]?"
   * "Will [recent policy/action] achieve [goal]?"
-  * "How effective is [entity/country]'s response to [recent challenge]?"
-  * "What challenges does [recent event/policy] pose for [stakeholder]?"
-  * "Can [entity] overcome [recent obstacle/crisis]?"
-  * "What are the key factors behind [recent outcome]?"
+  * "Is [politician/administration/entity] succeeding in [recent effort/policy]?"
+  * "Can [entity/country] overcome [recent political challenge]?"
+  * "Should [entity] pursue [recent policy/approach]?"
+  * "Has [recent political event/policy] strengthened/weakened [stakeholder]?"
+  * "What is driving [recent political trend/conflict]?"
+  * "Why is [recent political development] significant for [stakeholder/region]?"
+  * "How effective is [entity/country]'s response to [recent political challenge]?"
+  * "What political challenges does [recent event/policy] pose for [stakeholder]?"
 
 CRITICAL REQUIREMENTS:
 1. Keep questions CLEAR and FOCUSED - typically 8-15 words
-2. Questions must invite ANALYSIS, not just description - they should require examining causes, effects, significance, or effectiveness
-3. Every topic MUST reference a specific event, person, policy, or development from the news headlines provided
-4. Each generation must produce DIFFERENT topics - never repeat the same topics
-5. Use variety - pick from different news items in the list
-6. Avoid yes/no questions unless they require deeper analysis of effectiveness or likelihood
-7. Questions should be specific enough to be answered with concrete evidence, but broad enough to allow 1-3 main analytical points
+2. PRIORITIZE POLITICAL TOPICS - government, elections, policies, political figures, legislation, court decisions, political conflicts, diplomacy
+3. YES/NO questions are ENCOURAGED - they should require weighing evidence and making an analytical argument (e.g., "Will Biden's immigration policy reduce border crossings?")
+4. Questions must invite ANALYSIS and EVIDENCE-BASED REASONING - they should require examining causes, effects, significance, effectiveness, or likelihood
+5. Every topic MUST reference a specific event, person, policy, or development from the news headlines provided
+6. Each generation must produce DIFFERENT topics - never repeat the same topics
+7. Use variety - pick from different news items in the list
+8. Questions should be specific enough to be answered with concrete evidence, but broad enough to allow 1-3 main analytical points
 
 If the type is 'impromptu':
 - Generate three creative prompts that do not require prior knowledge
