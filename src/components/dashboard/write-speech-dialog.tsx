@@ -12,7 +12,8 @@ import type { SavedSpeech, WrittenSpeech } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { formatTime } from '@/lib/utils';
-import { Edit } from 'lucide-react';
+import { Edit, Upload, FileText, Loader2 } from 'lucide-react';
+import { extractTextFromDocument } from '@/lib/document-utils';
 
 
 export function WriteSpeechDialog({ 
@@ -33,7 +34,9 @@ export function WriteSpeechDialog({
     const [title, setTitle] = React.useState('');
     const [body, setBody] = React.useState('');
     const [isEditing, setIsEditing] = React.useState(false);
+    const [isUploading, setIsUploading] = React.useState(false);
     const { toast } = useToast();
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     React.useEffect(() => {
         if (isWritingDialogOpen) {
@@ -66,6 +69,60 @@ export function WriteSpeechDialog({
         setIsEditing(false);
     }
 
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        const validTypes = [
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ];
+        const fileName = file.name.toLowerCase();
+        const isValidType = validTypes.includes(file.type) || fileName.endsWith('.pdf') || fileName.endsWith('.docx');
+
+        if (!isValidType) {
+            toast({
+                variant: 'destructive',
+                title: 'Invalid file type',
+                description: 'Please upload a PDF or Word (.docx) document.',
+            });
+            return;
+        }
+
+        setIsUploading(true);
+
+        try {
+            const extractedText = await extractTextFromDocument(file);
+
+            // If no title is set and we can extract it from the filename
+            if (!title) {
+                const nameWithoutExt = file.name.replace(/\.(pdf|docx)$/i, '');
+                setTitle(nameWithoutExt);
+            }
+
+            setBody(extractedText);
+
+            toast({
+                title: 'Document uploaded',
+                description: 'Text has been extracted and populated in the script body.',
+            });
+        } catch (error) {
+            console.error('Error processing document:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Upload failed',
+                description: error instanceof Error ? error.message : 'Failed to extract text from the document.',
+            });
+        } finally {
+            setIsUploading(false);
+            // Reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    }
+
     return (
          <Dialog open={isWritingDialogOpen} onOpenChange={(open) => { if(!open) setIsWritingDialogOpen(false) }}>
             <DialogContent className="max-w-4xl h-[90vh]">
@@ -90,6 +147,46 @@ export function WriteSpeechDialog({
                             <Label htmlFor="write-title">Title</Label>
                             <Input id="write-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter script title" readOnly={!isEditing} />
                         </div>
+
+                        {isEditing && (
+                            <div className="space-y-2">
+                                <Label>Upload Document</Label>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                        onChange={handleFileUpload}
+                                        className="hidden"
+                                        disabled={isUploading}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={isUploading}
+                                        className="w-full"
+                                    >
+                                        {isUploading ? (
+                                            <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Extracting text...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Upload className="mr-2 h-4 w-4" />
+                                                Upload PDF or Word Document
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    <FileText className="inline h-3 w-3 mr-1" />
+                                    Upload a script to automatically extract and populate the text
+                                </p>
+                            </div>
+                        )}
+
                         <div className="space-y-2 flex-grow flex flex-col">
                             <Label htmlFor="write-body">Body</Label>
                             <Textarea id="write-body" value={body} onChange={(e) => setBody(e.target.value)} placeholder="Start writing your script..." className="h-full flex-grow resize-none" readOnly={!isEditing} />
