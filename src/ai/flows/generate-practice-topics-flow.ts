@@ -2,7 +2,7 @@
 'use server';
 /**
  * @fileOverview A flow for generating practice topics for Extemp and Impromptu.
- * 
+ *
  * - generatePracticeTopics - A function that generates topics based on the specified type.
  * - GeneratePracticeTopicsInput - The input type for the flow.
  * - GeneratePracticeTopicsOutput - The return type for the flow.
@@ -11,11 +11,71 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
+/**
+ * Fetches recent news headlines using NewsAPI
+ */
+async function fetchRecentNews(category: 'domestic' | 'foreign'): Promise<string> {
+    try {
+        const today = new Date();
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setDate(today.getDate() - 30);
+
+        const fromDate = oneMonthAgo.toISOString().split('T')[0];
+        const toDate = today.toISOString().split('T')[0];
+
+        let url: string;
+
+        if (category === 'domestic') {
+            // Fetch US news
+            url = `https://newsapi.org/v2/top-headlines?country=us&pageSize=20&apiKey=${process.env.NEWS_API_KEY}`;
+        } else {
+            // Fetch international news
+            url = `https://newsapi.org/v2/top-headlines?category=general&pageSize=20&apiKey=${process.env.NEWS_API_KEY}`;
+        }
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            console.warn('NewsAPI request failed, using fallback');
+            return '';
+        }
+
+        const data = await response.json();
+
+        if (!data.articles || data.articles.length === 0) {
+            return '';
+        }
+
+        // Extract titles and descriptions from articles
+        const newsItems = data.articles
+            .slice(0, 15)
+            .map((article: any) => {
+                const title = article.title || '';
+                const description = article.description || '';
+                return `${title}${description ? ': ' + description : ''}`;
+            })
+            .filter((item: string) => item.trim().length > 0)
+            .join('\n\n');
+
+        return newsItems;
+    } catch (error) {
+        console.error('Error fetching recent news:', error);
+        return '';
+    }
+}
+
 const GeneratePracticeTopicsInputSchema = z.object({
   type: z.enum(['extemp', 'impromptu']).describe("The type of topics to generate."),
   extempCategory: z.enum(['foreign', 'domestic']).optional().describe("The category for extemp topics."),
 });
 export type GeneratePracticeTopicsInput = z.infer<typeof GeneratePracticeTopicsInputSchema>;
+
+const GeneratePracticeTopicsWithNewsInputSchema = z.object({
+  type: z.enum(['extemp', 'impromptu']).describe("The type of topics to generate."),
+  extempCategory: z.enum(['foreign', 'domestic']).optional().describe("The category for extemp topics."),
+  recentNews: z.string().describe("Recent news headlines and articles from the past month."),
+  currentDate: z.string().describe("Today's date in YYYY-MM-DD format."),
+});
 
 const GeneratePracticeTopicsOutputSchema = z.object({
   topics: z.array(z.string()).length(3).describe("An array of three topic strings."),
@@ -80,36 +140,45 @@ function getRandomItems<T>(arr: T[], count: number): T[] {
 
 const prompt = ai.definePrompt({
   name: 'generatePracticeTopicsPrompt',
-  input: { schema: GeneratePracticeTopicsInputSchema },
+  input: { schema: GeneratePracticeTopicsWithNewsInputSchema },
   output: { schema: GeneratePracticeTopicsOutputSchema },
-  prompt: `You are an AI assistant for a speech and debate team. Your task is to generate practice topics based on CURRENT EVENTS from the past 30 days.
+  prompt: `You are an AI assistant for a speech and debate team. Your task is to generate practice topics based on ACTUAL CURRENT NEWS from the past 30 days.
 
-IMPORTANT: You must generate topics based on actual recent events from the past month. Use your knowledge of current events and news from the last 30 days.
+CURRENT DATE: {{{currentDate}}}
 
 Topic Type: {{{type}}}
 {{#if extempCategory}}Extemp Category: {{{extempCategory}}}{{/if}}
 
+RECENT NEWS HEADLINES (from the past month):
+---
+{{{recentNews}}}
+---
+
 If the type is 'extemp':
-- Generate three UNIQUE and DISTINCT questions about current events that have occurred within the last 30 days
-- Each time you are called, generate completely NEW topics - never repeat the same topics
-- If the category is 'domestic', focus on recent issues within the United States (politics, economy, social issues, policy changes, court decisions, etc.)
-- If the category is 'foreign', focus on recent international issues (conflicts, diplomacy, elections, economic developments, international organizations, etc.)
-- The questions should be suitable for a 7-minute analytical speech, requiring evidence and analysis
+- You MUST generate three UNIQUE and DISTINCT questions based SPECIFICALLY on the news headlines provided above
+- Each question must reference an actual event, development, or issue from the recent news
+- DO NOT generate generic or timeless questions - they must be tied to specific recent events
+- If the category is 'domestic', focus on US news items from the list above
+- If the category is 'foreign', focus on international news items from the list above
+- The questions should be suitable for a 7-minute analytical speech
 - Format them as clear, concise questions that would appear in an actual extemp competition
 - Examples of good formats:
-  * "How will [recent event] impact [stakeholder/situation]?"
-  * "Can [entity] successfully address [recent challenge]?"
-  * "What are the implications of [recent development]?"
-  * "Is [recent policy/action] effective in achieving [goal]?"
-- Ensure the topics reflect events from THIS month, not general timeless questions
+  * "How will [specific recent event from news] impact [stakeholder/situation]?"
+  * "Can [entity] successfully address [specific challenge from news]?"
+  * "What are the implications of [specific development from news]?"
+  * "Is [specific policy/action from news] effective in achieving [goal]?"
+
+CRITICAL REQUIREMENTS:
+1. Every topic MUST reference a specific event, person, policy, or development from the news headlines provided
+2. Each generation must produce DIFFERENT topics - never repeat the same topics
+3. Use variety - pick from different news items in the list
+4. Make the questions analytical and debate-worthy
 
 If the type is 'impromptu':
 - Generate three creative prompts that do not require prior knowledge
 - These can be abstract concepts, famous quotes, song lyrics, or 'what if' scenarios
 - The goal is to inspire a short, creative speech
 - Make each set of topics unique and varied
-
-CRITICAL: Each generation must produce DIFFERENT topics. Never repeat topics from previous generations. Draw from the breadth of current events to ensure variety.
 
 Provide the three generated topics in the 'topics' array.
 `,
@@ -122,24 +191,38 @@ const generatePracticeTopicsFlow = ai.defineFlow(
         outputSchema: GeneratePracticeTopicsOutputSchema,
     },
     async (input) => {
-        // Use LLM-based generation for dynamic, current event topics
-        try {
-            const { output } = await prompt(input);
-            if (!output || !output.topics || output.topics.length === 0) {
-                throw new Error("AI failed to generate topics.");
-            }
-            return output;
-        } catch (error) {
-            console.error('Error generating topics with AI:', error);
+        // Fetch recent news if generating extemp topics
+        let recentNews = '';
+        if (input.type === 'extemp' && input.extempCategory) {
+            recentNews = await fetchRecentNews(input.extempCategory);
+        }
 
-            // Fallback to hardcoded lists only if AI generation fails
-            if (input.type === 'extemp') {
-                const category = input.extempCategory || 'domestic';
-                const questionList = extempQuestions[category];
-                return { topics: getRandomItems(questionList, 3) };
-            } else { // impromptu
-                return { topics: getRandomItems(impromptuTopics, 3) };
+        // If we have news, use LLM-based generation with news context
+        if (recentNews && input.type === 'extemp') {
+            try {
+                const currentDate = new Date().toISOString().split('T')[0];
+                const { output } = await prompt({
+                    ...input,
+                    recentNews,
+                    currentDate,
+                });
+                if (!output || !output.topics || output.topics.length === 0) {
+                    throw new Error("AI failed to generate topics.");
+                }
+                return output;
+            } catch (error) {
+                console.error('Error generating topics with AI and news:', error);
+                // Fall through to fallback
             }
+        }
+
+        // Fallback to hardcoded lists if no news or AI generation fails
+        if (input.type === 'extemp') {
+            const category = input.extempCategory || 'domestic';
+            const questionList = extempQuestions[category];
+            return { topics: getRandomItems(questionList, 3) };
+        } else { // impromptu
+            return { topics: getRandomItems(impromptuTopics, 3) };
         }
     }
 );
