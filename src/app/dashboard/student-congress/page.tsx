@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Play, Pause, RefreshCw, Loader2, Video, StopCircle, Save, ChevronsRight, Trash2, VideoIcon, Repeat, Camera, CameraOff, ArrowUp, ArrowDown, Share, BrainCircuit, Gavel, BookOpen, FilePenLine, Mic, PlusCircle, Upload } from "lucide-react";
 import { cn, getRoleBasedColor, formatTime } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Accordion,
@@ -716,7 +717,13 @@ export default function StudentCongressPage() {
     }
 
     const Motion = ({ name, description, vote, isDebatable }: { name: string, description: string, vote: string, isDebatable: boolean }) => (
-        <li className="flex flex-col sm:flex-row justify-between sm:items-center p-3 border rounded-md bg-muted/50">
+        <motion.li
+            className="flex flex-col sm:flex-row justify-between sm:items-center p-3 border rounded-md bg-muted/50 cursor-pointer"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            whileHover={{ scale: 1.02, backgroundColor: "rgba(var(--muted-rgb, 0 0 0) / 0.1)" }}
+            transition={{ duration: 0.3 }}
+        >
             <div>
                 <p className="font-semibold">{name}</p>
                 <p className="text-xs text-muted-foreground">{description}</p>
@@ -725,7 +732,7 @@ export default function StudentCongressPage() {
                 <Badge variant={isDebatable ? "outline" : "secondary"}>{isDebatable ? "Debatable" : "Not Debatable"}</Badge>
                 <Badge variant="secondary">{vote}</Badge>
             </div>
-        </li>
+        </motion.li>
     );
 
     const associatedRecordings = React.useMemo(() => {
@@ -1027,82 +1034,216 @@ export default function StudentCongressPage() {
                     )}
                 </TabsContent>
                 <TabsContent value="presiding-officer" className="mt-6">
-                   <div className="space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="font-headline text-xl flex items-center gap-2"><BookOpen className="h-5 w-5" /> Learning Center</CardTitle>
-                                <CardDescription>Master the rules and responsibilities of a Presiding Officer.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <Accordion type="single" collapsible className="w-full">
-                                    <AccordionItem value="item-1">
-                                        <AccordionTrigger>Role of the Presiding Officer</AccordionTrigger>
-                                        <AccordionContent className="space-y-2 text-sm text-muted-foreground">
-                                            <p>Your primary duty is to be a fair, impartial, and efficient facilitator of debate. You do not participate in the debate. Key responsibilities include recognizing speakers, ruling on points of order, calling votes, and maintaining decorum. You are the servant of the chamber.</p>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                    <AccordionItem value="item-2">
-                                        <AccordionTrigger>Starting the Session</AccordionTrigger>
-                                        <AccordionContent className="space-y-2 text-sm text-muted-foreground">
-                                            <p>A session begins with your leadership. Follow these steps:</p>
-                                            <ol className="list-decimal pl-5 space-y-1">
-                                                <li><strong>Call to Order:</strong> Use one firm tap of the gavel and say, "The House is now in session."</li>
-                                                <li><strong>Set the Docket:</strong> Announce the first item on the docket. "The first item on the docket is [Bill/Resolution Title]. Is there a motion to open debate?"</li>
-                                                <li><strong>First Speech:</strong> Once a motion to open debate is made and seconded, call for an authorship/sponsorship speech. "Seeing a motion to open debate on the floor, is there an author or sponsor wishing to speak?"</li>
-                                            </ol>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                     <AccordionItem value="item-3">
-                                        <AccordionTrigger>Managing Debate & Precedence</AccordionTrigger>
-                                        <AccordionContent className="space-y-2 text-sm text-muted-foreground">
-                                            <p>Fairness is maintained through a precedence chart. This chart tracks who has spoken and in what order to ensure everyone gets a chance to speak.</p>
-                                            <ul className="list-disc pl-5 space-y-1">
-                                                <li><strong>Precedence:</strong> Prioritizes speakers who have spoken the least number of times.</li>
-                                                <li><strong>Recency:</strong> A secondary factor used to break ties in precedence. Prioritizes speakers who have spoken less recently than others with the same number of speeches.</li>
-                                                <li><strong>Questioning:</strong> After each speech, there is a questioning period. You will manage this by recognizing members who rise to ask questions one at a time.</li>
-                                            </ul>
-                                            <p><strong>Example:</strong> "Thank you, Representative. The chair now recognizes members for a period of questioning. The chair recognizes the representative from..."</p>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                    <AccordionItem value="item-4">
-                                        <AccordionTrigger>Core Parliamentary Motions</AccordionTrigger>
-                                        <AccordionContent>
-                                            <ul className="space-y-4">
-                                                <Motion name="Previous Question" description="To end debate on a specific issue (e.g., the bill, an amendment) and move to an immediate vote." vote="2/3 Vote" isDebatable={false} />
-                                                <Motion name="Lay on the Table / Take from the Table" description="To temporarily set aside the current legislation, or to bring it back for consideration." vote="Majority Vote" isDebatable={false} />
-                                                <Motion name="Point of Order / Parliamentary Inquiry" description="To point out a rules violation (Order) or to ask a question about procedure (Inquiry)." vote="Chair's Decision" isDebatable={false} />
-                                                <Motion name="Amend" description="To modify a bill or resolution. Requires an affirmative/negative speech cycle before voting on the amendment." vote="Majority Vote" isDebatable={true} />
-                                                <Motion name="Recess" description="To take a short break in the session." vote="Majority Vote" isDebatable={false} />
-                                            </ul>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                    <AccordionItem value="item-5">
-                                        <AccordionTrigger>Voting Procedures</AccordionTrigger>
-                                        <AccordionContent className="space-y-2 text-sm text-muted-foreground">
-                                            <p>Votes are your way of letting the chamber decide. Be clear and confident.</p>
-                                            <ol className="list-decimal pl-5 space-y-1">
-                                                <li><strong>Announce the Vote:</strong> "We are now voting on the motion for the Previous Question. This requires a two-thirds vote."</li>
-                                                <li><strong>Call the Vote:</strong> "All those in favor, please raise your placards... All those opposed, please raise your placards..."</li>
-                                                <li><strong>State the Result:</strong> Clearly announce whether the motion passes or fails, and the vote count if necessary. "With a vote of 15 in favor and 5 opposed, the motion for the Previous Question passes."</li>
-                                            </ol>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                    <AccordionItem value="item-6">
-                                        <AccordionTrigger>Using the Gavel</AccordionTrigger>
-                                        <AccordionContent className="space-y-2 text-sm text-muted-foreground">
-                                            <p>The gavel is a symbol of authority, not a toy. Use it sparingly but effectively.</p>
-                                            <ul className="list-disc pl-5 space-y-1">
-                                                <li><strong>One Tap:</strong> To call the chamber to order, to announce the result of a vote, or to signal the end of a recess.</li>
-                                                <li><strong>Two Taps:</strong> To call the chamber to order if it is unruly.</li>
-                                                <li><strong>Series of Taps:</strong> To restore order during a session that has become chaotic. Use with caution.</li>
-                                            </ul>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                </Accordion>
-                            </CardContent>
-                        </Card>
+                   <motion.div
+                        className="space-y-6"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                   >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.5, delay: 0.1 }}
+                        >
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="font-headline text-xl flex items-center gap-2">
+                                        <motion.div
+                                            animate={{ rotate: [0, -15, 15, -10, 10, 0] }}
+                                            transition={{ duration: 0.6, delay: 0.3 }}
+                                        >
+                                            <BookOpen className="h-5 w-5" />
+                                        </motion.div>
+                                        Learning Center
+                                    </CardTitle>
+                                    <CardDescription>Master the rules and responsibilities of a Presiding Officer.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Accordion type="single" collapsible className="w-full">
+                                        <motion.div
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ duration: 0.4, delay: 0.2 }}
+                                        >
+                                            <AccordionItem value="item-1">
+                                                <AccordionTrigger>Role of the Presiding Officer</AccordionTrigger>
+                                                <AccordionContent className="space-y-2 text-sm text-muted-foreground">
+                                                    <motion.p
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                        transition={{ duration: 0.3, delay: 0.1 }}
+                                                    >
+                                                        Your primary duty is to be a fair, impartial, and efficient facilitator of debate. You do not participate in the debate. Key responsibilities include recognizing speakers, ruling on points of order, calling votes, and maintaining decorum. You are the servant of the chamber.
+                                                    </motion.p>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        </motion.div>
+                                        <motion.div
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ duration: 0.4, delay: 0.3 }}
+                                        >
+                                            <AccordionItem value="item-2">
+                                                <AccordionTrigger>
+                                                    <span className="flex items-center gap-2">
+                                                        <motion.div
+                                                            whileHover={{ rotate: 360, scale: 1.2 }}
+                                                            transition={{ duration: 0.4 }}
+                                                        >
+                                                            <Gavel className="h-4 w-4" />
+                                                        </motion.div>
+                                                        Starting the Session
+                                                    </span>
+                                                </AccordionTrigger>
+                                                <AccordionContent className="space-y-2 text-sm text-muted-foreground">
+                                                    <p>A session begins with your leadership. Follow these steps:</p>
+                                                    <ol className="list-decimal pl-5 space-y-1">
+                                                        {[
+                                                            { title: "Call to Order", desc: 'Use one firm tap of the gavel and say, "The House is now in session."' },
+                                                            { title: "Set the Docket", desc: 'Announce the first item on the docket. "The first item on the docket is [Bill/Resolution Title]. Is there a motion to open debate?"' },
+                                                            { title: "First Speech", desc: 'Once a motion to open debate is made and seconded, call for an authorship/sponsorship speech. "Seeing a motion to open debate on the floor, is there an author or sponsor wishing to speak?"' }
+                                                        ].map((step, i) => (
+                                                            <motion.li
+                                                                key={i}
+                                                                initial={{ opacity: 0, x: -10 }}
+                                                                animate={{ opacity: 1, x: 0 }}
+                                                                transition={{ duration: 0.3, delay: 0.1 * i }}
+                                                            >
+                                                                <strong>{step.title}:</strong> {step.desc}
+                                                            </motion.li>
+                                                        ))}
+                                                    </ol>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        </motion.div>
+                                        <motion.div
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ duration: 0.4, delay: 0.4 }}
+                                        >
+                                            <AccordionItem value="item-3">
+                                                <AccordionTrigger>Managing Debate & Precedence</AccordionTrigger>
+                                                <AccordionContent className="space-y-2 text-sm text-muted-foreground">
+                                                    <p>Fairness is maintained through a precedence chart. This chart tracks who has spoken and in what order to ensure everyone gets a chance to speak.</p>
+                                                    <ul className="list-disc pl-5 space-y-1">
+                                                        {[
+                                                            { title: "Precedence", desc: "Prioritizes speakers who have spoken the least number of times." },
+                                                            { title: "Recency", desc: "A secondary factor used to break ties in precedence. Prioritizes speakers who have spoken less recently than others with the same number of speeches." },
+                                                            { title: "Questioning", desc: "After each speech, there is a questioning period. You will manage this by recognizing members who rise to ask questions one at a time." }
+                                                        ].map((item, i) => (
+                                                            <motion.li
+                                                                key={i}
+                                                                initial={{ opacity: 0, x: -10 }}
+                                                                animate={{ opacity: 1, x: 0 }}
+                                                                transition={{ duration: 0.3, delay: 0.1 * i }}
+                                                            >
+                                                                <strong>{item.title}:</strong> {item.desc}
+                                                            </motion.li>
+                                                        ))}
+                                                    </ul>
+                                                    <motion.p
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                        transition={{ duration: 0.3, delay: 0.4 }}
+                                                    >
+                                                        <strong>Example:</strong> "Thank you, Representative. The chair now recognizes members for a period of questioning. The chair recognizes the representative from..."
+                                                    </motion.p>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        </motion.div>
+                                        <motion.div
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ duration: 0.4, delay: 0.5 }}
+                                        >
+                                            <AccordionItem value="item-4">
+                                                <AccordionTrigger>Core Parliamentary Motions</AccordionTrigger>
+                                                <AccordionContent>
+                                                    <ul className="space-y-4">
+                                                        <Motion name="Previous Question" description="To end debate on a specific issue (e.g., the bill, an amendment) and move to an immediate vote." vote="2/3 Vote" isDebatable={false} />
+                                                        <Motion name="Lay on the Table / Take from the Table" description="To temporarily set aside the current legislation, or to bring it back for consideration." vote="Majority Vote" isDebatable={false} />
+                                                        <Motion name="Point of Order / Parliamentary Inquiry" description="To point out a rules violation (Order) or to ask a question about procedure (Inquiry)." vote="Chair's Decision" isDebatable={false} />
+                                                        <Motion name="Amend" description="To modify a bill or resolution. Requires an affirmative/negative speech cycle before voting on the amendment." vote="Majority Vote" isDebatable={true} />
+                                                        <Motion name="Recess" description="To take a short break in the session." vote="Majority Vote" isDebatable={false} />
+                                                    </ul>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        </motion.div>
+                                        <motion.div
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ duration: 0.4, delay: 0.6 }}
+                                        >
+                                            <AccordionItem value="item-5">
+                                                <AccordionTrigger>Voting Procedures</AccordionTrigger>
+                                                <AccordionContent className="space-y-2 text-sm text-muted-foreground">
+                                                    <p>Votes are your way of letting the chamber decide. Be clear and confident.</p>
+                                                    <ol className="list-decimal pl-5 space-y-1">
+                                                        {[
+                                                            { title: "Announce the Vote", desc: '"We are now voting on the motion for the Previous Question. This requires a two-thirds vote."' },
+                                                            { title: "Call the Vote", desc: '"All those in favor, please raise your placards... All those opposed, please raise your placards..."' },
+                                                            { title: "State the Result", desc: 'Clearly announce whether the motion passes or fails, and the vote count if necessary. "With a vote of 15 in favor and 5 opposed, the motion for the Previous Question passes."' }
+                                                        ].map((step, i) => (
+                                                            <motion.li
+                                                                key={i}
+                                                                initial={{ opacity: 0, x: -10 }}
+                                                                animate={{ opacity: 1, x: 0 }}
+                                                                transition={{ duration: 0.3, delay: 0.1 * i }}
+                                                            >
+                                                                <strong>{step.title}:</strong> {step.desc}
+                                                            </motion.li>
+                                                        ))}
+                                                    </ol>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        </motion.div>
+                                        <motion.div
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ duration: 0.4, delay: 0.7 }}
+                                        >
+                                            <AccordionItem value="item-6">
+                                                <AccordionTrigger>
+                                                    <span className="flex items-center gap-2">
+                                                        <motion.div
+                                                            whileHover={{
+                                                                rotate: [0, -20, 20, -15, 15, -10, 10, 0],
+                                                                scale: 1.2
+                                                            }}
+                                                            transition={{ duration: 0.5 }}
+                                                        >
+                                                            <Gavel className="h-4 w-4" />
+                                                        </motion.div>
+                                                        Using the Gavel
+                                                    </span>
+                                                </AccordionTrigger>
+                                                <AccordionContent className="space-y-2 text-sm text-muted-foreground">
+                                                    <p>The gavel is a symbol of authority, not a toy. Use it sparingly but effectively.</p>
+                                                    <ul className="list-disc pl-5 space-y-1">
+                                                        {[
+                                                            { title: "One Tap", desc: "To call the chamber to order, to announce the result of a vote, or to signal the end of a recess." },
+                                                            { title: "Two Taps", desc: "To call the chamber to order if it is unruly." },
+                                                            { title: "Series of Taps", desc: "To restore order during a session that has become chaotic. Use with caution." }
+                                                        ].map((item, i) => (
+                                                            <motion.li
+                                                                key={i}
+                                                                initial={{ opacity: 0, x: -10 }}
+                                                                animate={{ opacity: 1, x: 0 }}
+                                                                transition={{ duration: 0.3, delay: 0.1 * i }}
+                                                            >
+                                                                <strong>{item.title}:</strong> {item.desc}
+                                                            </motion.li>
+                                                        ))}
+                                                    </ul>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        </motion.div>
+                                    </Accordion>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
                         <CongressSimulator />
-                   </div>
+                   </motion.div>
                 </TabsContent>
             </Tabs>
             
