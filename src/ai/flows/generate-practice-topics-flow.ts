@@ -160,19 +160,22 @@ If the type is 'extemp':
 - DO NOT generate generic or timeless questions - they must be tied to specific recent events
 - If the category is 'domestic', focus on US news items from the list above
 - If the category is 'foreign', focus on international news items from the list above
-- The questions should be suitable for a 7-minute analytical speech
-- Format them as clear, concise questions that would appear in an actual extemp competition
-- Examples of good formats:
-  * "How will [specific recent event from news] impact [stakeholder/situation]?"
-  * "Can [entity] successfully address [specific challenge from news]?"
-  * "What are the implications of [specific development from news]?"
-  * "Is [specific policy/action from news] effective in achieving [goal]?"
+- Keep questions SIMPLE, CLEAR, and STRAIGHTFORWARD - avoid complex multi-part questions
+- Questions should be suitable for high school students preparing for extemp competitions
+- Preferred formats (use simple, direct language):
+  * "What is happening with [recent event/topic]?"
+  * "Why is [recent event] important?"
+  * "What caused [recent event]?"
+  * "How will [recent event] affect [people/country/situation]?"
+  * "What should be done about [recent issue]?"
+  * "Is [recent policy/action] working?"
 
 CRITICAL REQUIREMENTS:
-1. Every topic MUST reference a specific event, person, policy, or development from the news headlines provided
-2. Each generation must produce DIFFERENT topics - never repeat the same topics
-3. Use variety - pick from different news items in the list
-4. Make the questions analytical and debate-worthy
+1. Keep questions SHORT and SIMPLE - no more than 10-12 words
+2. Every topic MUST reference a specific event, person, policy, or development from the news headlines provided
+3. Each generation must produce DIFFERENT topics - never repeat the same topics
+4. Use variety - pick from different news items in the list
+5. Avoid overly complex or academic language - use conversational, accessible wording
 
 If the type is 'impromptu':
 - Generate three creative prompts that do not require prior knowledge
