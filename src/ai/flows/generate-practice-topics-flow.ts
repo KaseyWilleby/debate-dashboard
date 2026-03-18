@@ -160,22 +160,26 @@ If the type is 'extemp':
 - DO NOT generate generic or timeless questions - they must be tied to specific recent events
 - If the category is 'domestic', focus on US news items from the list above
 - If the category is 'foreign', focus on international news items from the list above
-- Keep questions SIMPLE, CLEAR, and STRAIGHTFORWARD - avoid complex multi-part questions
-- Questions should be suitable for high school students preparing for extemp competitions
-- Preferred formats (use simple, direct language):
-  * "What is happening with [recent event/topic]?"
-  * "Why is [recent event] important?"
-  * "What caused [recent event]?"
-  * "How will [recent event] affect [people/country/situation]?"
-  * "What should be done about [recent issue]?"
-  * "Is [recent policy/action] working?"
+- Questions should be ANALYTICAL and require evidence-based reasoning
+- Each question should be answerable with 1-3 clear points supported by articles, expert opinions, or empirical data
+- Questions should be suitable for high school extemp competitions (7-minute speeches)
+- Preferred formats (clear but analytical):
+  * "What is driving [recent trend/event]?"
+  * "Why is [recent development] significant for [stakeholder/region]?"
+  * "Will [recent policy/action] achieve [goal]?"
+  * "How effective is [entity/country]'s response to [recent challenge]?"
+  * "What challenges does [recent event/policy] pose for [stakeholder]?"
+  * "Can [entity] overcome [recent obstacle/crisis]?"
+  * "What are the key factors behind [recent outcome]?"
 
 CRITICAL REQUIREMENTS:
-1. Keep questions SHORT and SIMPLE - no more than 10-12 words
-2. Every topic MUST reference a specific event, person, policy, or development from the news headlines provided
-3. Each generation must produce DIFFERENT topics - never repeat the same topics
-4. Use variety - pick from different news items in the list
-5. Avoid overly complex or academic language - use conversational, accessible wording
+1. Keep questions CLEAR and FOCUSED - typically 8-15 words
+2. Questions must invite ANALYSIS, not just description - they should require examining causes, effects, significance, or effectiveness
+3. Every topic MUST reference a specific event, person, policy, or development from the news headlines provided
+4. Each generation must produce DIFFERENT topics - never repeat the same topics
+5. Use variety - pick from different news items in the list
+6. Avoid yes/no questions unless they require deeper analysis of effectiveness or likelihood
+7. Questions should be specific enough to be answered with concrete evidence, but broad enough to allow 1-3 main analytical points
 
 If the type is 'impromptu':
 - Generate three creative prompts that do not require prior knowledge
