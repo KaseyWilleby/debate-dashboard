@@ -82,24 +82,34 @@ const prompt = ai.definePrompt({
   name: 'generatePracticeTopicsPrompt',
   input: { schema: GeneratePracticeTopicsInputSchema },
   output: { schema: GeneratePracticeTopicsOutputSchema },
-  prompt: `You are an AI assistant for a speech and debate team. Your task is to generate practice topics.
-  
-Based on the requested type, generate a list of three distinct topics.
+  prompt: `You are an AI assistant for a speech and debate team. Your task is to generate practice topics based on CURRENT EVENTS from the past 30 days.
+
+IMPORTANT: You must generate topics based on actual recent events from the past month. Use your knowledge of current events and news from the last 30 days.
 
 Topic Type: {{{type}}}
 {{#if extempCategory}}Extemp Category: {{{extempCategory}}}{{/if}}
 
 If the type is 'extemp':
-- Generate three specific questions about current events that have occurred within the last 30 days.
-- If the category is 'domestic', focus on issues within the United States.
-- If the category is 'foreign', focus on international issues.
-- The questions should be suitable for a 7-minute analytical speech, requiring evidence and analysis.
-- Format them as clear, concise questions. For inspiration, you can model questions from sites like extemp.com, but DO NOT copy them directly. Ensure the topics are contemporary.
+- Generate three UNIQUE and DISTINCT questions about current events that have occurred within the last 30 days
+- Each time you are called, generate completely NEW topics - never repeat the same topics
+- If the category is 'domestic', focus on recent issues within the United States (politics, economy, social issues, policy changes, court decisions, etc.)
+- If the category is 'foreign', focus on recent international issues (conflicts, diplomacy, elections, economic developments, international organizations, etc.)
+- The questions should be suitable for a 7-minute analytical speech, requiring evidence and analysis
+- Format them as clear, concise questions that would appear in an actual extemp competition
+- Examples of good formats:
+  * "How will [recent event] impact [stakeholder/situation]?"
+  * "Can [entity] successfully address [recent challenge]?"
+  * "What are the implications of [recent development]?"
+  * "Is [recent policy/action] effective in achieving [goal]?"
+- Ensure the topics reflect events from THIS month, not general timeless questions
 
 If the type is 'impromptu':
-- Generate three creative prompts that do not require prior knowledge.
-- These can be abstract concepts, famous quotes, song lyrics, or 'what if' scenarios.
-- The goal is to inspire a short, creative speech.
+- Generate three creative prompts that do not require prior knowledge
+- These can be abstract concepts, famous quotes, song lyrics, or 'what if' scenarios
+- The goal is to inspire a short, creative speech
+- Make each set of topics unique and varied
+
+CRITICAL: Each generation must produce DIFFERENT topics. Never repeat topics from previous generations. Draw from the breadth of current events to ensure variety.
 
 Provide the three generated topics in the 'topics' array.
 `,
@@ -112,25 +122,25 @@ const generatePracticeTopicsFlow = ai.defineFlow(
         outputSchema: GeneratePracticeTopicsOutputSchema,
     },
     async (input) => {
-        // As a fallback and for reliability, we use hardcoded lists for now.
-        // The LLM-based generation can be enabled by swapping the logic here.
+        // Use LLM-based generation for dynamic, current event topics
+        try {
+            const { output } = await prompt(input);
+            if (!output || !output.topics || output.topics.length === 0) {
+                throw new Error("AI failed to generate topics.");
+            }
+            return output;
+        } catch (error) {
+            console.error('Error generating topics with AI:', error);
 
-        if (input.type === 'extemp') {
-            const category = input.extempCategory || 'domestic';
-            const questionList = extempQuestions[category];
-            return { topics: getRandomItems(questionList, 3) };
-        } else { // impromptu
-            return { topics: getRandomItems(impromptuTopics, 3) };
+            // Fallback to hardcoded lists only if AI generation fails
+            if (input.type === 'extemp') {
+                const category = input.extempCategory || 'domestic';
+                const questionList = extempQuestions[category];
+                return { topics: getRandomItems(questionList, 3) };
+            } else { // impromptu
+                return { topics: getRandomItems(impromptuTopics, 3) };
+            }
         }
-
-        // LLM-based generation (currently disabled for reliability)
-        /*
-        const { output } = await prompt(input);
-        if (!output) {
-            throw new Error("AI failed to generate topics.");
-        }
-        return output;
-        */
     }
 );
 
