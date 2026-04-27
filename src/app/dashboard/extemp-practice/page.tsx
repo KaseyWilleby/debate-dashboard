@@ -69,6 +69,7 @@ type ExtempCategory = "domestic" | "foreign";
 
 const WRITTEN_SPEECHES_STORAGE_KEY = 'work-session-written-speeches';
 const SAVED_SPEECHES_STORAGE_KEY = 'work-session-saved-speeches';
+const EXTEMP_HISTORY_STORAGE_KEY = 'extemp-question-history';
 
 
 const SavedScripts = ({ eventType, writtenSpeeches, setSpeechToEdit, setIsWritingDialogOpen, setScriptToPractice, handleDeleteWrittenSpeech, user }: { 
@@ -163,6 +164,17 @@ export default function ExtempPracticePage() {
     const [isLoadingTopics, setIsLoadingTopics] = React.useState(false);
     const [topics, setTopics] = React.useState<Topic[]>([]);
     const [extempCategory, setExtempCategory] = React.useState<ExtempCategory>('domestic');
+
+    // Track previously generated questions to avoid duplicates
+    const [questionHistory, setQuestionHistory] = React.useState<{domestic: string[], foreign: string[]}>(() => {
+        if (typeof window === 'undefined') return { domestic: [], foreign: [] };
+        try {
+            const stored = localStorage.getItem(EXTEMP_HISTORY_STORAGE_KEY);
+            return stored ? JSON.parse(stored) : { domestic: [], foreign: [] };
+        } catch (e) {
+            return { domestic: [], foreign: [] };
+        }
+    });
     
     // Practice Session State
     const [isPracticeSessionOpen, setIsPracticeSessionOpen] = React.useState(false);
@@ -283,6 +295,12 @@ export default function ExtempPracticePage() {
         localStorage.setItem(SAVED_SPEECHES_STORAGE_KEY, JSON.stringify(savedRecordings));
       }
     }, [savedRecordings]);
+
+    React.useEffect(() => {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(EXTEMP_HISTORY_STORAGE_KEY, JSON.stringify(questionHistory));
+      }
+    }, [questionHistory]);
 
 
     const [viewingSpeech, setViewingSpeech] = React.useState<SavedSpeech | null>(null);
@@ -428,14 +446,25 @@ export default function ExtempPracticePage() {
         setIsLoadingTopics(true);
         setTopics([]);
         try {
-            const input: GeneratePracticeTopicsInput = { 
+            const input: GeneratePracticeTopicsInput = {
                 type: mode as "extemp" | "impromptu",
             };
             if (mode === 'extemp') {
                 input.extempCategory = extempCategory;
+                // Pass previously generated questions for this category to avoid duplicates
+                input.previouslyGenerated = questionHistory[extempCategory];
             }
             const result = await generatePracticeTopics(input);
-            setTopics(result.topics.map((text, id) => ({ id: id.toString(), text })));
+            const newTopics = result.topics.map((text, id) => ({ id: id.toString(), text }));
+            setTopics(newTopics);
+
+            // Update question history for extemp questions
+            if (mode === 'extemp') {
+                setQuestionHistory(prev => ({
+                    ...prev,
+                    [extempCategory]: [...prev[extempCategory], ...result.topics]
+                }));
+            }
         } catch (error) {
             console.error("Failed to generate topics:", error);
             toast({
