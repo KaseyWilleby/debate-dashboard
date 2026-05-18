@@ -51,6 +51,7 @@ export function ResultCard({
     if (placement === 'champion') return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 border-yellow-300';
     if (placement === 'finalist') return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300';
     if (placement === 'semifinalist' || placement === 'quarterfinalist') return 'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 border-orange-300';
+    if (placement === 'dropped') return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-300';
     return 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border-blue-300';
   };
 
@@ -105,7 +106,11 @@ export function ResultCard({
               Partner: {result.partnerName}
             </span>
           )}
-          {result.preliminaryRecord && (
+          {result.placement === 'dropped' ? (
+            <span className="text-xs bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 px-2 py-0.5 rounded font-medium">
+              Dropped
+            </span>
+          ) : result.preliminaryRecord && (
             <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded">
               Prelims: {result.preliminaryRecord}
             </span>

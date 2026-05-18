@@ -111,6 +111,7 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
     interface RoundData {
       studentName: string;
       event: string;
+      dropped?: boolean; // If student dropped from tournament
       rounds: Array<{
         roundName: string;
         opponent?: string;
@@ -153,9 +154,12 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
         // Count judges for panel rounds (count <div> elements with judge names)
         const judgeCount = (judgeCellHtml.match(/<div[^>]*class="[^"]*smallish flexrow grow[^"]*"/g) || []).length || 1;
 
-        // Column 7: Result (W/L for debate, ranking for speech)
+        // Column 7: Result (W/L for debate, ranking for speech, or Drop)
         const resultCellHtml = cells[7][1];
         const resultText = resultCellHtml.replace(/<[^>]*>/g, '').trim();
+
+        // Check for Drop first (this indicates student withdrew from tournament)
+        const isDrop = /drop|withdraw|wd/i.test(resultText);
 
         // Check for W/L (debate events)
         let result: 'win' | 'loss' | 'bye' = 'bye';
@@ -195,8 +199,14 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
             studentEvents[key] = {
               studentName,
               event,
+              dropped: false,
               rounds: [],
             };
+          }
+
+          // Mark as dropped if any round shows a drop
+          if (isDrop) {
+            studentEvents[key].dropped = true;
           }
 
           studentEvents[key].rounds.push({
@@ -281,9 +291,9 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
       results.push({
         studentName: data.studentName,
         event: data.event,
-        placement: 'participated', // Will be updated from final results if available
-        placementDetail: null,
-        preliminaryRecord: wlRecord || `${data.rounds.length} rounds`,
+        placement: data.dropped ? 'dropped' : 'participated', // Will be updated from final results if available
+        placementDetail: data.dropped ? 'Dropped' : null,
+        preliminaryRecord: data.dropped ? null : (wlRecord || `${data.rounds.length} rounds`),
         eliminationRecord: elimRecord,
         preliminaryRounds: prelimRounds.length > 0 ? prelimRounds : undefined,
         eliminationRounds: elimRoundsWithBallots.length > 0 ? elimRoundsWithBallots : undefined,
@@ -346,7 +356,10 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
       let placement: PlacementType = 'participated';
       let eliminationRecord = elims;
 
-      if (place.match(/1st|first|champion/i)) placement = 'champion';
+      // Check for drop first
+      if (place.match(/drop|withdraw|wd/i) || prelimRecord.match(/drop/i)) {
+        placement = 'dropped';
+      } else if (place.match(/1st|first|champion/i)) placement = 'champion';
       else if (place.match(/2nd|second|finalist/i) || elims.match(/final/i)) placement = 'finalist';
       else if (place.match(/semi|3rd|4th/i) || elims.match(/semi/i)) placement = 'semifinalist';
       else if (place.match(/quarter|5th|6th|7th|8th/i) || elims.match(/quarter|qtr/i)) placement = 'quarterfinalist';
@@ -360,8 +373,8 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
         studentName,
         event,
         placement,
-        placementDetail: place || null,
-        preliminaryRecord: prelimRecord || null,
+        placementDetail: placement === 'dropped' ? 'Dropped' : (place || null),
+        preliminaryRecord: placement === 'dropped' ? null : (prelimRecord || null),
         eliminationRecord: eliminationRecord || null,
         partnerName: row['partner'] || null,
         nsdaId: row['nsda id'] || row['nsdaid'] || null,

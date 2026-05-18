@@ -298,6 +298,7 @@ export type PlacementType =
   | 'top-speaker'
   | 'preliminary-advancement'
   | 'participated'
+  | 'dropped'
   | 'other';
 
 export interface RoundBallot {

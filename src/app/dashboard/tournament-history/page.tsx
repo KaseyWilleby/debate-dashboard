@@ -36,6 +36,7 @@ const placementOptions: { value: PlacementType; label: string; color: string }[]
   { value: 'top-speaker', label: 'Top Speaker', color: 'bg-yellow-400' },
   { value: 'preliminary-advancement', label: 'Cleared Prelims', color: 'bg-cyan-500' },
   { value: 'participated', label: 'Participated', color: 'bg-gray-500' },
+  { value: 'dropped', label: 'Dropped', color: 'bg-red-500' },
   { value: 'other', label: 'Other', color: 'bg-indigo-500' },
 ];
 
@@ -891,7 +892,11 @@ export default function TournamentHistoryPage() {
                               {result.partnerName || '—'}
                             </TableCell>
                             <TableCell className="text-muted-foreground">
-                              {result.preliminaryRecord || '—'}
+                              {result.placement === 'dropped' ? (
+                                <span className="text-red-500 font-medium">Drop</span>
+                              ) : (
+                                result.preliminaryRecord || '—'
+                              )}
                             </TableCell>
                             <TableCell className="text-right">
                               {(!isAdmin || result.userId === user?.id) && (
