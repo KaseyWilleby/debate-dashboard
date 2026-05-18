@@ -160,13 +160,29 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
 
       if (cells.length >= 8) {
         // Column 0: Has student name in title attribute (e.g., title="Ainsley Gailey")
-        // and event code in the cell content (e.g., "LD: AG")
+        // and event code in the cell content (e.g., "LD: AG" or "Informative Extemp: Code")
         const codeCellHtml = cells[0][1];
         const titleMatch = rowHtml.match(/title="([^"]+)"/);
         const studentName = titleMatch ? titleMatch[1].trim() : null;
 
-        const eventMatch = codeCellHtml.match(/([A-Z]+-[A-Z]+|[A-Z]+):/);
-        const event = normalizeEventName(eventMatch ? eventMatch[1].trim() : 'Unknown Event');
+        // Extract event - try to match abbreviated codes first (LD:, PF:, etc.)
+        // Then try full event names before colon (Informative Extemp:, Prose:, etc.)
+        let eventName = 'Unknown Event';
+        const codeText = codeCellHtml.replace(/<[^>]*>/g, '').trim();
+
+        // Try abbreviated event code pattern (LD:, PF:, USX:, etc.)
+        const abbrMatch = codeText.match(/^([A-Z]+-[A-Z]+|[A-Z]+):/);
+        if (abbrMatch) {
+          eventName = abbrMatch[1];
+        } else {
+          // Try full event name before colon (Informative Extemp:, Prose:, etc.)
+          const fullMatch = codeText.match(/^([^:]+):/);
+          if (fullMatch) {
+            eventName = fullMatch[1].trim();
+          }
+        }
+
+        const event = normalizeEventName(eventName);
 
         // Column 1: Opponent name (e.g., "vs Greenhill OG") - we don't need this
         // Just skip it
