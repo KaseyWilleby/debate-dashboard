@@ -14,9 +14,13 @@ import type { PlacementType } from '@/lib/types';
  * UIL uses different names than TFA/NSDA, so we need to standardize
  */
 function normalizeEventName(eventName: string): string {
-  const normalized = eventName.trim();
+  const normalized = eventName.trim().toUpperCase();
 
-  // UIL Extemp mapping
+  // Tabroom abbreviation mappings for UIL events
+  if (normalized === 'INFO') return 'USX'; // Informative Extemp → US Extemp
+  if (normalized === 'PERS') return 'IX'; // Persuasive Extemp → International Extemp
+
+  // UIL full name mappings
   if (/informative\s+extemp/i.test(normalized)) return 'USX'; // US Extemp
   if (/persuasive\s+extemp/i.test(normalized)) return 'IX'; // International Extemp
 
@@ -26,14 +30,15 @@ function normalizeEventName(eventName: string): string {
   if (/^int(ernational)?\s+extemp/i.test(normalized)) return 'IX';
   if (/^extemp/i.test(normalized)) return 'USX'; // Default extemp to US
 
-  // Prose/Poetry
-  if (/^prose\s+interp/i.test(normalized)) return 'Prose';
-  if (/^poetry\s+interp/i.test(normalized)) return 'Poetry';
-  if (/^prose$/i.test(normalized)) return 'Prose';
-  if (/^poetry$/i.test(normalized)) return 'Poetry';
+  // Prose/Poetry - preserve original casing for these
+  const original = eventName.trim();
+  if (/^prose\s+interp/i.test(original)) return 'Prose';
+  if (/^poetry\s+interp/i.test(original)) return 'Poetry';
+  if (/^prose$/i.test(original)) return 'Prose';
+  if (/^poetry$/i.test(original)) return 'Poetry';
 
-  // Return as-is if no mapping found
-  return normalized;
+  // Return original if no mapping found (preserve original casing)
+  return eventName.trim();
 }
 
 const FetchAuthenticatedResultsInputSchema = z.object({
@@ -165,21 +170,21 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
         const titleMatch = rowHtml.match(/title="([^"]+)"/);
         const studentName = titleMatch ? titleMatch[1].trim() : null;
 
-        // Extract event - try to match abbreviated codes first (LD:, PF:, etc.)
-        // Then try full event names before colon (Informative Extemp:, Prose:, etc.)
-        let eventName = 'Unknown Event';
+        // Extract event code from the cell
+        // Format can be:
+        // - Just the code: "INFO" or "LD" or "PROSE"
+        // - Code with colon: "LD: AG" or "Informative Extemp: Code"
         const codeText = codeCellHtml.replace(/<[^>]*>/g, '').trim();
 
-        // Try abbreviated event code pattern (LD:, PF:, USX:, etc.)
-        const abbrMatch = codeText.match(/^([A-Z]+-[A-Z]+|[A-Z]+):/);
-        if (abbrMatch) {
-          eventName = abbrMatch[1];
+        let eventName = 'Unknown Event';
+
+        // Check if there's a colon (some tournaments use "Event: Code" format)
+        if (codeText.includes(':')) {
+          // Extract everything before the colon
+          eventName = codeText.split(':')[0].trim();
         } else {
-          // Try full event name before colon (Informative Extemp:, Prose:, etc.)
-          const fullMatch = codeText.match(/^([^:]+):/);
-          if (fullMatch) {
-            eventName = fullMatch[1].trim();
-          }
+          // No colon, just use the first word/code
+          eventName = codeText.split(/\s+/)[0].trim();
         }
 
         const event = normalizeEventName(eventName);
