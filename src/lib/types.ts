@@ -14,7 +14,7 @@ export interface User {
   nsdaId?: string; // NSDA membership ID for matching tabroom results
   tabroomEmail?: string; // Tabroom.com login email
   tabroomPassword?: string; // Tabroom.com password (should be encrypted in production)
-  tabroomChapterId?: string; // Tabroom chapter ID for accessing results
+  tabroomChapterId?: string; // Tabroom chapter ID for accessing results (e.g., 26837 for Cy-Woods)
 }
 
 export interface Message {
@@ -293,28 +293,49 @@ export type PlacementType =
   | 'quarterfinalist'
   | 'octafinalist'
   | 'double-octafinalist'
+  | 'triple-octafinalist'
   | 'speaker-award'
   | 'top-speaker'
   | 'preliminary-advancement'
   | 'participated'
   | 'other';
 
+export interface RoundBallot {
+  roundName: string; // e.g., "Round 1", "Quarterfinals"
+  opponent?: string; // Opponent name/school
+  result: 'win' | 'loss' | 'bye'; // Round result
+  judge?: string; // Judge name
+  judgeCount?: number; // Number of judges on panel (for elimination rounds)
+  ballotsWon?: number; // Number of ballots won (e.g., 0 out of 3)
+  speakerPoints?: number; // Points earned in this round (sum for team events)
+  individualSpeakerPoints?: number[]; // Individual points for each team member (for team events like PF)
+  rfd?: string; // Reason for decision (ballot feedback)
+  ranks?: string; // For congress/speech events
+}
+
 export interface TournamentResult {
   id: string;
   tournamentId: string;
   tournamentName: string;
-  userId: string;
+  studentName?: string; // Student name from Tabroom (for unmatched students)
+  userId: string | null; // Can be null if not matched to a user profile yet
   event: string;
   placement: PlacementType;
   placementDetail?: string; // e.g., "1st Place", "3rd Speaker", "7th Place"
-  partnerId?: string; // For team events
+  partnerId?: string | null; // For team events
   partnerName?: string;
   preliminaryRecord?: string; // e.g., "4-2" or "3-3"
+  eliminationRecord?: string; // e.g., "Won Quarters, Lost Semis"
+  preliminaryRounds?: RoundBallot[]; // Individual prelim round ballots
+  eliminationRounds?: RoundBallot[]; // Individual elim round ballots
   speakerPoints?: number;
   speakerRank?: number;
+  averageSpeakerPoints?: number; // Average speaker points per round
   totalCompetitors?: number;
   breakingCompetitors?: number; // How many competitors broke to elims
+  ballots?: RoundBallot[]; // Individual round ballots with RFDs (deprecated - use preliminaryRounds/eliminationRounds)
   notes?: string;
+  nsdaId?: string; // NSDA ID from Tabroom for future matching
   date: string;
   createdAt: string;
 }

@@ -15,6 +15,7 @@
  * - /debateTopics/{topicId}: Stores debate topics
  * - /congressDockets/{docketId}: Stores congress dockets
  * - /practiceRounds/{roundId}: Stores practice rounds
+ * - /tournamentResults/{resultId}: Stores tournament results
  *
  * Key Security Decisions:
  * - Admin users (role === 'admin') can list and read all users
@@ -138,6 +139,20 @@ service cloud.firestore {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn() && (request.auth.uid in request.resource.data.participants || isAdmin());
       allow update, delete: if isSignedIn() && (request.auth.uid in resource.data.participants || isAdmin());
+    }
+
+    /**
+     * @description Manages access to tournament results.
+     * @path /tournamentResults/{resultId}
+     * Users can read all results (for analytics comparison).
+     * Users can create/update their own results. Admins can manage all results.
+     * Admins can create results with null userId (for imported unmatched students).
+     */
+    match /tournamentResults/{resultId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     // ---- Helper functions ----

@@ -17,7 +17,7 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { BookOpenCheck, Calendar, Gavel, BookOpen, Briefcase, BookCopy, ClipboardList, Trophy, Users, Mic, Flag, Drama, BrainCircuit, LayoutDashboard, Globe, FileText, Video } from "lucide-react";
+import { BookOpenCheck, Calendar, Gavel, BookOpen, Briefcase, BookCopy, ClipboardList, Trophy, Users, Mic, Flag, Drama, BrainCircuit, LayoutDashboard, Globe, FileText, Video, BarChart3, Download } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/contexts/auth-context";
@@ -58,12 +58,28 @@ const SchedulerNav = ({ pathname, isAdmin }: { pathname: string; isAdmin: boolea
                 <Link href="/dashboard/tournament-history"><Trophy /><span>Tournament History</span></Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            {isAdmin && (
+
+            {!isAdmin && (
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/users")} tooltip="User Management">
-                  <Link href="/dashboard/users"><Users /><span>User Management</span></Link>
+                <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/my-results")} tooltip="My Results">
+                  <Link href="/dashboard/my-results"><Trophy /><span>My Results</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+            )}
+
+            {isAdmin && (
+              <>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/tournament-results-import")} tooltip="Import Results">
+                    <Link href="/dashboard/tournament-results-import"><Download /><span>Import Results</span></Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/users")} tooltip="User Management">
+                    <Link href="/dashboard/users"><Users /><span>User Management</span></Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </>
             )}
         </>
     );
@@ -74,6 +90,11 @@ const PracticeNav = ({ pathname, isAdmin }: { pathname: string; isAdmin: boolean
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/practice-dashboard")} tooltip="Dashboard">
         <Link href="/dashboard/practice-dashboard"><LayoutDashboard /><span>Dashboard</span></Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/analytics")} tooltip="Analytics">
+        <Link href="/dashboard/analytics"><BarChart3 /><span>Analytics</span></Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
     <SidebarMenuItem>

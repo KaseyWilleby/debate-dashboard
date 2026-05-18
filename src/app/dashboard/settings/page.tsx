@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/auth-context";
 import { cn, getRoleBasedColor } from "@/lib/utils";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Eye, EyeOff } from "lucide-react";
 import { useFirebase } from "@/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,10 @@ export default function SettingsPage() {
   const [editedUsername, setEditedUsername] = useState(user?.username || "");
   const [editedStudentId, setEditedStudentId] = useState(user?.studentId || "");
   const [editedNsdaId, setEditedNsdaId] = useState(user?.nsdaId || "");
+  const [editedTabroomEmail, setEditedTabroomEmail] = useState(user?.tabroomEmail || "");
+  const [editedTabroomPassword, setEditedTabroomPassword] = useState(user?.tabroomPassword || "");
+  const [editedTabroomChapterId, setEditedTabroomChapterId] = useState(user?.tabroomChapterId || "26837");
+  const [showTabroomPassword, setShowTabroomPassword] = useState(false);
 
   // Update local state when user changes
   useEffect(() => {
@@ -32,6 +36,9 @@ export default function SettingsPage() {
       setEditedUsername(user.username || "");
       setEditedStudentId(user.studentId || "");
       setEditedNsdaId(user.nsdaId || "");
+      setEditedTabroomEmail(user.tabroomEmail || "");
+      setEditedTabroomPassword(user.tabroomPassword || "");
+      setEditedTabroomChapterId(user.tabroomChapterId || "26837");
     }
   }, [user]);
 
@@ -75,6 +82,13 @@ export default function SettingsPage() {
         updateData.studentId = editedStudentId;
       }
 
+      // Include Tabroom credentials for admin users
+      if (user.role === 'admin') {
+        updateData.tabroomEmail = editedTabroomEmail;
+        updateData.tabroomPassword = editedTabroomPassword;
+        updateData.tabroomChapterId = editedTabroomChapterId;
+      }
+
       await updateDoc(userDocRef, updateData);
 
       toast({
@@ -99,6 +113,9 @@ export default function SettingsPage() {
     setEditedUsername(user.username || "");
     setEditedStudentId(user.studentId || "");
     setEditedNsdaId(user.nsdaId || "");
+    setEditedTabroomEmail(user.tabroomEmail || "");
+    setEditedTabroomPassword(user.tabroomPassword || "");
+    setEditedTabroomChapterId(user.tabroomChapterId || "26837");
     setIsEditing(false);
   };
 
@@ -212,6 +229,86 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {user.role === 'admin' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Tabroom Integration</CardTitle>
+            <CardDescription>
+              Connect your Tabroom.com account to import tournament results for the entire team
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="tabroomEmail">Tabroom Email</Label>
+              <Input
+                id="tabroomEmail"
+                type="email"
+                value={isEditing ? editedTabroomEmail : user.tabroomEmail || ""}
+                onChange={(e) => setEditedTabroomEmail(e.target.value)}
+                disabled={!isEditing}
+                placeholder="your-email@example.com"
+              />
+              <p className="text-xs text-muted-foreground">
+                The email you use to log into Tabroom.com
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tabroomPassword">Tabroom Password</Label>
+              <div className="relative">
+                <Input
+                  id="tabroomPassword"
+                  type={showTabroomPassword ? "text" : "password"}
+                  value={isEditing ? editedTabroomPassword : user.tabroomPassword || ""}
+                  onChange={(e) => setEditedTabroomPassword(e.target.value)}
+                  disabled={!isEditing}
+                  placeholder="Your Tabroom password"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowTabroomPassword(!showTabroomPassword)}
+                  disabled={!isEditing}
+                >
+                  {showTabroomPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Your password is encrypted and stored securely. It's only used to fetch tournament results.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tabroomChapterId">Tabroom Chapter ID</Label>
+              <Input
+                id="tabroomChapterId"
+                value={isEditing ? editedTabroomChapterId : user.tabroomChapterId || "26837"}
+                onChange={(e) => setEditedTabroomChapterId(e.target.value)}
+                disabled={!isEditing}
+                placeholder="26837"
+              />
+              <p className="text-xs text-muted-foreground">
+                Your school's chapter ID on Tabroom (usually 26837 for Cy-Woods). Find it in the URL when viewing your chapter results.
+              </p>
+            </div>
+
+            {!isEditing && (!user.tabroomEmail || !user.tabroomPassword) && (
+              <div className="rounded-lg bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 p-4">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  <strong>Setup Required:</strong> Add your Tabroom credentials to enable automatic tournament results import.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

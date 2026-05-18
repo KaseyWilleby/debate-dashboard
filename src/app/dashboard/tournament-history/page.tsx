@@ -11,18 +11,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Trophy, PlusCircle, Trash2, Edit, Calendar, BarChart3, Loader2, Download, History, CheckCircle2 } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Trophy, PlusCircle, Trash2, Edit, Calendar, BarChart3, Loader2, Download, History, CheckCircle2, Filter } from 'lucide-react';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import type { TournamentResult, PlacementType, User, Tournament } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { extractTournamentResults } from '@/ai/flows/extract-tournament-results-flow';
-
-const TOURNAMENT_RESULTS_STORAGE_KEY = 'tournament-results';
+import { fetchAuthenticatedTournamentResults } from '@/ai/flows/fetch-authenticated-tournament-results-flow';
+import { discoverTabroomTournaments } from '@/ai/flows/discover-tabroom-tournaments-flow';
+import { ResultCard } from '@/components/result-card';
 
 const placementOptions: { value: PlacementType; label: string; color: string }[] = [
   { value: 'champion', label: 'Champion', color: 'bg-yellow-500' },
@@ -64,26 +65,22 @@ export default function TournamentHistoryPage() {
   }, [firestore, user]);
   const { data: allUsers } = useCollection<User>(usersQuery);
 
-  const [results, setResults] = React.useState<TournamentResult[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const stored = localStorage.getItem(TOURNAMENT_RESULTS_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Query tournament results from Firestore
+  const resultsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'tournamentResults');
+  }, [firestore]);
+  const { data: allResults } = useCollection<TournamentResult>(resultsQuery);
 
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(TOURNAMENT_RESULTS_STORAGE_KEY, JSON.stringify(results));
-    }
-  }, [results]);
+  const [isImporting, setIsImporting] = React.useState(false);
+  const [importingTournamentId, setImportingTournamentId] = React.useState<string | null>(null);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [editingResult, setEditingResult] = React.useState<TournamentResult | null>(null);
   const [activeTab, setActiveTab] = React.useState<'results' | 'tournaments' | 'stats'>('results');
   const [selectedUserId, setSelectedUserId] = React.useState<string>('');
+  const [selectedStudentName, setSelectedStudentName] = React.useState<string>('');
+  const [selectedTournamentId, setSelectedTournamentId] = React.useState<string>('');
 
   // Form state
   const [formData, setFormData] = React.useState({
@@ -131,25 +128,66 @@ export default function TournamentHistoryPage() {
       .filter(t => {
         const tournDate = startOfDay(parseISO(t.date));
         const isPast = isBefore(tournDate, today) || tournDate.getTime() === today.getTime();
-        return isPast; // Show all past tournaments, not just ones where user was registered
+        // Also show tournaments that have results even if dated in future (handles edge cases)
+        const hasResults = allResults ? allResults.some(r => r.tournamentId === t.id) : false;
+        return isPast || hasResults;
       })
       .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-  }, [tournaments, user]);
+  }, [tournaments, user, allResults]);
 
-  // Check if user has added results for a tournament
+  /**
+   * Match student to user ID by NSDA ID or name
+   */
+  const matchStudentToUser = (studentName: string, nsdaId?: string): string | null => {
+    if (!allUsers || !studentName) return null;
+
+    // Priority 1: Match by NSDA ID if provided
+    if (nsdaId) {
+      const match = allUsers.find(u => u.nsdaId === nsdaId);
+      if (match) return match.id;
+    }
+
+    // Priority 2: Try exact name match
+    const normalized = studentName.toLowerCase().trim();
+    let match = allUsers.find(u => u.name.toLowerCase() === normalized);
+    if (match) return match.id;
+
+    // Priority 3: Try first name + last name match
+    const parts = normalized.split(' ');
+    if (parts.length >= 2) {
+      const firstName = parts[0];
+      const lastName = parts[parts.length - 1];
+
+      match = allUsers.find(u => {
+        const uParts = u.name.toLowerCase().split(' ');
+        return uParts[0] === firstName && uParts[uParts.length - 1] === lastName;
+      });
+      if (match) return match.id;
+    }
+
+    return null;
+  };
+
+  // Check if there are results for a tournament
   const hasResultsFor = (tournamentId: string) => {
-    if (!user) return false;
-    return results.some(r => r.tournamentId === tournamentId && r.userId === user.id);
+    if (!allResults) return false;
+    return allResults.some(r => r.tournamentId === tournamentId);
+  };
+
+  // Get results for a specific tournament
+  const getResultsForTournament = (tournamentId: string) => {
+    if (!allResults) return [];
+    return allResults.filter(r => r.tournamentId === tournamentId);
   };
 
   const handleImportFromTabroom = async (tournament: Tournament) => {
-    if (!user) return;
+    if (!firestore || !allUsers || !user) return;
 
-    // Check if user has NSDA ID for matching
-    if (!user.nsdaId) {
+    // Check if Tabroom credentials are set (admin only)
+    if (user.role === 'admin' && (!user.tabroomEmail || !user.tabroomPassword)) {
       toast({
-        title: 'NSDA ID Required',
-        description: 'Please add your NSDA ID in Settings to import results from Tabroom.',
+        title: 'Tabroom Credentials Required',
+        description: 'Please add your Tabroom credentials in Settings before importing results.',
         variant: 'destructive',
       });
       return;
@@ -164,89 +202,126 @@ export default function TournamentHistoryPage() {
       return;
     }
 
-    // Convert main tournament URL to results URL
-    // From: https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=XXXXX
-    // To: https://www.tabroom.com/index/tourn/results/index.mhtml?tourn_id=XXXXX
-    const resultsUrl = tournament.webpageUrl.replace(
-      '/index/tourn/index.mhtml',
-      '/index/tourn/results/index.mhtml'
-    );
+    setIsImporting(true);
+    setImportingTournamentId(tournament.id);
 
     toast({
       title: 'Importing Results',
-      description: `Fetching your results from Tabroom for ${tournament.name}...`,
+      description: `Fetching all Cy-Woods results from Tabroom for ${tournament.name}...`,
     });
 
     try {
-      const extractedResults = await extractTournamentResults(
-        resultsUrl,
-        user.nsdaId,
-        user.name
-      );
-
-      if (!extractedResults.success || extractedResults.results.length === 0) {
-        toast({
-          title: 'No Results Found',
-          description: extractedResults.message || 'Could not find your results on Tabroom. You can add them manually instead.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // Convert extracted results to TournamentResult format and add them
-      const newResults: TournamentResult[] = extractedResults.results.map(result => ({
-        id: `result-${Date.now()}-${Math.random()}`,
-        tournamentId: tournament.id,
+      // Fetch results from Tabroom using authenticated access
+      const resultsData = await fetchAuthenticatedTournamentResults({
+        tournamentUrl: tournament.webpageUrl,
+        tabroomEmail: user.tabroomEmail || '',
+        tabroomPassword: user.tabroomPassword || '',
+        tabroomChapterId: user.tabroomChapterId || "26837",
+        schoolName: "Cypress Woods",
         tournamentName: tournament.name,
-        userId: user.id,
-        event: result.event,
-        placement: result.placement,
-        placementDetail: result.placementDetail,
-        partnerName: result.partnerName,
-        preliminaryRecord: result.preliminaryRecord,
-        speakerPoints: result.speakerPoints,
-        speakerRank: result.speakerRank,
-        totalCompetitors: result.totalCompetitors,
-        breakingCompetitors: result.breakingCompetitors,
-        notes: result.notes,
-        date: tournament.date,
-        createdAt: new Date().toISOString(),
-      }));
-
-      // Filter out any results that already exist for this tournament
-      const existingResultIds = results
-        .filter(r => r.tournamentId === tournament.id && r.userId === user.id)
-        .map(r => `${r.event}-${r.placement}`);
-
-      const uniqueNewResults = newResults.filter(
-        r => !existingResultIds.includes(`${r.event}-${r.placement}`)
-      );
-
-      if (uniqueNewResults.length === 0) {
-        toast({
-          title: 'Already Added',
-          description: 'These results have already been imported.',
-        });
-        return;
-      }
-
-      setResults([...uniqueNewResults, ...results]);
-
-      toast({
-        title: 'Results Imported!',
-        description: `Successfully imported ${uniqueNewResults.length} result${uniqueNewResults.length !== 1 ? 's' : ''} from Tabroom.`,
+        tournamentDate: tournament.date,
       });
 
-      // Switch to results tab to show the imported results
-      setActiveTab('results');
+      if (!resultsData.success) {
+        toast({
+          title: 'Import Failed',
+          description: resultsData.error || 'Failed to fetch results from Tabroom',
+          variant: 'destructive',
+        });
+        setIsImporting(false);
+        setImportingTournamentId(null);
+        return;
+      }
+
+      if (!resultsData.results || resultsData.results.length === 0) {
+        toast({
+          title: 'No Results Found',
+          description: 'Could not find any results for this tournament.',
+          variant: 'destructive',
+        });
+        setIsImporting(false);
+        setImportingTournamentId(null);
+        return;
+      }
+
+      // Delete existing results for this tournament
+      const existingResultsQuery = query(
+        collection(firestore, 'tournamentResults'),
+        where('tournamentId', '==', tournament.id)
+      );
+      const existingResults = await getDocs(existingResultsQuery);
+      for (const doc of existingResults.docs) {
+        await deleteDoc(doc.ref);
+      }
+
+      let savedCount = 0;
+
+      // Match students and save results
+      for (const result of resultsData.results) {
+        const userId = matchStudentToUser(result.studentName, result.nsdaId);
+        const partnerId = result.partnerName ? matchStudentToUser(result.partnerName, undefined) : null;
+
+        // Save result for primary student
+        const resultData: any = {
+          tournamentId: tournament.id,
+          tournamentName: tournament.name,
+          studentName: result.studentName,
+          userId: userId || null,
+          event: result.event,
+          placement: result.placement,
+          date: tournament.date,
+          createdAt: new Date().toISOString(),
+        };
+
+        if (result.placementDetail !== undefined) resultData.placementDetail = result.placementDetail;
+        if (result.partnerName !== undefined) {
+          resultData.partnerName = result.partnerName;
+          resultData.partnerId = partnerId || null;
+        }
+        if (result.preliminaryRecord !== undefined) resultData.preliminaryRecord = result.preliminaryRecord;
+        if (result.eliminationRecord !== undefined) resultData.eliminationRecord = result.eliminationRecord;
+        if (result.preliminaryRounds !== undefined) resultData.preliminaryRounds = result.preliminaryRounds;
+        if (result.eliminationRounds !== undefined) resultData.eliminationRounds = result.eliminationRounds;
+        if (result.speakerPoints !== undefined) resultData.speakerPoints = result.speakerPoints;
+        if (result.averageSpeakerPoints !== undefined) resultData.averageSpeakerPoints = result.averageSpeakerPoints;
+        if (result.speakerRank !== undefined) resultData.speakerRank = result.speakerRank;
+        if (result.totalCompetitors !== undefined) resultData.totalCompetitors = result.totalCompetitors;
+        if (result.breakingCompetitors !== undefined) resultData.breakingCompetitors = result.breakingCompetitors;
+        if (result.notes !== undefined) resultData.notes = result.notes;
+        if (result.nsdaId !== undefined) resultData.nsdaId = result.nsdaId;
+
+        await addDoc(collection(firestore, 'tournamentResults'), resultData);
+        savedCount++;
+
+        // If team event with matched partner, create result for partner too
+        if (result.partnerName && partnerId) {
+          const partnerResultData = {
+            ...resultData,
+            studentName: result.partnerName,
+            userId: partnerId,
+            partnerName: result.studentName,
+            partnerId: userId || null,
+          };
+          await addDoc(collection(firestore, 'tournamentResults'), partnerResultData);
+          savedCount++;
+        }
+      }
+
+      toast({
+        title: 'Import Complete',
+        description: `Successfully imported ${savedCount} results for ${tournament.name}`,
+      });
 
     } catch (error) {
       console.error('Error importing from Tabroom:', error);
       toast({
         title: 'Import Failed',
-        description: error instanceof Error ? error.message : 'Failed to import results from Tabroom. Please try again or add manually.',
+        description: error instanceof Error ? error.message : 'Failed to import results from Tabroom.',
         variant: 'destructive',
       });
+    } finally {
+      setIsImporting(false);
+      setImportingTournamentId(null);
     }
   };
 
@@ -282,25 +357,155 @@ export default function TournamentHistoryPage() {
     });
   };
 
-  const handleBulkImport = () => {
-    if (!user) return;
+  const handleBulkImport = async () => {
+    if (!firestore || !allUsers || !user) return;
 
-    const tournamentsNeedingResults = pastTournaments.filter(t => !hasResultsFor(t.id));
+    const tournamentsNeedingResults = pastTournaments.filter(t => !hasResultsFor(t.id) && t.webpageUrl);
 
     if (tournamentsNeedingResults.length === 0) {
       toast({
         title: 'All Set!',
-        description: 'You have already added results for all past tournaments.',
+        description: 'Results have already been imported for all completed tournaments.',
       });
       return;
     }
 
-    // Start with the first tournament needing results
-    handleImportFromTournament(tournamentsNeedingResults[0]);
+    toast({
+      title: 'Bulk Import Started',
+      description: `Importing results for ${tournamentsNeedingResults.length} tournaments...`,
+    });
+
+    setIsImporting(true);
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const tournament of tournamentsNeedingResults) {
+      try {
+        await handleImportFromTabroom(tournament);
+        successCount++;
+      } catch (error) {
+        console.error(`Failed to import ${tournament.name}:`, error);
+        failCount++;
+      }
+    }
+
+    setIsImporting(false);
+
+    toast({
+      title: 'Bulk Import Complete',
+      description: `Successfully imported ${successCount} tournaments. ${failCount > 0 ? `${failCount} failed.` : ''}`,
+    });
   };
 
-  const handleAddResult = () => {
-    if (!user) return;
+  const handleAutoDiscoverAndImport = async () => {
+    if (!firestore || !allUsers || !user) return;
+
+    // Check if Tabroom credentials are set
+    if (user.role === 'admin' && (!user.tabroomEmail || !user.tabroomPassword)) {
+      toast({
+        title: 'Tabroom Credentials Required',
+        description: 'Please add your Tabroom credentials in Settings before auto-importing.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsImporting(true);
+
+    toast({
+      title: 'Discovering Tournaments',
+      description: 'Scanning Tabroom for tournaments with results...',
+    });
+
+    try {
+      // Step 1: Discover tournaments from Tabroom
+      const discoveryResult = await discoverTabroomTournaments({
+        tabroomEmail: user.tabroomEmail || '',
+        tabroomPassword: user.tabroomPassword || '',
+        tabroomChapterId: user.tabroomChapterId || "26837",
+      });
+
+      if (!discoveryResult.success || discoveryResult.tournaments.length === 0) {
+        toast({
+          title: 'No Tournaments Found',
+          description: discoveryResult.error || 'Could not find any tournaments with results on Tabroom.',
+          variant: 'destructive',
+        });
+        setIsImporting(false);
+        return;
+      }
+
+      console.log(`Discovered ${discoveryResult.tournaments.length} tournaments from Tabroom`);
+
+      // Step 2: Check which tournaments need to be added to the system
+      const existingTournamentUrls = new Set(tournaments?.map(t => t.webpageUrl) || []);
+      const newTournaments = discoveryResult.tournaments.filter(dt => !existingTournamentUrls.has(dt.url));
+
+      console.log(`${newTournaments.length} new tournaments to add`);
+
+      // Step 3: Add new tournaments to Firestore
+      const addedTournaments: Tournament[] = [];
+      for (const discovered of newTournaments) {
+        const tournamentData: any = {
+          name: discovered.name,
+          date: discovered.date,
+          location: discovered.location || '',
+          webpageUrl: discovered.url,
+          entries: [],
+          createdBy: user.id,
+          createdAt: new Date().toISOString(),
+        };
+
+        const docRef = await addDoc(collection(firestore, 'tournaments'), tournamentData);
+        addedTournaments.push({ ...tournamentData, id: docRef.id });
+        console.log(`Added tournament: ${discovered.name}`);
+      }
+
+      toast({
+        title: 'Tournaments Added',
+        description: `Added ${addedTournaments.length} new tournaments. Now importing results...`,
+      });
+
+      // Step 4: Import results for all discovered tournaments (both new and existing)
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const discovered of discoveryResult.tournaments) {
+        try {
+          // Find the tournament in our system (either newly added or existing)
+          const existingTournament = tournaments?.find(t => t.webpageUrl === discovered.url);
+          const tournamentToImport = existingTournament || addedTournaments.find(t => t.webpageUrl === discovered.url);
+
+          if (tournamentToImport && !hasResultsFor(tournamentToImport.id)) {
+            await handleImportFromTabroom(tournamentToImport);
+            successCount++;
+          }
+        } catch (error) {
+          console.error(`Failed to import ${discovered.name}:`, error);
+          failCount++;
+        }
+      }
+
+      toast({
+        title: 'Auto-Import Complete',
+        description: `Added ${addedTournaments.length} tournaments and imported ${successCount} result sets. ${failCount > 0 ? `${failCount} failed.` : ''}`,
+      });
+
+    } catch (error) {
+      console.error('Error during auto-discovery:', error);
+      toast({
+        title: 'Import Failed',
+        description: error instanceof Error ? error.message : 'Failed to discover tournaments.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleAddResult = async () => {
+    if (!user || !firestore) return;
     if (!formData.tournamentName || !formData.event || !formData.placement || !formData.date) {
       toast({
         title: 'Missing Information',
@@ -314,36 +519,48 @@ export default function TournamentHistoryPage() {
       ? allUsers?.find(u => u.id === formData.partnerId)?.name
       : undefined;
 
-    const newResult: TournamentResult = {
-      id: editingResult?.id || `result-${Date.now()}`,
-      tournamentId: formData.tournamentId,
+    const resultData: any = {
+      tournamentId: formData.tournamentId || `tournament-${Date.now()}`,
       tournamentName: formData.tournamentName,
       userId: user.id,
+      studentName: user.name,
       event: formData.event,
       placement: formData.placement as PlacementType,
-      placementDetail: formData.placementDetail || undefined,
-      partnerId: formData.partnerId || undefined,
-      partnerName,
-      preliminaryRecord: formData.preliminaryRecord || undefined,
-      speakerPoints: formData.speakerPoints ? parseFloat(formData.speakerPoints) : undefined,
-      speakerRank: formData.speakerRank ? parseInt(formData.speakerRank) : undefined,
-      totalCompetitors: formData.totalCompetitors ? parseInt(formData.totalCompetitors) : undefined,
-      breakingCompetitors: formData.breakingCompetitors ? parseInt(formData.breakingCompetitors) : undefined,
-      notes: formData.notes || undefined,
       date: formData.date,
       createdAt: editingResult?.createdAt || new Date().toISOString(),
     };
 
-    if (editingResult) {
-      setResults(results.map(r => r.id === editingResult.id ? newResult : r));
-      toast({ title: 'Result Updated', description: 'Tournament result has been updated.' });
-    } else {
-      setResults([newResult, ...results]);
-      toast({ title: 'Result Added', description: 'Tournament result has been added.' });
+    if (formData.placementDetail) resultData.placementDetail = formData.placementDetail;
+    if (formData.partnerId) {
+      resultData.partnerId = formData.partnerId;
+      resultData.partnerName = partnerName;
     }
+    if (formData.preliminaryRecord) resultData.preliminaryRecord = formData.preliminaryRecord;
+    if (formData.speakerPoints) resultData.speakerPoints = parseFloat(formData.speakerPoints);
+    if (formData.speakerRank) resultData.speakerRank = parseInt(formData.speakerRank);
+    if (formData.totalCompetitors) resultData.totalCompetitors = parseInt(formData.totalCompetitors);
+    if (formData.breakingCompetitors) resultData.breakingCompetitors = parseInt(formData.breakingCompetitors);
+    if (formData.notes) resultData.notes = formData.notes;
 
-    setIsAddDialogOpen(false);
-    resetForm();
+    try {
+      if (editingResult) {
+        // For manual edits, we don't support editing yet - just add new
+        toast({ title: 'Not Supported', description: 'Editing imported results is not supported. Please delete and re-add.' });
+      } else {
+        await addDoc(collection(firestore, 'tournamentResults'), resultData);
+        toast({ title: 'Result Added', description: 'Tournament result has been added.' });
+      }
+
+      setIsAddDialogOpen(false);
+      resetForm();
+    } catch (error) {
+      console.error('Error saving result:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save result. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleEditResult = (result: TournamentResult) => {
@@ -366,27 +583,100 @@ export default function TournamentHistoryPage() {
     setIsAddDialogOpen(true);
   };
 
-  const handleDeleteResult = (id: string) => {
-    setResults(results.filter(r => r.id !== id));
-    toast({ title: 'Result Deleted', description: 'Tournament result has been removed.' });
+  const handleDeleteResult = async (result: TournamentResult) => {
+    if (!firestore) return;
+
+    try {
+      // Find and delete the document from Firestore
+      const resultQuery = query(
+        collection(firestore, 'tournamentResults'),
+        where('tournamentId', '==', result.tournamentId),
+        where('userId', '==', result.userId),
+        where('event', '==', result.event)
+      );
+      const docs = await getDocs(resultQuery);
+
+      for (const doc of docs.docs) {
+        await deleteDoc(doc.ref);
+      }
+
+      toast({ title: 'Result Deleted', description: 'Tournament result has been removed.' });
+    } catch (error) {
+      console.error('Error deleting result:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete result. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
-  // Filter results based on user role
+  // Get unique students from results (for filtering)
+  const uniqueStudents = React.useMemo(() => {
+    if (!allResults) return [];
+
+    const studentsMap = new Map<string, { name: string; userId: string | null }>();
+    allResults.forEach(result => {
+      const key = result.studentName.toLowerCase().trim();
+      if (!studentsMap.has(key)) {
+        studentsMap.set(key, {
+          name: result.studentName,
+          userId: result.userId || null,
+        });
+      }
+    });
+
+    return Array.from(studentsMap.values()).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+  }, [allResults]);
+
+  // Get unique tournaments from results
+  const uniqueTournaments = React.useMemo(() => {
+    if (!allResults) return [];
+
+    const tournamentsMap = new Map<string, { id: string; name: string; date: string }>();
+    allResults.forEach(result => {
+      if (!tournamentsMap.has(result.tournamentId)) {
+        tournamentsMap.set(result.tournamentId, {
+          id: result.tournamentId,
+          name: result.tournamentName,
+          date: result.date,
+        });
+      }
+    });
+
+    return Array.from(tournamentsMap.values()).sort((a, b) =>
+      parseISO(b.date).getTime() - parseISO(a.date).getTime()
+    );
+  }, [allResults]);
+
+  // Filter results based on user role and filters
   const displayedResults = React.useMemo(() => {
-    if (!user) return [];
+    if (!user || !allResults) return [];
 
-    let filtered = results;
+    let filtered = allResults;
 
+    // Filter by user/student
     if (user.role === 'admin') {
-      if (selectedUserId && selectedUserId !== 'all') {
-        filtered = results.filter(r => r.userId === selectedUserId);
+      if (selectedStudentName && selectedStudentName !== 'all') {
+        // Filter by student name (works for all students, even without accounts)
+        filtered = filtered.filter(r =>
+          r.studentName.toLowerCase().trim() === selectedStudentName.toLowerCase().trim()
+        );
       }
     } else {
-      filtered = results.filter(r => r.userId === user.id);
+      // Non-admin users only see their own results
+      filtered = filtered.filter(r => r.userId === user.id);
+    }
+
+    // Filter by tournament
+    if (selectedTournamentId && selectedTournamentId !== 'all') {
+      filtered = filtered.filter(r => r.tournamentId === selectedTournamentId);
     }
 
     return filtered.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-  }, [results, user, selectedUserId]);
+  }, [allResults, user, selectedStudentName, selectedTournamentId]);
 
   // Statistics
   const stats = React.useMemo(() => {
@@ -435,16 +725,29 @@ export default function TournamentHistoryPage() {
         <div>
           <h1 className="text-3xl font-bold font-headline">Tournament History</h1>
           <p className="text-muted-foreground">
-            {isAdmin && selectedUserId && selectedUserId !== 'all'
-              ? `Viewing results for ${allUsers?.find(u => u.id === selectedUserId)?.name}`
+            {isAdmin && selectedStudentName && selectedStudentName !== 'all'
+              ? `Viewing results for ${selectedStudentName}`
               : isAdmin
                 ? 'View and manage all tournament results'
                 : 'Track your tournament results and performance'}
           </p>
         </div>
         <div className="flex gap-2">
+          {isAdmin && (
+            <Button
+              onClick={handleAutoDiscoverAndImport}
+              variant="secondary"
+              disabled={isImporting}
+            >
+              {isImporting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Importing...</>
+              ) : (
+                <><Download className="mr-2 h-4 w-4" />Auto-Import from Tabroom</>
+              )}
+            </Button>
+          )}
           {tournamentsNeedingResults.length > 0 && (
-            <Button onClick={handleBulkImport} variant="outline">
+            <Button onClick={handleBulkImport} variant="outline" disabled={isImporting}>
               <Download className="mr-2 h-4 w-4" />
               Quick Add ({tournamentsNeedingResults.length})
             </Button>
@@ -456,30 +759,6 @@ export default function TournamentHistoryPage() {
         </div>
       </div>
 
-      {/* Admin user filter */}
-      {isAdmin && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Filter by User</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select value={selectedUserId || 'all'} onValueChange={setSelectedUserId}>
-              <SelectTrigger>
-                <SelectValue placeholder="All users" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Users</SelectItem>
-                {allUsers?.filter(u => u.approved).map(u => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name} ({u.role})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-      )}
-
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'results' | 'tournaments' | 'stats')}>
         <TabsList>
           <TabsTrigger value="results"><Trophy className="mr-2 h-4 w-4" />Results</TabsTrigger>
@@ -489,15 +768,66 @@ export default function TournamentHistoryPage() {
 
         {/* Results Tab */}
         <TabsContent value="results" className="space-y-4">
+          {/* Filters */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                Filter Results
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                {isAdmin && (
+                  <div className="space-y-2">
+                    <Label>Student</Label>
+                    <Select value={selectedStudentName || 'all'} onValueChange={setSelectedStudentName}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All students" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Students</SelectItem>
+                        {uniqueStudents.map((student, idx) => (
+                          <SelectItem key={idx} value={student.name}>
+                            {student.name} {student.userId ? '(has account)' : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label>Tournament</Label>
+                  <Select value={selectedTournamentId || 'all'} onValueChange={setSelectedTournamentId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All tournaments" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Tournaments</SelectItem>
+                      {uniqueTournaments.map(t => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name} ({format(parseISO(t.date), 'MMM d, yyyy')})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Results Table */}
           {displayedResults.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Trophy className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold">No Results Yet</h3>
+                <h3 className="text-lg font-semibold">No Results Found</h3>
                 <p className="text-muted-foreground text-sm mt-1">
-                  {isAdmin && selectedUserId && selectedUserId !== 'all'
-                    ? 'This user has no tournament results yet.'
-                    : 'Start tracking tournament performance by adding results.'}
+                  {selectedStudentName && selectedStudentName !== 'all' || selectedTournamentId && selectedTournamentId !== 'all'
+                    ? 'No results match your current filters. Try adjusting the filters above.'
+                    : isAdmin && selectedStudentName && selectedStudentName !== 'all'
+                      ? 'This student has no tournament results yet.'
+                      : 'Start tracking tournament performance by adding results.'}
                 </p>
                 <div className="flex gap-2 mt-4">
                   {tournamentsNeedingResults.length > 0 && (
@@ -514,104 +844,93 @@ export default function TournamentHistoryPage() {
               </CardContent>
             </Card>
           ) : (
-            displayedResults.map(result => {
-              const resultUser = allUsers?.find(u => u.id === result.userId);
-              return (
-                <Card key={result.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <CardTitle>{result.tournamentName}</CardTitle>
-                          <Badge className={cn('text-white', getPlacementColor(result.placement))}>
-                            {placementOptions.find(p => p.value === result.placement)?.label}
-                          </Badge>
-                          {isAdmin && resultUser && (
-                            <Badge variant="outline">{resultUser.name}</Badge>
-                          )}
-                        </div>
-                        <CardDescription className="flex items-center gap-2 mt-1">
-                          <Calendar className="h-3 w-3" />
-                          {format(parseISO(result.date), 'MMMM d, yyyy')}
-                        </CardDescription>
-                      </div>
-                      {(!isAdmin || result.userId === user?.id) && (
-                        <div className="flex items-center gap-1">
-                          <Button variant="outline" size="icon" onClick={() => handleEditResult(result)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive" size="icon">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Result?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This will permanently delete this tournament result. This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteResult(result.id)}>
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Event</p>
-                        <p className="font-medium">{result.event}</p>
-                      </div>
-                      {result.placementDetail && (
-                        <div>
-                          <p className="text-muted-foreground">Detail</p>
-                          <p className="font-medium">{result.placementDetail}</p>
-                        </div>
-                      )}
-                      {result.partnerName && (
-                        <div>
-                          <p className="text-muted-foreground">Partner</p>
-                          <p className="font-medium">{result.partnerName}</p>
-                        </div>
-                      )}
-                      {result.preliminaryRecord && (
-                        <div>
-                          <p className="text-muted-foreground">Prelim Record</p>
-                          <p className="font-medium">{result.preliminaryRecord}</p>
-                        </div>
-                      )}
-                      {result.speakerRank && result.totalCompetitors && (
-                        <div>
-                          <p className="text-muted-foreground">Speaker Rank</p>
-                          <p className="font-medium">{result.speakerRank} of {result.totalCompetitors}</p>
-                        </div>
-                      )}
-                      {result.speakerPoints && (
-                        <div>
-                          <p className="text-muted-foreground">Speaker Points</p>
-                          <p className="font-medium">{result.speakerPoints}</p>
-                        </div>
-                      )}
-                    </div>
-                    {result.notes && (
-                      <div className="mt-4 p-3 bg-muted rounded-md">
-                        <p className="text-sm text-muted-foreground">Notes</p>
-                        <p className="text-sm mt-1">{result.notes}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  {displayedResults.length} Result{displayedResults.length !== 1 ? 's' : ''}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Tournament</TableHead>
+                        {isAdmin && <TableHead>Student</TableHead>}
+                        <TableHead>Event</TableHead>
+                        <TableHead>Placement</TableHead>
+                        <TableHead>Partner</TableHead>
+                        <TableHead>Prelim</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {displayedResults.map(result => {
+                        const resultUser = allUsers?.find(u => u.id === result.userId);
+                        return (
+                          <TableRow key={result.id}>
+                            <TableCell className="whitespace-nowrap">
+                              {format(parseISO(result.date), 'MMM d, yyyy')}
+                            </TableCell>
+                            <TableCell className="font-medium max-w-[200px] truncate">
+                              {result.tournamentName}
+                            </TableCell>
+                            {isAdmin && (
+                              <TableCell>
+                                {resultUser?.name || result.studentName}
+                              </TableCell>
+                            )}
+                            <TableCell>{result.event}</TableCell>
+                            <TableCell>
+                              <Badge className={cn('text-white', getPlacementColor(result.placement))}>
+                                {placementOptions.find(p => p.value === result.placement)?.label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {result.partnerName || '—'}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {result.preliminaryRecord || '—'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {(!isAdmin || result.userId === user?.id) && (
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button variant="ghost" size="icon" onClick={() => handleEditResult(result)}>
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="ghost" size="icon">
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Result?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          This will permanently delete this tournament result. This action cannot be undone.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteResult(result)}>
+                                          Delete
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
@@ -642,7 +961,7 @@ export default function TournamentHistoryPage() {
                           {hasResults && (
                             <Badge variant="secondary" className="gap-1">
                               <CheckCircle2 className="h-3 w-3" />
-                              Results Added
+                              {getResultsForTournament(tournament.id).length} Results
                             </Badge>
                           )}
                         </div>
@@ -656,36 +975,51 @@ export default function TournamentHistoryPage() {
                           <Button
                             onClick={() => handleImportFromTabroom(tournament)}
                             variant="default"
-                            disabled={!tournament.webpageUrl}
+                            disabled={isImporting || !tournament.webpageUrl}
                           >
-                            <Download className="mr-2 h-4 w-4" />
-                            Import from Tabroom
+                            {isImporting && importingTournamentId === tournament.id ? (
+                              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Importing...</>
+                            ) : (
+                              <><Download className="mr-2 h-4 w-4" />Import from Tabroom</>
+                            )}
                           </Button>
                         )}
                         <Button
                           onClick={() => handleImportFromTournament(tournament)}
                           variant="outline"
+                          disabled={isImporting}
                         >
                           <PlusCircle className="mr-2 h-4 w-4" />
-                          Add Results
+                          Add Manual
                         </Button>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {userEntry && userEntry.events.length > 0 ? (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Your Events:</p>
+                    {userEntry && userEntry.events.length > 0 && (
+                      <div className="space-y-2 mb-4">
+                        <p className="text-sm font-medium">Registered Events:</p>
                         <div className="flex flex-wrap gap-2">
                           {userEntry.events.map(event => (
                             <Badge key={event} variant="outline">{event}</Badge>
                           ))}
                         </div>
                       </div>
-                    ) : (
-                      <div className="text-sm text-muted-foreground">
-                        No registration found. You can still add results manually.
-                      </div>
+                    )}
+
+                    {hasResults && (
+                      <Accordion type="single" collapsible className="w-full">
+                        <AccordionItem value="results" className="border-0">
+                          <AccordionTrigger className="text-sm font-medium py-2 hover:no-underline">
+                            Imported Results ({getResultsForTournament(tournament.id).length})
+                          </AccordionTrigger>
+                          <AccordionContent className="space-y-3 pt-3">
+                            {getResultsForTournament(tournament.id).map((result, idx) => (
+                              <ResultCard key={idx} result={result} showStudentName={true} />
+                            ))}
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
                     )}
                   </CardContent>
                 </Card>
