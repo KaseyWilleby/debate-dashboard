@@ -9,6 +9,33 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import type { PlacementType } from '@/lib/types';
 
+/**
+ * Normalize event names to standard abbreviations
+ * UIL uses different names than TFA/NSDA, so we need to standardize
+ */
+function normalizeEventName(eventName: string): string {
+  const normalized = eventName.trim();
+
+  // UIL Extemp mapping
+  if (/informative\s+extemp/i.test(normalized)) return 'USX'; // US Extemp
+  if (/persuasive\s+extemp/i.test(normalized)) return 'IX'; // International Extemp
+
+  // Common variations
+  if (/^us\s+extemp/i.test(normalized)) return 'USX';
+  if (/^foreign\s+extemp/i.test(normalized)) return 'FX';
+  if (/^int(ernational)?\s+extemp/i.test(normalized)) return 'IX';
+  if (/^extemp/i.test(normalized)) return 'USX'; // Default extemp to US
+
+  // Prose/Poetry
+  if (/^prose\s+interp/i.test(normalized)) return 'Prose';
+  if (/^poetry\s+interp/i.test(normalized)) return 'Poetry';
+  if (/^prose$/i.test(normalized)) return 'Prose';
+  if (/^poetry$/i.test(normalized)) return 'Poetry';
+
+  // Return as-is if no mapping found
+  return normalized;
+}
+
 const FetchAuthenticatedResultsInputSchema = z.object({
   tournamentUrl: z.string().url().describe("The Tabroom tournament URL"),
   tabroomEmail: z.string().email().describe("Coach's Tabroom email"),
@@ -139,7 +166,7 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
         const studentName = titleMatch ? titleMatch[1].trim() : null;
 
         const eventMatch = codeCellHtml.match(/([A-Z]+-[A-Z]+|[A-Z]+):/);
-        const event = eventMatch ? eventMatch[1].trim() : 'Unknown Event';
+        const event = normalizeEventName(eventMatch ? eventMatch[1].trim() : 'Unknown Event');
 
         // Column 1: Opponent name (e.g., "vs Greenhill OG") - we don't need this
         // Just skip it
@@ -342,7 +369,7 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
       if (!studentName) continue;
 
       // Extract event
-      const event = row['event'] || row['category'] || '';
+      const event = normalizeEventName(row['event'] || row['category'] || '');
       if (!event) continue;
 
       // Extract prelim record
@@ -397,7 +424,7 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
       // Extract event name from <h5 class="nospace"> tags (event name is in the RIGHT-ALIGNED h5)
       // Pattern: <span class="half"><h5>Prelims Table</h5></span> <span class="half rightalign"><h5>EVENT NAME</h5></span>
       const h5Matches = [...section.matchAll(/<h5[^>]*class="nospace"[^>]*>([^<]+)<\/h5>/gi)];
-      const event = h5Matches.length >= 2 ? h5Matches[1][1].trim() : 'Unknown Event';
+      const event = normalizeEventName(h5Matches.length >= 2 ? h5Matches[1][1].trim() : 'Unknown Event');
 
       console.log(`Parsing Prelims Table for event: ${event}`);
 
@@ -443,7 +470,7 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
       // Extract event name from <h5 class="nospace"> tags (event name is in the RIGHT-ALIGNED h5)
       // Pattern: <span class="half"><h5>Final Places</h5></span> <span class="half rightalign"><h5>EVENT NAME</h5></span>
       const h5Matches = [...section.matchAll(/<h5[^>]*class="nospace"[^>]*>([^<]+)<\/h5>/gi)];
-      const event = h5Matches.length >= 2 ? h5Matches[1][1].trim() : 'Unknown Event';
+      const event = normalizeEventName(h5Matches.length >= 2 ? h5Matches[1][1].trim() : 'Unknown Event');
 
       console.log(`Parsing Final Places for event: ${event}`);
       console.log(`  Section length: ${section.length} chars`);
