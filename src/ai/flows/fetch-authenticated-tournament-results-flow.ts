@@ -11,24 +11,23 @@ import type { PlacementType } from '@/lib/types';
 
 /**
  * Normalize event names to standard abbreviations
- * UIL uses different names than TFA/NSDA, so we need to standardize
+ * UIL has distinct events from TFA/NSDA, so we preserve those differences
  */
 function normalizeEventName(eventName: string): string {
   const normalized = eventName.trim().toUpperCase();
 
-  // Tabroom abbreviation mappings for UIL events
-  if (normalized === 'INFO') return 'USX'; // Informative Extemp → US Extemp
-  if (normalized === 'PERS') return 'IX'; // Persuasive Extemp → International Extemp
+  // UIL Extemp events - these are DISTINCT from TFA/NSDA extemp
+  if (normalized === 'INFO') return 'Informative'; // UIL Informative Extemp
+  if (normalized === 'PERS') return 'Persuasive'; // UIL Persuasive Extemp
 
   // UIL full name mappings
-  if (/informative\s+extemp/i.test(normalized)) return 'USX'; // US Extemp
-  if (/persuasive\s+extemp/i.test(normalized)) return 'IX'; // International Extemp
+  if (/^informative\s+extemp/i.test(normalized)) return 'Informative';
+  if (/^persuasive\s+extemp/i.test(normalized)) return 'Persuasive';
 
-  // Common variations
+  // TFA/NSDA Extemp variations
   if (/^us\s+extemp/i.test(normalized)) return 'USX';
   if (/^foreign\s+extemp/i.test(normalized)) return 'FX';
   if (/^int(ernational)?\s+extemp/i.test(normalized)) return 'IX';
-  if (/^extemp/i.test(normalized)) return 'USX'; // Default extemp to US
 
   // Prose/Poetry - preserve original casing for these
   const original = eventName.trim();
