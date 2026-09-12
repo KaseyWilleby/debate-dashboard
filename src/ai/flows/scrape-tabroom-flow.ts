@@ -170,11 +170,39 @@ async function getTabroomTournaments(): Promise<ScrapedTournament[]> {
         }
     };
 
+    // Calculate current school year
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
+
+    // School year runs from August 1 to May 30
+    // If we're between August (7) and December (11), school year is current year to next year
+    // If we're between January (0) and July (6), school year is previous year to current year
+    const schoolYearStart = currentMonth >= 7
+        ? new Date(currentYear, 7, 1) // August 1 of current year
+        : new Date(currentYear - 1, 7, 1); // August 1 of previous year
+
+    const schoolYearEnd = currentMonth >= 7
+        ? new Date(currentYear + 1, 4, 30) // May 30 of next year
+        : new Date(currentYear, 4, 30); // May 30 of current year
+
+    schoolYearStart.setHours(0, 0, 0, 0);
+    schoolYearEnd.setHours(23, 59, 59, 999);
+
     return allTournaments
+        .map(tournament => ({
+            ...tournament,
+            tournamentDate: getTournamentDate(tournament.date, tournament.registrationCloseDate)
+        }))
+        .filter(tournament => {
+            // Only include tournaments within current school year
+            return tournament.tournamentDate >= schoolYearStart &&
+                   tournament.tournamentDate <= schoolYearEnd;
+        })
         .sort((a, b) => {
-            const dateA = getTournamentDate(a.date, a.registrationCloseDate);
-            const dateB = getTournamentDate(b.date, b.registrationCloseDate);
-            return dateA.getTime() - dateB.getTime();
+            return a.tournamentDate.getTime() - b.tournamentDate.getTime();
         })
         .map(({ name, url, date, registrationCloseDate }) => ({
             name,
