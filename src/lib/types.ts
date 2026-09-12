@@ -88,6 +88,7 @@ export interface Tournament {
   schools?: string[]; // e.g., ["Cy-Fair High School", "Cy-Creek High School"]
   feeSheet?: FeeSheet; // Fee data from Tabroom
   paperwork?: TournamentPaperwork; // Checklist and documents
+  isArchived?: boolean; // Mark tournaments from previous seasons as archived
 }
 
 export interface FeeSheet {

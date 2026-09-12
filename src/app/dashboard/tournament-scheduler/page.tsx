@@ -61,8 +61,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { cn } from "@/lib/utils";
 import { format, parse, isBefore, addDays } from "date-fns";
-import { Calendar as CalendarIcon, ExternalLink, PlusCircle, Wand2, Loader2, Trash2, Search, RefreshCw, Pencil, Link, LayoutGrid, List } from "lucide-react";
+import { Calendar as CalendarIcon, ExternalLink, PlusCircle, Wand2, Loader2, Trash2, Search, RefreshCw, Pencil, Link, LayoutGrid, List, Archive, ArchiveRestore } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Tournament, ScrapedTournament } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
@@ -105,6 +106,9 @@ export default function TournamentSchedulerPage() {
     if (typeof window === 'undefined') return 'card';
     return (localStorage.getItem('tournament-view-mode') as 'card' | 'list') || 'card';
   });
+
+  // Archive tab state
+  const [activeTab, setActiveTab] = React.useState<'active' | 'archived'>('active');
 
   const handleViewModeChange = (mode: 'card' | 'list') => {
     setViewMode(mode);
@@ -168,9 +172,32 @@ export default function TournamentSchedulerPage() {
     });
   }
 
+  const archiveTournament = (tournamentId: string, isArchived: boolean) => {
+    if (!firestore) return;
+    updateDoc(doc(firestore, 'tournaments', tournamentId), { isArchived }).catch(error => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: `tournaments/${tournamentId}`,
+        operation: 'update',
+        requestResourceData: { isArchived }
+      }));
+    });
+    toast({
+      title: isArchived ? "Tournament Archived" : "Tournament Unarchived",
+      description: isArchived
+        ? "The tournament has been moved to the archive."
+        : "The tournament has been restored to active tournaments.",
+    });
+  }
+
+  // Filter tournaments by active/archived status
+  const filteredTournaments = React.useMemo(() => {
+    if (!tournaments) return [];
+    return tournaments.filter(t => activeTab === 'archived' ? t.isArchived : !t.isArchived);
+  }, [tournaments, activeTab]);
+
   // Sort tournaments: upcoming first (by date), past tournaments last (by date, most recent first)
   const sortedTournaments = React.useMemo(() => {
-    if (!tournaments) return [];
+    if (!filteredTournaments) return [];
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -178,7 +205,7 @@ export default function TournamentSchedulerPage() {
     const future: Tournament[] = [];
     const past: Tournament[] = [];
 
-    tournaments.forEach(tournament => {
+    filteredTournaments.forEach(tournament => {
       const tournamentDate = parse(tournament.date, 'yyyy-MM-dd', new Date());
       if (isBefore(tournamentDate, today)) {
         past.push(tournament);
@@ -202,7 +229,7 @@ export default function TournamentSchedulerPage() {
     });
 
     return [...future, ...past];
-  }, [tournaments]);
+  }, [filteredTournaments]);
 
   // Redirect if not admin
   if (!isAuthLoading && user?.role !== 'admin') {
@@ -242,30 +269,43 @@ export default function TournamentSchedulerPage() {
         </div>
       </div>
 
-      {isLoading ? <Loader2 className="animate-spin m-auto" /> : (
-        sortedTournaments && sortedTournaments.length > 0 ? (
-          viewMode === 'card' ? (
-            <Accordion type="single" collapsible className="w-full space-y-4">
-              {sortedTournaments.map((tournament) => (
-                <TournamentItem key={tournament.id} tournament={tournament} onDelete={deleteTournament} onUpdate={updateTournament} />
-              ))}
-            </Accordion>
-          ) : (
-            <div className="space-y-2">
-              {sortedTournaments.map((tournament) => (
-                <TournamentListItem key={tournament.id} tournament={tournament} onDelete={deleteTournament} onUpdate={updateTournament} />
-              ))}
-            </div>
-          )
-        ) : (
-          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center h-96">
-              <h3 className="text-xl font-semibold font-headline">No Tournaments Yet</h3>
-              <p className="text-muted-foreground mt-2">
-                Create your first tournament to get started.
-              </p>
-            </div>
-        )
-      )}
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'active' | 'archived')} className="w-full">
+        <TabsList>
+          <TabsTrigger value="active">Active Tournaments</TabsTrigger>
+          <TabsTrigger value="archived">Archived</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value={activeTab} className="mt-6">
+          {isLoading ? <Loader2 className="animate-spin m-auto" /> : (
+            sortedTournaments && sortedTournaments.length > 0 ? (
+              viewMode === 'card' ? (
+                <Accordion type="single" collapsible className="w-full space-y-4">
+                  {sortedTournaments.map((tournament) => (
+                    <TournamentItem key={tournament.id} tournament={tournament} onDelete={deleteTournament} onUpdate={updateTournament} onArchive={archiveTournament} />
+                  ))}
+                </Accordion>
+              ) : (
+                <div className="space-y-2">
+                  {sortedTournaments.map((tournament) => (
+                    <TournamentListItem key={tournament.id} tournament={tournament} onDelete={deleteTournament} onUpdate={updateTournament} onArchive={archiveTournament} />
+                  ))}
+                </div>
+              )
+            ) : (
+              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center h-96">
+                  <h3 className="text-xl font-semibold font-headline">
+                    {activeTab === 'archived' ? 'No Archived Tournaments' : 'No Active Tournaments'}
+                  </h3>
+                  <p className="text-muted-foreground mt-2">
+                    {activeTab === 'archived'
+                      ? 'Tournaments you archive will appear here.'
+                      : 'Create your first tournament to get started.'}
+                  </p>
+                </div>
+            )
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -659,7 +699,7 @@ function EditTournamentDialog({ tournament, open, onOpenChange, onUpdate }: { to
 }
 
 
-function TournamentItem({ tournament, onDelete, onUpdate }: { tournament: Tournament, onDelete: (id: string) => void, onUpdate: (tournament: Tournament) => void }) {
+function TournamentItem({ tournament, onDelete, onUpdate, onArchive }: { tournament: Tournament, onDelete: (id: string) => void, onUpdate: (tournament: Tournament) => void, onArchive: (id: string, isArchived: boolean) => void }) {
     const [editOpen, setEditOpen] = React.useState(false);
 
     const registrationClosed = React.useMemo(() => {
@@ -710,6 +750,20 @@ function TournamentItem({ tournament, onDelete, onUpdate }: { tournament: Tourna
                   </Button>
                   <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setEditOpen(true); }}>
                       <Pencil className="mr-2 h-3 w-3" /> Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onArchive(tournament.id, !tournament.isArchived);
+                    }}
+                  >
+                    {tournament.isArchived ? (
+                      <><ArchiveRestore className="mr-2 h-3 w-3" /> Unarchive</>
+                    ) : (
+                      <><Archive className="mr-2 h-3 w-3" /> Archive</>
+                    )}
                   </Button>
                   <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -774,7 +828,7 @@ function TournamentItem({ tournament, onDelete, onUpdate }: { tournament: Tourna
     )
 }
 
-function TournamentListItem({ tournament, onDelete, onUpdate }: { tournament: Tournament, onDelete: (id: string) => void, onUpdate: (tournament: Tournament) => void }) {
+function TournamentListItem({ tournament, onDelete, onUpdate, onArchive }: { tournament: Tournament, onDelete: (id: string) => void, onUpdate: (tournament: Tournament) => void, onArchive: (id: string, isArchived: boolean) => void }) {
     const [editOpen, setEditOpen] = React.useState(false);
 
     const registrationClosed = React.useMemo(() => {
@@ -824,6 +878,9 @@ function TournamentListItem({ tournament, onDelete, onUpdate }: { tournament: To
             </Button>
             <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
               <Pencil className="h-3 w-3" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => onArchive(tournament.id, !tournament.isArchived)}>
+              {tournament.isArchived ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
