@@ -189,6 +189,63 @@ export default function TournamentSchedulerPage() {
     });
   }
 
+  // Auto-archive tournaments from previous school years
+  React.useEffect(() => {
+    if (!firestore || !tournaments || tournaments.length === 0) return;
+
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+
+    // Calculate the start of the current school year (August 1)
+    const schoolYearStart = currentMonth >= 7
+      ? new Date(currentYear, 7, 1) // August 1 of current year
+      : new Date(currentYear - 1, 7, 1); // August 1 of previous year
+
+    schoolYearStart.setHours(0, 0, 0, 0);
+
+    // Only run auto-archive after July 1st
+    const julyFirst = new Date(currentYear, 6, 1); // July 1st of current year
+    julyFirst.setHours(0, 0, 0, 0);
+
+    if (today < julyFirst) return;
+
+    // Check if we've already auto-archived this year
+    const lastAutoArchiveYear = localStorage.getItem('lastAutoArchiveYear');
+    const currentYearStr = currentYear.toString();
+
+    if (lastAutoArchiveYear === currentYearStr) return;
+
+    // Find tournaments from before the current school year that aren't archived
+    const tournamentsToArchive = tournaments.filter(t => {
+      if (t.isArchived) return false; // Already archived
+      const tournamentDate = parse(t.date, 'yyyy-MM-dd', new Date());
+      return tournamentDate < schoolYearStart;
+    });
+
+    if (tournamentsToArchive.length === 0) {
+      localStorage.setItem('lastAutoArchiveYear', currentYearStr);
+      return;
+    }
+
+    // Archive them
+    const archivePromises = tournamentsToArchive.map(t =>
+      updateDoc(doc(firestore, 'tournaments', t.id), { isArchived: true })
+    );
+
+    Promise.all(archivePromises)
+      .then(() => {
+        localStorage.setItem('lastAutoArchiveYear', currentYearStr);
+        toast({
+          title: "Tournaments Auto-Archived",
+          description: `${tournamentsToArchive.length} tournament(s) from the previous school year have been automatically archived.`,
+        });
+      })
+      .catch(error => {
+        console.error('Auto-archive failed:', error);
+      });
+  }, [firestore, tournaments, toast]);
+
   // Filter tournaments by active/archived status
   const filteredTournaments = React.useMemo(() => {
     if (!tournaments) return [];

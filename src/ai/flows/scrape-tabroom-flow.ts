@@ -25,6 +25,21 @@ const ScrapeTabroomOutputSchema = z.array(ScrapedTournamentSchema);
 // The previous web scraping attempts were unreliable.
 async function getTabroomTournaments(): Promise<ScrapedTournament[]> {
     const allTournaments: (Omit<ScrapedTournamentType, 'registrationCloseDate'> & { registrationCloseDate: string })[] = [
+      { name: 'Jordan High School TFA NIETOC Tournament', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36800', date: '8/28 - 8/29', registrationCloseDate: '2026-08-20' },
+      { name: 'Lewisville High School TFA Invitational', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36801', date: '9/6 - 9/7', registrationCloseDate: '2026-08-30' },
+      { name: 'Greenhill Fall Classic TFA NIETOC', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36802', date: '9/6 - 9/7', registrationCloseDate: '2026-08-30' },
+      { name: 'The Grapevine Classic', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36113', date: '9/12 - 9/13', registrationCloseDate: '2026-09-03' },
+      { name: 'Plano West UIL Classic', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36235', date: '9/13', registrationCloseDate: '2026-09-09' },
+      { name: 'Flower Mound TFA NIETOC', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36094', date: '9/19 - 9/20', registrationCloseDate: '2026-09-12' },
+      { name: 'Hockaday TFA and NIETOC Tournament', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36803', date: '9/19 - 9/20', registrationCloseDate: '2026-09-10' },
+      { name: 'The Jasper HS Swing', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36219', date: '9/26 - 9/27', registrationCloseDate: '2026-09-19' },
+      { name: 'Pflugerville TFA Invitational', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36589', date: '9/27', registrationCloseDate: '2026-09-22' },
+      { name: 'UT Austin Longhorn Classic', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36815', date: '10/3 - 10/5', registrationCloseDate: '2026-09-23' },
+      { name: 'Lindale TFA/NIETOC', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36655', date: '10/3 - 10/4', registrationCloseDate: '2026-09-29' },
+      { name: 'Hebron TFA', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36214', date: '10/4', registrationCloseDate: '2026-09-29' },
+      { name: 'Clear Brook TFA Fall Classic', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36665', date: '10/4', registrationCloseDate: '2026-09-29' },
+      { name: 'Stratford HS TFA IQT', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37007', date: '10/10 - 10/11', registrationCloseDate: '2026-10-01' },
+      { name: 'Dulles TFA Tournament', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36951', date: '10/11', registrationCloseDate: '2026-10-06'},
       { name: 'University of Houston College Debate Tournament', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36816', date: '10/11 - 10/13', registrationCloseDate: '2026-10-01' },
       { name: 'Tyler Legacy HS UIL Debate Meet Congress Workshop', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36801', date: '10/13', registrationCloseDate: '2026-10-08' },
       { name: 'Wild Westlake Chap Classic', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36789', date: '10/17 - 10/18', registrationCloseDate: '2026-10-14' },
@@ -108,19 +123,7 @@ async function getTabroomTournaments(): Promise<ScrapedTournament[]> {
       { name: 'MABANK MAD DASH', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36806', date: '3/7', registrationCloseDate: '2026-12-31' },
       { name: '9th Annual Miller Grove Invitational Academic Meet', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37609', date: '3/18', registrationCloseDate: '2026-12-31' },
       { name: 'Bluebonnet World Schools International Debate Tournament 2026', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36305', date: '4/23 - 4/25', registrationCloseDate: '2026-12-31' },
-      { name: 'The Grapevine Classic', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36113', date: '9/12 - 9/13', registrationCloseDate: '2026-09-03' },
-      { name: 'Plano West UIL Classic', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36235', date: '9/13', registrationCloseDate: '2026-09-09' },
-      { name: 'Flower Mound TFA NIETOC', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36094', date: '9/19 - 9/20', registrationCloseDate: '2026-09-12' },
-      { name: 'Hockaday TFA and NIETOC Tournament', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36803', date: '9/19 - 9/20', registrationCloseDate: '2026-09-10' },
-      { name: 'The Jasper HS Swing', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36219', date: '9/26 - 9/27', registrationCloseDate: '2026-09-19' },
-      { name: 'Pflugerville TFA Invitational', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36589', date: '9/27', registrationCloseDate: '2026-09-22' },
-      { name: 'UT Austin Longhorn Classic', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36815', date: '10/3 - 10/5', registrationCloseDate: '2026-09-23' },
-      { name: 'Lindale TFA/NIETOC', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36655', date: '10/3 - 10/4', registrationCloseDate: '2026-09-29' },
-      { name: 'Hebron TFA', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36214', date: '10/4', registrationCloseDate: '2026-09-29' },
-      { name: 'Clear Brook TFA Fall Classic', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36665', date: '10/4', registrationCloseDate: '2026-09-29' },
-      { name: 'Stratford HS TFA IQT', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37007', date: '10/10 - 10/11', registrationCloseDate: '2026-10-01' },
-      { name: 'Tompkins Falcon Frenzie TFA', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36760', date: '10/18', registrationCloseDate: '2026-10-13' },
-      { name: 'Dulles TFA Tournament', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36951', date: '10/11', registrationCloseDate: '2026-10-06'}
+      { name: 'Tompkins Falcon Frenzie TFA', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36760', date: '10/18', registrationCloseDate: '2026-10-13' }
     ];
     
     const today = new Date();
