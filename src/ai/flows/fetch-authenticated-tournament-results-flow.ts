@@ -55,13 +55,16 @@ const RoundBallotSchema = z.object({
   roundName: z.string().describe("Round name like 'Round 1' or 'Quarterfinals'"),
   opponent: z.string().optional().nullable().describe("Opponent name/school"),
   result: z.enum(['win', 'loss', 'bye']).describe("Round result"),
-  judge: z.string().optional().nullable().describe("Judge name"),
-  judgeCount: z.number().optional().nullable().describe("Number of judges on panel"),
-  ballotsWon: z.number().optional().nullable().describe("Number of ballots won out of panel"),
+  judge: z.string().optional().nullable().describe("Judge name or comma-separated list of judges if panel"),
+  judgeCount: z.number().optional().nullable().describe("Number of judges on panel (for elimination rounds)"),
+  ballotsWon: z.number().optional().nullable().describe("Number of ballots won out of panel (e.g., 2 out of 3)"),
+  judgeDecisions: z.array(z.enum(['win', 'loss'])).optional().nullable().describe("Individual judge decisions for debate panels (e.g., ['win', 'win', 'loss'] means 2-1 decision)"),
+  judgeRanks: z.array(z.number()).optional().nullable().describe("Individual judge ranks for speech panels (e.g., [1, 2, 3])"),
+  cumulativeRank: z.number().optional().nullable().describe("Sum of all judge ranks for speech (determines placement - lower is better)"),
   speakerPoints: z.number().optional().nullable().describe("Speaker points in this round (sum for team events)"),
   individualSpeakerPoints: z.array(z.number()).optional().nullable().describe("Individual speaker points for each team member"),
   rfd: z.string().optional().nullable().describe("Reason for decision"),
-  ranks: z.string().optional().nullable().describe("For congress/speech events"),
+  ranks: z.string().optional().nullable().describe("DEPRECATED: Use judgeRanks/cumulativeRank instead"),
 });
 
 const StudentResultSchema = z.object({
@@ -148,7 +151,13 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
         opponent?: string;
         result: 'win' | 'loss' | 'bye';
         judge?: string;
+        judgeCount?: number;
+        ballotsWon?: number;
+        judgeDecisions?: ('win' | 'loss')[];
+        judgeRanks?: number[];
+        cumulativeRank?: number;
         speakerPoints?: number;
+        individualSpeakerPoints?: number[];
         rfd?: string;
         ranks?: string;
       }>;
@@ -208,7 +217,20 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
         // Check for Drop first (this indicates student withdrew from tournament)
         const isDrop = /drop|withdraw|wd/i.test(resultText);
 
-        // Check for W/L (debate events)
+        // Extract individual judge decisions for debate panels (e.g., "W W L" or "L L")
+        let judgeDecisions: ('win' | 'loss')[] | undefined = undefined;
+        let ballotsWon: number | undefined = undefined;
+        const individualDecisionsMatch = resultText.match(/([WL]\s*)+/g);
+        if (individualDecisionsMatch && judgeCount > 1) {
+          // Extract each W or L
+          const decisions = resultText.split(/\s+/).filter(d => d === 'W' || d === 'L');
+          if (decisions.length > 0) {
+            judgeDecisions = decisions.map(d => d === 'W' ? 'win' : 'loss');
+            ballotsWon = judgeDecisions.filter(d => d === 'win').length;
+          }
+        }
+
+        // Check for W/L (debate events) - overall result
         let result: 'win' | 'loss' | 'bye' = 'bye';
         if (resultCellHtml.includes('greentext') || resultCellHtml.match(/>W</)) {
           result = 'win';
@@ -230,8 +252,36 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
           speakerPoints = points.reduce((sum, p) => sum + p, 0);
         }
 
-        // For speech events, ranking might be in the result column (as plain number)
-        const rankingFromResult = parseFloat(resultText) || undefined;
+        // For speech events, extract individual judge ranks and cumulative rank
+        // Panel ranks appear as individual numbers (e.g., "1 2 3" with cumulative "6")
+        let judgeRanks: number[] | undefined = undefined;
+        let cumulativeRank: number | undefined = undefined;
+
+        // Check for multiple rank numbers (panel judging in speech)
+        const rankNumbers = resultText.match(/\b\d+\b/g);
+        if (rankNumbers && rankNumbers.length > 1 && judgeCount > 1) {
+          // If we have multiple numbers and multiple judges, these are likely individual ranks
+          const ranks = rankNumbers.map(r => parseInt(r)).filter(r => !isNaN(r) && r > 0);
+          if (ranks.length > 1) {
+            judgeRanks = ranks;
+            cumulativeRank = ranks.reduce((sum, r) => sum + r, 0);
+          }
+        } else if (rankNumbers && rankNumbers.length === 1) {
+          // Single rank number (could be cumulative or single judge rank)
+          const rank = parseInt(rankNumbers[0]);
+          if (!isNaN(rank) && rank > 0) {
+            if (judgeCount > 1) {
+              cumulativeRank = rank;
+            } else {
+              // Single judge, this is their rank
+              judgeRanks = [rank];
+              cumulativeRank = rank;
+            }
+          }
+        }
+
+        // Fallback: For speech events, ranking might be in the result column (as plain number)
+        const rankingFromResult = cumulativeRank || (parseFloat(resultText) || undefined);
 
         // Column 8: Feedback button (extract ballot ID)
         const feedbackCell = cells[8][1];
@@ -261,6 +311,10 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
             result,
             judge: judgeCell || undefined,
             judgeCount: judgeCount > 1 ? judgeCount : undefined,
+            ballotsWon: ballotsWon,
+            judgeDecisions: judgeDecisions,
+            judgeRanks: judgeRanks,
+            cumulativeRank: cumulativeRank,
             speakerPoints: speakerPoints,
             individualSpeakerPoints: individualSpeakerPoints,
             ranks: rankingFromResult !== undefined ? String(rankingFromResult) : undefined,
@@ -290,29 +344,12 @@ function parseTabroomData(data: string, schoolName: string): z.infer<typeof Stud
         ? pointsRounds.reduce((sum, r) => sum + (r.speakerPoints || 0), 0) / pointsRounds.length
         : undefined;
 
-      // Determine elimination record and add ballot counts
+      // Determine elimination record - ballots are already calculated during parsing
       let elimRecord = null;
-      const elimRoundsWithBallots = elimRounds.map(round => {
-        let ballotsWon: number | undefined = undefined;
-
-        // For panel rounds, calculate ballots won
-        if (round.judgeCount && round.judgeCount > 1) {
-          if (round.result === 'loss') {
-            ballotsWon = 0; // Lost all ballots
-          } else if (round.result === 'win') {
-            // Won majority (we don't have exact data, so assume minimum to win)
-            ballotsWon = Math.ceil(round.judgeCount / 2);
-          }
-        } else if (round.judgeCount === 1) {
-          // Single judge: 1-0 or 0-1
-          ballotsWon = round.result === 'win' ? 1 : 0;
-        }
-
-        return {
-          ...round,
-          ballotsWon,
-        };
-      });
+      const elimRoundsWithBallots = elimRounds.map(round => ({
+        ...round,
+        // Keep the ballotsWon, judgeDecisions, judgeRanks, and cumulativeRank from parsing
+      }));
 
       if (elimRounds.length > 0) {
         const lastElimRound = elimRounds[elimRounds.length - 1];

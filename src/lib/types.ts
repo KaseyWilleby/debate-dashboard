@@ -306,13 +306,16 @@ export interface RoundBallot {
   roundName: string; // e.g., "Round 1", "Quarterfinals"
   opponent?: string; // Opponent name/school
   result: 'win' | 'loss' | 'bye'; // Round result
-  judge?: string; // Judge name
+  judge?: string; // Judge name (or list of judges if panel)
   judgeCount?: number; // Number of judges on panel (for elimination rounds)
-  ballotsWon?: number; // Number of ballots won (e.g., 0 out of 3)
+  ballotsWon?: number; // Number of ballots won (e.g., 2 out of 3)
+  judgeDecisions?: ('win' | 'loss')[]; // Individual judge decisions for debate panels (e.g., ['win', 'win', 'loss'])
+  judgeRanks?: number[]; // Individual judge ranks for speech panels (e.g., [1, 2, 3])
+  cumulativeRank?: number; // Sum of judge ranks for speech (e.g., 6 for ranks [1, 2, 3])
   speakerPoints?: number; // Points earned in this round (sum for team events)
   individualSpeakerPoints?: number[]; // Individual points for each team member (for team events like PF)
   rfd?: string; // Reason for decision (ballot feedback)
-  ranks?: string; // For congress/speech events
+  ranks?: string; // For congress/speech events (deprecated - use judgeRanks/cumulativeRank)
 }
 
 export interface TournamentResult {
