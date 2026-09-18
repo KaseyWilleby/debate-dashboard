@@ -53,6 +53,7 @@ async function getTabroomTournaments(): Promise<ScrapedTournament[]> {
       { name: 'Warrior Invitational at Albright Middle School Houston TX', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36621', date: '10/18', registrationCloseDate: '2026-10-08' },
       { name: 'DUDA High School Tournament 1', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37009', date: '10/18', registrationCloseDate: '2026-10-10' },
       { name: 'Athens UIL Invitational', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=35823', date: '10/18', registrationCloseDate: '2026-10-14' },
+      { name: 'Tompkins Falcon Frenzie TFA', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36760', date: '10/18', registrationCloseDate: '2026-10-13' },
       { name: 'Warrior Middle School Debate Tournament Series 1 2025', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37628', date: '10/20', registrationCloseDate: '2026-10-20' },
       { name: '2nd Annual Eastlake Spooktacular Speech and Debate Tournament', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37120', date: '10/24 - 10/25', registrationCloseDate: '2026-10-20' },
       { name: 'DUDA Middle School Tournament 1', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37163', date: '10/25', registrationCloseDate: '2026-10-17' },
@@ -125,8 +126,7 @@ async function getTabroomTournaments(): Promise<ScrapedTournament[]> {
       { name: 'Lampasas Spring UIL FULL Academic Meet', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37228', date: '2/28', registrationCloseDate: '2026-12-31' },
       { name: 'MABANK MAD DASH', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36806', date: '3/7', registrationCloseDate: '2026-12-31' },
       { name: '9th Annual Miller Grove Invitational Academic Meet', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37609', date: '3/18', registrationCloseDate: '2026-12-31' },
-      { name: 'Bluebonnet World Schools International Debate Tournament 2026', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36305', date: '4/23 - 4/25', registrationCloseDate: '2026-12-31' },
-      { name: 'Tompkins Falcon Frenzie TFA', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36760', date: '10/18', registrationCloseDate: '2026-10-13' }
+      { name: 'Bluebonnet World Schools International Debate Tournament 2026', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36305', date: '4/23 - 4/25', registrationCloseDate: '2026-12-31' }
     ];
     
     const today = new Date();
