@@ -25,15 +25,19 @@ const ScrapeTabroomOutputSchema = z.array(ScrapedTournamentSchema);
 // The previous web scraping attempts were unreliable.
 async function getTabroomTournaments(): Promise<ScrapedTournament[]> {
     const allTournaments: (Omit<ScrapedTournamentType, 'registrationCloseDate'> & { registrationCloseDate: string })[] = [
-      { name: 'Jordan High School TFA NIETOC Tournament', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36800', date: '8/28 - 8/29', registrationCloseDate: '2026-08-20' },
+      { name: 'Jordan Warrior Classic', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=40376', date: '8/28 - 8/29', registrationCloseDate: '2026-08-20' },
       { name: 'Lewisville High School TFA Invitational', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36801', date: '9/6 - 9/7', registrationCloseDate: '2026-08-30' },
       { name: 'Greenhill Fall Classic TFA NIETOC', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36802', date: '9/6 - 9/7', registrationCloseDate: '2026-08-30' },
       { name: 'The Grapevine Classic', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36113', date: '9/12 - 9/13', registrationCloseDate: '2026-09-03' },
       { name: 'Plano West UIL Classic', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36235', date: '9/13', registrationCloseDate: '2026-09-09' },
+      { name: 'Seven Lakes Spartan Symposium TFA IQT', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=40213', date: '9/18 - 9/19', registrationCloseDate: '2026-09-10' },
       { name: 'Flower Mound TFA NIETOC', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36094', date: '9/19 - 9/20', registrationCloseDate: '2026-09-12' },
       { name: 'Hockaday TFA and NIETOC Tournament', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36803', date: '9/19 - 9/20', registrationCloseDate: '2026-09-10' },
+      { name: '50th Clear Lake Falcon Classic IQT', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36217', date: '9/20', registrationCloseDate: '2026-09-15' },
       { name: 'The Jasper HS Swing', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36219', date: '9/26 - 9/27', registrationCloseDate: '2026-09-19' },
       { name: 'Pflugerville TFA Invitational', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36589', date: '9/27', registrationCloseDate: '2026-09-22' },
+      { name: 'UNT John S Gossett Memorial', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=40331', date: '10/2 - 10/3', registrationCloseDate: '2026-09-25' },
+      { name: '2026 Princeton UIL Fall Classic', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=40292', date: '10/3', registrationCloseDate: '2026-09-28' },
       { name: 'UT Austin Longhorn Classic', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36815', date: '10/3 - 10/5', registrationCloseDate: '2026-09-23' },
       { name: 'Lindale TFA/NIETOC', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36655', date: '10/3 - 10/4', registrationCloseDate: '2026-09-29' },
       { name: 'Hebron TFA', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36214', date: '10/4', registrationCloseDate: '2026-09-29' },
@@ -50,7 +54,6 @@ async function getTabroomTournaments(): Promise<ScrapedTournament[]> {
       { name: 'DUDA High School Tournament 1', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37009', date: '10/18', registrationCloseDate: '2026-10-10' },
       { name: 'Athens UIL Invitational', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=35823', date: '10/18', registrationCloseDate: '2026-10-14' },
       { name: 'Warrior Middle School Debate Tournament Series 1 2025', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37628', date: '10/20', registrationCloseDate: '2026-10-20' },
-      { name: 'UNT John S Gossett Memorial', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36847', date: '10/24 - 10/25', registrationCloseDate: '2026-10-21' },
       { name: '2nd Annual Eastlake Spooktacular Speech and Debate Tournament', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37120', date: '10/24 - 10/25', registrationCloseDate: '2026-10-20' },
       { name: 'DUDA Middle School Tournament 1', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37163', date: '10/25', registrationCloseDate: '2026-10-17' },
       { name: '2025 Austin HS Top Dawg MS Tournament', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36617', date: '10/25', registrationCloseDate: '2026-10-21' },
