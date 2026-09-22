@@ -180,17 +180,17 @@ export default function DashboardLayout({
   const [activeHub, setActiveHub] = React.useState<Hub>('scheduler');
   const [isMounted, setIsMounted] = React.useState(false);
 
+  // Redirect superadmins to their own portal
+  useEffect(() => {
+    if (!isLoading && user?.role === 'superadmin') {
+      router.push('/superadmin/dashboard');
+    }
+  }, [user, isLoading, router]);
+
   // Check if user needs approval
   useEffect(() => {
     if (!isLoading && user && !user.approved && pathname !== `/${teamSlug}/dashboard/pending-approval`) {
       router.push(`/${teamSlug}/dashboard/pending-approval`);
-    }
-  }, [user, isLoading, pathname, router, teamSlug]);
-
-  // Redirect superadmins to team management
-  useEffect(() => {
-    if (!isLoading && user?.role === 'superadmin' && !pathname.includes('/team-management')) {
-      router.push(`/${teamSlug}/dashboard/team-management`);
     }
   }, [user, isLoading, pathname, router, teamSlug]);
 

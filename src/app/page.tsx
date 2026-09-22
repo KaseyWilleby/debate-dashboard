@@ -20,14 +20,17 @@ export default function Home() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
 
-  // If user is already logged in, redirect to their team dashboard
+  // If user is already logged in, redirect to their appropriate dashboard
   useEffect(() => {
     if (!isLoading && user) {
-      if (user.teamId) {
-        // User has a team, redirect to their dashboard
+      if (user.role === 'superadmin') {
+        // Superadmins go to the superadmin portal
+        router.push('/superadmin/dashboard');
+      } else if (user.teamId) {
+        // Regular users go to their team dashboard
         router.push(`/${user.teamId}/dashboard`);
-      } else if (user.email === 'kaseywilleby@gmail.com' || user.role === 'superadmin') {
-        // User doesn't have a teamId yet - needs to run migration
+      } else {
+        // User doesn't have a teamId yet - needs migration
         router.push('/cywoods/migrate-to-multi-tenant');
       }
     }
