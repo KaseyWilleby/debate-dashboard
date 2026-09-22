@@ -50,3 +50,6 @@ firestore-debug.log
 
 # claude
 .claude/
+
+# windows reserved files
+nul
