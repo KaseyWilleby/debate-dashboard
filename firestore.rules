@@ -38,10 +38,10 @@ service cloud.firestore {
      * Superadmins can manage all teams. Users can read their own team.
      */
     match /teams/{teamId} {
-      allow get: if isSignedIn() && (isSuperAdmin() || getUserTeamId() == teamId);
-      allow list: if isSuperAdmin();
-      allow create, delete: if isSuperAdmin();
-      allow update: if isSuperAdmin() || (isCoach() && getUserTeamId() == teamId);
+      allow get: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || getUserTeamId() == teamId);
+      allow list: if isSuperAdmin() || isSuperAdminEmail();
+      allow create, delete: if isSuperAdmin() || isSuperAdminEmail();
+      allow update: if isSuperAdmin() || isSuperAdminEmail() || (isCoach() && getUserTeamId() == teamId);
     }
 
     /**
@@ -55,8 +55,8 @@ service cloud.firestore {
       allow get: if isOwner(userId) || isSignedIn();
       allow list: if isSignedIn() || request.auth == null; // Allow authenticated users and unauthenticated username lookup for login
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isSuperAdmin() || (isCoach() && isSameTeam(resource.data.teamId));
-      allow delete: if isSuperAdmin();
+      allow update: if isOwner(userId) || isSuperAdmin() || isSuperAdminEmail() || (isCoach() && isSameTeam(resource.data.teamId));
+      allow delete: if isSuperAdmin() || isSuperAdminEmail();
     }
 
     /**
@@ -66,13 +66,15 @@ service cloud.firestore {
      * Users can book themselves as clients.
      */
     match /sessions/{sessionId} {
-      allow get: if isSignedIn() && (isSuperAdmin() || isSameTeam(resource.data.teamId));
+      allow get: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
       allow list: if isSignedIn();
-      allow create: if isSignedIn() &&
-        request.resource.data.hostId == request.auth.uid &&
-        request.resource.data.teamId == getUserTeamId();
+      allow create: if isSignedIn() && (
+        isSuperAdminEmail() ||
+        (request.resource.data.hostId == request.auth.uid && request.resource.data.teamId == getUserTeamId())
+      );
       allow update: if isSignedIn() && (
         isSuperAdmin() ||
+        isSuperAdminEmail() ||
         (isSameTeam(resource.data.teamId) && (
           resource.data.hostId == request.auth.uid ||
           resource.data.clientId == request.auth.uid ||
@@ -82,6 +84,7 @@ service cloud.firestore {
       );
       allow delete: if isSignedIn() && (
         isSuperAdmin() ||
+        isSuperAdminEmail() ||
         (isSameTeam(resource.data.teamId) && (resource.data.hostId == request.auth.uid || isCoach()))
       );
     }
@@ -92,10 +95,11 @@ service cloud.firestore {
      * Team members can read and update entries. Coaches/superadmins can manage all fields.
      */
     match /tournaments/{tournamentId} {
-      allow get, list: if isSignedIn() && (isSuperAdmin() || isSameTeam(resource.data.teamId));
-      allow create, delete: if isSignedIn() && (isSuperAdmin() || (isCoach() && request.resource.data.teamId == getUserTeamId()));
+      allow get, list: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
+      allow create, delete: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || (isCoach() && request.resource.data.teamId == getUserTeamId()));
       allow update: if isSignedIn() && (
         isSuperAdmin() ||
+        isSuperAdminEmail() ||
         (isSameTeam(resource.data.teamId) && isCoach()) ||
         (isSameTeam(resource.data.teamId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['entries', 'paperwork', 'feeSheet']))
       );
@@ -137,10 +141,10 @@ service cloud.firestore {
      * @path /debateCases/{caseId}
      */
     match /debateCases/{caseId} {
-      allow get, list: if isSignedIn() && (isSuperAdmin() || isSameTeam(resource.data.teamId));
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.teamId == getUserTeamId();
-      allow update: if isSignedIn() && (isSuperAdmin() || (isSameTeam(resource.data.teamId) && (resource.data.ownerId == request.auth.uid || isCoach())));
-      allow delete: if isSignedIn() && (isSuperAdmin() || (isSameTeam(resource.data.teamId) && (resource.data.ownerId == request.auth.uid || isCoach())));
+      allow get, list: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
+      allow create: if isSignedIn() && (isSuperAdminEmail() || (request.resource.data.ownerId == request.auth.uid && request.resource.data.teamId == getUserTeamId()));
+      allow update: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || (isSameTeam(resource.data.teamId) && (resource.data.ownerId == request.auth.uid || isCoach())));
+      allow delete: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || (isSameTeam(resource.data.teamId) && (resource.data.ownerId == request.auth.uid || isCoach())));
     }
 
     /**
@@ -148,8 +152,8 @@ service cloud.firestore {
      * @path /debateTopics/{topicId}
      */
     match /debateTopics/{topicId} {
-      allow get, list: if isSignedIn() && (isSuperAdmin() || isSameTeam(resource.data.teamId));
-      allow create, update, delete: if isSignedIn() && (isSuperAdmin() || (isCoach() && request.resource.data.teamId == getUserTeamId()));
+      allow get, list: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
+      allow create, update, delete: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || (isCoach() && request.resource.data.teamId == getUserTeamId()));
     }
 
     /**
@@ -157,8 +161,8 @@ service cloud.firestore {
      * @path /congressDockets/{docketId}
      */
     match /congressDockets/{docketId} {
-      allow get, list: if isSignedIn() && (isSuperAdmin() || isSameTeam(resource.data.teamId));
-      allow create, update, delete: if isSignedIn() && (isSuperAdmin() || (isCoach() && request.resource.data.teamId == getUserTeamId()));
+      allow get, list: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
+      allow create, update, delete: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || (isCoach() && request.resource.data.teamId == getUserTeamId()));
     }
 
     /**
@@ -166,13 +170,15 @@ service cloud.firestore {
      * @path /practiceRounds/{roundId}
      */
     match /practiceRounds/{roundId} {
-      allow get, list: if isSignedIn() && (isSuperAdmin() || isSameTeam(resource.data.teamId));
+      allow get, list: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
       allow create: if isSignedIn() && (
         isSuperAdmin() ||
+        isSuperAdminEmail() ||
         (request.resource.data.teamId == getUserTeamId() && (request.auth.uid in request.resource.data.participants || isCoach()))
       );
       allow update, delete: if isSignedIn() && (
         isSuperAdmin() ||
+        isSuperAdminEmail() ||
         (isSameTeam(resource.data.teamId) && (request.auth.uid in resource.data.participants || isCoach()))
       );
     }
@@ -183,16 +189,18 @@ service cloud.firestore {
      * Team members can read results from their team. Coaches/superadmins can manage results.
      */
     match /tournamentResults/{resultId} {
-      allow get, list: if isSignedIn() && (isSuperAdmin() || isSameTeam(resource.data.teamId));
+      allow get, list: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
       allow create: if isSignedIn() && (
         isSuperAdmin() ||
+        isSuperAdminEmail() ||
         (request.resource.data.teamId == getUserTeamId() && (request.resource.data.userId == request.auth.uid || isCoach()))
       );
       allow update: if isSignedIn() && (
         isSuperAdmin() ||
+        isSuperAdminEmail() ||
         (isSameTeam(resource.data.teamId) && (resource.data.userId == request.auth.uid || isCoach()))
       );
-      allow delete: if isSignedIn() && (isSuperAdmin() || (isSameTeam(resource.data.teamId) && isCoach()));
+      allow delete: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || (isSameTeam(resource.data.teamId) && isCoach()));
     }
 
     // ---- Helper functions ----
@@ -220,6 +228,14 @@ service cloud.firestore {
      */
     function isSuperAdmin() {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+    }
+
+    /**
+     * @description Checks if the user is a specific superadmin email (for migration purposes).
+     * @return {boolean} True if the user is the superadmin email, false otherwise.
+     */
+    function isSuperAdminEmail() {
+      return isSignedIn() && request.auth.token.email == 'kaseywilleby@gmail.com';
     }
 
     /**

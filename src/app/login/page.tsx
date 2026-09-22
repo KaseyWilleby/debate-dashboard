@@ -23,8 +23,14 @@ export default function LoginPage() {
 
   // Redirect to team dashboard if user is already logged in
   useEffect(() => {
-    if (!authLoading && user?.teamId) {
-      router.push(`/${user.teamId}/dashboard/welcome`);
+    if (!authLoading && user) {
+      if (user.teamId) {
+        // User has a team, redirect to their dashboard
+        router.push(`/${user.teamId}/dashboard/welcome`);
+      } else if (user.email === 'kaseywilleby@gmail.com' || user.role === 'superadmin') {
+        // User doesn't have a teamId yet - needs to run migration
+        router.push('/cywoods/migrate-to-multi-tenant');
+      }
     }
   }, [user, authLoading, router]);
 

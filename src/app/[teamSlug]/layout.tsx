@@ -1,30 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { useFirebase } from "@/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/firebase/client-config";
 import { Team } from "@/lib/types";
 import { Loader2 } from "lucide-react";
 
 interface TeamLayoutProps {
   children: React.ReactNode;
-  params: {
+  params: Promise<{
     teamSlug: string;
-  };
+  }>;
 }
 
 export default function TeamLayout({ children, params }: TeamLayoutProps) {
   const { user, isLoading: authLoading } = useAuth();
+  const { firestore } = useFirebase();
   const router = useRouter();
   const [team, setTeam] = useState<Team | null>(null);
   const [teamLoading, setTeamLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
 
+  // Unwrap params promise
+  const { teamSlug } = use(params);
+
   useEffect(() => {
     async function validateTeamAccess() {
-      if (authLoading) return;
+      if (authLoading || !firestore) return;
 
       if (!user) {
         router.push("/login");
@@ -32,12 +36,24 @@ export default function TeamLayout({ children, params }: TeamLayoutProps) {
       }
 
       try {
+        // Check if this is the migration route - allow access for superadmins even if team doesn't exist
+        const isMigrationRoute = window.location.pathname.includes('/migrate-to-multi-tenant');
+        const isSuperAdmin = user.role === 'superadmin' || user.email === 'kaseywilleby@gmail.com';
+
+        if (isMigrationRoute && isSuperAdmin) {
+          // Allow superadmins to access migration page even if team doesn't exist yet
+          setTeam(null);
+          setAccessDenied(false);
+          setTeamLoading(false);
+          return;
+        }
+
         // First, try to find the team by slug
         // For now, we'll use a simple approach - we'll need to add a teams collection
         // For the MVP, we'll just check if the teamSlug matches the user's teamId
 
         // Fetch team document
-        const teamDoc = await getDoc(doc(db, "teams", params.teamSlug));
+        const teamDoc = await getDoc(doc(firestore, "teams", teamSlug));
 
         if (!teamDoc.exists()) {
           // Team doesn't exist
@@ -66,7 +82,7 @@ export default function TeamLayout({ children, params }: TeamLayoutProps) {
     }
 
     validateTeamAccess();
-  }, [user, authLoading, params.teamSlug, router]);
+  }, [user, authLoading, teamSlug, router, firestore]);
 
   if (authLoading || teamLoading) {
     return (
