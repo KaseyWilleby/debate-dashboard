@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { useFirebase } from "@/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -10,21 +10,17 @@ import { Loader2 } from "lucide-react";
 
 interface TeamLayoutProps {
   children: React.ReactNode;
-  params: Promise<{
-    teamSlug: string;
-  }>;
 }
 
-export default function TeamLayout({ children, params }: TeamLayoutProps) {
+export default function TeamLayout({ children }: TeamLayoutProps) {
   const { user, isLoading: authLoading } = useAuth();
   const { firestore } = useFirebase();
   const router = useRouter();
+  const params = useParams();
+  const teamSlug = params?.teamSlug as string;
   const [team, setTeam] = useState<Team | null>(null);
   const [teamLoading, setTeamLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
-
-  // Unwrap params promise
-  const { teamSlug } = use(params);
 
   useEffect(() => {
     async function validateTeamAccess() {
