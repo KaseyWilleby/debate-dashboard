@@ -32,6 +32,7 @@ const statusColors: Record<SessionStatus, string> = {
 export default function SessionDetailPage() {
   const params = useParams();
   const id = params.id as string;
+  const teamSlug = params?.teamSlug as string;
   const { toast } = useToast();
   const { firestore } = useFirebase();
   const { user, isLoading: isAuthLoading } = useAuth();
@@ -204,7 +205,7 @@ export default function SessionDetailPage() {
     <div className="flex flex-col gap-6">
       <div className="mb-4">
         <Button variant="outline" asChild>
-          <Link href="/dashboard/my-sessions">
+          <Link href={`/${teamSlug}/dashboard/my-sessions`}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to My Sessions
           </Link>

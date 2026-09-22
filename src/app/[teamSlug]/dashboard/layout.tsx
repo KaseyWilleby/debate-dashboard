@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useParams } from "next/navigation";
 import * as React from "react";
 import {
   SidebarProvider,
@@ -25,44 +25,44 @@ import { useEffect } from "react";
 
 type Hub = 'scheduler' | 'practice' | 'learning';
 
-const SchedulerNav = ({ pathname, isAdmin }: { pathname: string; isAdmin: boolean }) => {
+const SchedulerNav = ({ pathname, isAdmin, teamSlug }: { pathname: string; isAdmin: boolean; teamSlug: string }) => {
     return (
         <>
             <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === "/dashboard"} tooltip="Dashboard">
-                  <Link href="/dashboard"><LayoutDashboard /><span>Dashboard</span></Link>
+                <SidebarMenuButton asChild isActive={pathname === `/${teamSlug}/dashboard`} tooltip="Dashboard">
+                  <Link href={`/${teamSlug}/dashboard`}><LayoutDashboard /><span>Dashboard</span></Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/my-sessions")} tooltip="My Sessions">
-                  <Link href="/dashboard/my-sessions"><Briefcase /><span>My Sessions</span></Link>
+                <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/my-sessions`)} tooltip="My Sessions">
+                  <Link href={`/${teamSlug}/dashboard/my-sessions`}><Briefcase /><span>My Sessions</span></Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
 
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/session-manager")} tooltip="Session Manager">
-                <Link href="/dashboard/session-manager"><BookCopy /><span>Session Manager</span></Link>
+              <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/session-manager`)} tooltip="Session Manager">
+                <Link href={`/${teamSlug}/dashboard/session-manager`}><BookCopy /><span>Session Manager</span></Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
 
             {isAdmin && (
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/tournament-scheduler")} tooltip="Tournament Manager">
-                  <Link href="/dashboard/tournament-scheduler"><Calendar /><span>Tournament Manager</span></Link>
+                <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/tournament-scheduler`)} tooltip="Tournament Manager">
+                  <Link href={`/${teamSlug}/dashboard/tournament-scheduler`}><Calendar /><span>Tournament Manager</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
 
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/tournament-history")} tooltip="Tournament History">
-                <Link href="/dashboard/tournament-history"><Trophy /><span>Tournament History</span></Link>
+              <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/tournament-history`)} tooltip="Tournament History">
+                <Link href={`/${teamSlug}/dashboard/tournament-history`}><Trophy /><span>Tournament History</span></Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
 
             {!isAdmin && (
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/my-results")} tooltip="My Results">
-                  <Link href="/dashboard/my-results"><Trophy /><span>My Results</span></Link>
+                <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/my-results`)} tooltip="My Results">
+                  <Link href={`/${teamSlug}/dashboard/my-results`}><Trophy /><span>My Results</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
@@ -70,13 +70,13 @@ const SchedulerNav = ({ pathname, isAdmin }: { pathname: string; isAdmin: boolea
             {isAdmin && (
               <>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/tournament-results-import")} tooltip="Import Results">
-                    <Link href="/dashboard/tournament-results-import"><Download /><span>Import Results</span></Link>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/tournament-results-import`)} tooltip="Import Results">
+                    <Link href={`/${teamSlug}/dashboard/tournament-results-import`}><Download /><span>Import Results</span></Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/users")} tooltip="User Management">
-                    <Link href="/dashboard/users"><Users /><span>User Management</span></Link>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/users`)} tooltip="User Management">
+                    <Link href={`/${teamSlug}/dashboard/users`}><Users /><span>User Management</span></Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </>
@@ -85,83 +85,83 @@ const SchedulerNav = ({ pathname, isAdmin }: { pathname: string; isAdmin: boolea
     );
 };
 
-const PracticeNav = ({ pathname, isAdmin }: { pathname: string; isAdmin: boolean }) => (
+const PracticeNav = ({ pathname, isAdmin, teamSlug }: { pathname: string; isAdmin: boolean; teamSlug: string }) => (
   <>
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/practice-dashboard")} tooltip="Dashboard">
-        <Link href="/dashboard/practice-dashboard"><LayoutDashboard /><span>Dashboard</span></Link>
+      <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/practice-dashboard`)} tooltip="Dashboard">
+        <Link href={`/${teamSlug}/dashboard/practice-dashboard`}><LayoutDashboard /><span>Dashboard</span></Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/analytics")} tooltip="Analytics">
-        <Link href="/dashboard/analytics"><BarChart3 /><span>Analytics</span></Link>
+      <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/analytics`)} tooltip="Analytics">
+        <Link href={`/${teamSlug}/dashboard/analytics`}><BarChart3 /><span>Analytics</span></Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/extemp-practice")} tooltip="Speech Events">
-        <Link href="/dashboard/extemp-practice"><Mic /><span>Speech Events</span></Link>
+      <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/extemp-practice`)} tooltip="Speech Events">
+        <Link href={`/${teamSlug}/dashboard/extemp-practice`}><Mic /><span>Speech Events</span></Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/student-congress")} tooltip="Student Congress">
-        <Link href="/dashboard/student-congress"><Flag /><span>Student Congress</span></Link>
+      <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/student-congress`)} tooltip="Student Congress">
+        <Link href={`/${teamSlug}/dashboard/student-congress`}><Flag /><span>Student Congress</span></Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/performance-events")} tooltip="Performance Events">
-        <Link href="/dashboard/performance-events"><Drama /><span>Performance Events</span></Link>
+      <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/performance-events`)} tooltip="Performance Events">
+        <Link href={`/${teamSlug}/dashboard/performance-events`}><Drama /><span>Performance Events</span></Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/debate-events")} tooltip="Debate Events">
-        <Link href="/dashboard/debate-events"><Gavel /><span>Debate Events</span></Link>
+      <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/debate-events`)} tooltip="Debate Events">
+        <Link href={`/${teamSlug}/dashboard/debate-events`}><Gavel /><span>Debate Events</span></Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
     {isAdmin && (
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/video-dashboard")} tooltip="Video Dashboard">
-          <Link href="/dashboard/video-dashboard"><Video /><span>Video Dashboard</span></Link>
+        <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/video-dashboard`)} tooltip="Video Dashboard">
+          <Link href={`/${teamSlug}/dashboard/video-dashboard`}><Video /><span>Video Dashboard</span></Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
     )}
   </>
 );
 
-const LearningNav = ({ pathname }: { pathname: string }) => (
+const LearningNav = ({ pathname, teamSlug }: { pathname: string; teamSlug: string }) => (
     <>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={pathname === "/dashboard/learning-hub"} tooltip="Learning Hub">
-          <Link href="/dashboard/learning-hub"><BrainCircuit /><span>Learning Hub</span></Link>
+        <SidebarMenuButton asChild isActive={pathname === `/${teamSlug}/dashboard/learning-hub`} tooltip="Learning Hub">
+          <Link href={`/${teamSlug}/dashboard/learning-hub`}><BrainCircuit /><span>Learning Hub</span></Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/learning-hub/platforms")} tooltip="Platform Guides">
-          <Link href="/dashboard/learning-hub/platforms"><Globe /><span>Platform Guides</span></Link>
+        <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/learning-hub/platforms`)} tooltip="Platform Guides">
+          <Link href={`/${teamSlug}/dashboard/learning-hub/platforms`}><Globe /><span>Platform Guides</span></Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/learning-hub/standing-rules")} tooltip="Standing Rules">
-          <Link href="/dashboard/learning-hub/standing-rules"><FileText /><span>Standing Rules</span></Link>
+        <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/learning-hub/standing-rules`)} tooltip="Standing Rules">
+          <Link href={`/${teamSlug}/dashboard/learning-hub/standing-rules`}><FileText /><span>Standing Rules</span></Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/learning-hub/debate")} tooltip="Debate Events">
-          <Link href="/dashboard/learning-hub/debate"><Gavel /><span>Debate</span></Link>
+        <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/learning-hub/debate`)} tooltip="Debate Events">
+          <Link href={`/${teamSlug}/dashboard/learning-hub/debate`}><Gavel /><span>Debate</span></Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/learning-hub/speech")} tooltip="Speech Events">
-          <Link href="/dashboard/learning-hub/speech"><Mic /><span>Speech</span></Link>
+        <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/learning-hub/speech`)} tooltip="Speech Events">
+          <Link href={`/${teamSlug}/dashboard/learning-hub/speech`}><Mic /><span>Speech</span></Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/learning-hub/interp")} tooltip="Interpretation Events">
-          <Link href="/dashboard/learning-hub/interp"><Drama /><span>Interp</span></Link>
+        <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/learning-hub/interp`)} tooltip="Interpretation Events">
+          <Link href={`/${teamSlug}/dashboard/learning-hub/interp`}><Drama /><span>Interp</span></Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={pathname.startsWith("/dashboard/learning-hub/congress")} tooltip="Student Congress">
-          <Link href="/dashboard/learning-hub/congress"><Flag /><span>Congress</span></Link>
+        <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/learning-hub/congress`)} tooltip="Student Congress">
+          <Link href={`/${teamSlug}/dashboard/learning-hub/congress`}><Flag /><span>Congress</span></Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
     </>
@@ -174,14 +174,16 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const params = useParams();
+  const teamSlug = params?.teamSlug as string;
   const { user, isLoading } = useAuth();
   const [activeHub, setActiveHub] = React.useState<Hub>('scheduler');
   const [isMounted, setIsMounted] = React.useState(false);
 
   // Check if user needs approval
   useEffect(() => {
-    if (!isLoading && user && !user.approved && pathname !== '/dashboard/pending-approval') {
-      router.push('/dashboard/pending-approval');
+    if (!isLoading && user && !user.approved && pathname !== `/${teamSlug}/dashboard/pending-approval`) {
+      router.push(`/${teamSlug}/dashboard/pending-approval`);
     }
   }, [user, isLoading, pathname, router]);
 
@@ -200,11 +202,11 @@ export default function DashboardLayout({
 
         // Navigate to the first page of the selected hub
         if (hub === 'scheduler') {
-          router.push('/dashboard');
+          router.push(`/${teamSlug}/dashboard`);
         } else if (hub === 'practice') {
-          router.push('/dashboard/practice-dashboard');
+          router.push(`/${teamSlug}/dashboard/practice-dashboard`);
         } else if (hub === 'learning') {
-          router.push('/dashboard/learning-hub');
+          router.push(`/${teamSlug}/dashboard/learning-hub`);
         }
     }
   }
@@ -246,9 +248,9 @@ export default function DashboardLayout({
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
-              {activeHub === 'scheduler' && <SchedulerNav pathname={pathname} isAdmin={user?.role === 'admin'} />}
-              {activeHub === 'practice' && <PracticeNav pathname={pathname} isAdmin={user?.role === 'admin'} />}
-              {activeHub === 'learning' && <LearningNav pathname={pathname} />}
+              {activeHub === 'scheduler' && <SchedulerNav pathname={pathname} isAdmin={user?.role === 'admin' || user?.role === 'coach'} teamSlug={teamSlug} />}
+              {activeHub === 'practice' && <PracticeNav pathname={pathname} isAdmin={user?.role === 'admin' || user?.role === 'coach'} teamSlug={teamSlug} />}
+              {activeHub === 'learning' && <LearningNav pathname={pathname} teamSlug={teamSlug} />}
             </SidebarMenu>
           </SidebarContent>
         </Sidebar>

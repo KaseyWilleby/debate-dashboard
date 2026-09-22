@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Info, Users, ArrowRight, Calendar, Gavel, Video, Mic, BrainCircuit, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { useAuth } from "@/contexts/auth-context";
@@ -16,6 +16,8 @@ import { useAuth } from "@/contexts/auth-context";
 type Hub = 'scheduler' | 'practice' | 'learning';
 
 export default function DashboardPage() {
+  const params = useParams();
+  const teamSlug = params?.teamSlug as string;
   const [activeHub, setActiveHub] = React.useState<Hub | null>(null);
   const { user } = useAuth();
   const { firestore } = useFirebase();
@@ -96,7 +98,7 @@ export default function DashboardPage() {
                   );
                 })}
                 <Button asChild variant="outline" className="w-full mt-2">
-                  <Link href="/dashboard/tournament-signup">View All Tournaments</Link>
+                  <Link href={`/${teamSlug}/dashboard/tournament-signup`}>View All Tournaments</Link>
                 </Button>
               </div>
             ) : (
@@ -107,7 +109,7 @@ export default function DashboardPage() {
                   Navigate to the Tournament Sign Up page to view events.
                 </p>
                 <Button asChild className="mt-4">
-                  <Link href="/dashboard/tournament-signup">View Tournaments</Link>
+                  <Link href={`/${teamSlug}/dashboard/tournament-signup`}>View Tournaments</Link>
                 </Button>
               </div>
             )}
@@ -127,7 +129,7 @@ export default function DashboardPage() {
                     Go to My Sessions to see your schedule.
                   </p>
                    <Button asChild className="mt-4">
-                    <Link href="/dashboard/my-sessions">View My Sessions</Link>
+                    <Link href={`/${teamSlug}/dashboard/my-sessions`}>View My Sessions</Link>
                 </Button>
               </div>
           </CardContent>
@@ -152,7 +154,7 @@ export default function DashboardPage() {
                         Go to a practice page to record a speech.
                     </p>
                      <Button asChild className="mt-4">
-                        <Link href="/dashboard/extemp-practice">Go to Practice</Link>
+                        <Link href={`/${teamSlug}/dashboard/extemp-practice`}>Go to Practice</Link>
                     </Button>
                 </div>
             </CardContent>
@@ -171,7 +173,7 @@ export default function DashboardPage() {
                     Go to the Debate Events page to start practicing.
                 </p>
                  <Button asChild className="mt-4">
-                    <Link href="/dashboard/debate-events">Go to Debate Events</Link>
+                    <Link href={`/${teamSlug}/dashboard/debate-events`}>Go to Debate Events</Link>
                 </Button>
               </div>
           </CardContent>
@@ -195,7 +197,7 @@ export default function DashboardPage() {
                         Select a category from the sidebar to start learning.
                     </p>
                     <Button asChild className="mt-4">
-                        <Link href="/dashboard/learning-hub">Go to Learning Hub</Link>
+                        <Link href={`/${teamSlug}/dashboard/learning-hub`}>Go to Learning Hub</Link>
                     </Button>
                 </div>
             </CardContent>

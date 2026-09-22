@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -231,6 +232,8 @@ function ResultCard({ result, matched }: { result: any; matched?: boolean }) {
 }
 
 export default function TournamentResultsImportPage() {
+  const params = useParams();
+  const teamSlug = params?.teamSlug as string;
   const { user } = useAuth();
   const { firestore } = useFirebase();
   const { toast } = useToast();
@@ -581,7 +584,7 @@ export default function TournamentResultsImportPage() {
                   Please add your Tabroom.com login credentials in Settings to enable tournament results import. Your credentials are stored securely and only used to fetch team results.
                 </p>
                 <Button asChild className="mt-3" size="sm">
-                  <a href="/dashboard/settings">Go to Settings</a>
+                  <a href={`/${teamSlug}/dashboard/settings`}>Go to Settings</a>
                 </Button>
               </div>
             </div>
