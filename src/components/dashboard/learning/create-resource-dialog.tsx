@@ -26,7 +26,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { useLearningResources } from '@/app/dashboard/learning-hub/layout';
+import { useLearningResources } from '@/app/[teamSlug]/dashboard/learning-hub/layout';
 import type { LearningResource } from '@/lib/learning-resources';
 
 const resourceSchema = z.object({

@@ -6,7 +6,7 @@ import { useParams, notFound, useRouter } from 'next/navigation';
 import { ResourceCard } from '@/components/dashboard/learning/resource-card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import { useLearningResources } from '@/app/dashboard/learning-hub/layout';
+import { useLearningResources } from '@/app/[teamSlug]/dashboard/learning-hub/layout';
 
 export default function ResourceDetailsPage() {
     const params = useParams();
