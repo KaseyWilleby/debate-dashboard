@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,10 +15,18 @@ import { useFirebase } from "@/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
 export default function LoginPage() {
-  const { login, signUp } = useAuth();
+  const { login, signUp, user, isLoading: authLoading } = useAuth();
   const { firestore } = useFirebase();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Redirect to team dashboard if user is already logged in
+  useEffect(() => {
+    if (!authLoading && user?.teamId) {
+      router.push(`/${user.teamId}/dashboard/welcome`);
+    }
+  }, [user, authLoading, router]);
 
   // Login form state
   const [loginEmailOrUsername, setLoginEmailOrUsername] = useState("");

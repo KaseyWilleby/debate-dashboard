@@ -3,12 +3,12 @@ import type { User, Session, CongressDocket } from '@/lib/types';
 import { addDays, format } from 'date-fns';
 
 export const users: User[] = [
-  { id: '1', name: 'Admin Adam', username: 'admin', email: 'admin@example.com', role: 'admin', avatarUrl: '' },
-  { id: '2', name: 'Varsity Val', username: 'varsity', email: 'varsity@example.com', role: 'varsity', avatarUrl: '' },
-  { id: '3', name: 'Novice Nick', username: 'novice', email: 'novice@example.com', role: 'novice', avatarUrl: '' },
-  { id: '4', name: 'Varsity Vera', username: 'vera', email: 'vera@example.com', role: 'varsity', avatarUrl: '' },
-  { id: '5', name: 'Novice Nate', username: 'nate', email: 'nate@example.com', role: 'novice', avatarUrl: '' },
-  { id: '6', name: 'Kasey Willeby', username: 'Kasey.Willeby', email: 'Kasey.Willeby@cfisd.net', role: 'admin', avatarUrl: '' },
+  { id: '1', name: 'Coach Adam', username: 'coach', email: 'coach@example.com', role: 'coach', avatarUrl: '', teamId: 'cywoods', approved: true },
+  { id: '2', name: 'Varsity Val', username: 'varsity', email: 'varsity@example.com', role: 'varsity', avatarUrl: '', teamId: 'cywoods', approved: true },
+  { id: '3', name: 'Novice Nick', username: 'novice', email: 'novice@example.com', role: 'novice', avatarUrl: '', teamId: 'cywoods', approved: true },
+  { id: '4', name: 'Varsity Vera', username: 'vera', email: 'vera@example.com', role: 'varsity', avatarUrl: '', teamId: 'cywoods', approved: true },
+  { id: '5', name: 'Novice Nate', username: 'nate', email: 'nate@example.com', role: 'novice', avatarUrl: '', teamId: 'cywoods', approved: true },
+  { id: '6', name: 'Kasey Willeby', username: 'Kasey.Willeby', email: 'Kasey.Willeby@cfisd.net', role: 'superadmin', avatarUrl: '', teamId: 'cywoods', approved: true },
 ];
 
 export const sessions: Session[] = [];
@@ -16,6 +16,7 @@ export const sessions: Session[] = [];
 export const congressDockets: CongressDocket[] = [
   {
     id: 'docket_1',
+    teamId: 'cywoods',
     name: 'TFA State 2025 - Prelims',
     items: [
       { 
@@ -78,6 +79,7 @@ SECTION 5. This act shall take effect immediately upon passage.
   },
   {
     id: 'docket_2',
+    teamId: 'cywoods',
     name: 'NSDA Nationals 2025 - Finals',
     items: [
       { 
@@ -129,6 +131,7 @@ SECTION 5. This legislation will be implemented gradually, with new appointments
   },
   {
     id: 'docket_3',
+    teamId: 'cywoods',
     name: 'Practice Docket - Economic Policy',
     items: [
       { 

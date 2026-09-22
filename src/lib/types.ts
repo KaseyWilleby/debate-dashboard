@@ -1,6 +1,20 @@
 
+// Team types
+export interface Team {
+  id: string;
+  name: string;
+  slug: string; // URL-friendly identifier (e.g., 'cywoods')
+  displayName: string; // Full display name (e.g., 'Cypress Woods High School')
+  createdAt: string;
+  settings?: {
+    primaryColor?: string;
+    secondaryColor?: string;
+    logoUrl?: string;
+  };
+  isActive: boolean;
+}
 
-export type UserRole = 'admin' | 'varsity' | 'novice';
+export type UserRole = 'superadmin' | 'coach' | 'varsity' | 'novice';
 
 export interface User {
   id: string;
@@ -8,6 +22,7 @@ export interface User {
   username: string;
   email: string;
   role: UserRole;
+  teamId: string; // Reference to team this user belongs to
   avatarUrl: string;
   approved: boolean;
   studentId?: string;
@@ -30,6 +45,7 @@ export type PracticeRoom = 'Room A' | 'Room B' | 'Room C';
 
 export interface Session {
   id: string;
+  teamId: string; // Reference to team this session belongs to
   title: string;
   description: string;
   date: string;
@@ -75,6 +91,7 @@ export type PeriodLeaving = 'All Day' | '2nd' | '3rd' | '4th' | '5th' | '6th' | 
 
 export interface Tournament {
   id: string;
+  teamId: string; // Reference to team this tournament belongs to
   name: string;
   date: string;
   webpageUrl?: string;
@@ -168,6 +185,7 @@ export interface SpeechFeedback {
 
 export interface SavedSpeech {
     id: string;
+    teamId: string; // Reference to team this speech belongs to
     ownerId: string;
     topic: string;
     notes: string;
@@ -191,12 +209,14 @@ export interface CongressBill {
 
 export interface CongressDocket {
   id: string;
+  teamId: string; // Reference to team this docket belongs to
   name: string;
   items: CongressBill[];
 }
 
 export interface WrittenSpeech {
   id: string;
+  teamId: string; // Reference to team this speech belongs to
   ownerId: string;
   title: string;
   body: string;
@@ -231,6 +251,7 @@ export interface CaseBlock {
 
 export interface DebateCase {
   id: string;
+  teamId: string; // Reference to team this case belongs to
   name: string;
   ownerId: string;
   topicId: string;
@@ -255,6 +276,7 @@ export interface Ballot {
 
 export interface PracticeRound {
   id: string;
+  teamId: string; // Reference to team this round belongs to
   topic: string;
   type: DebateFormat;
   participants: string[];
@@ -270,6 +292,7 @@ export interface PracticeRound {
 
 export interface DebateTopic {
   id: string;
+  teamId: string; // Reference to team this topic belongs to
   resolution: string;
   type: DebateFormat;
   createdAt: string;
@@ -320,6 +343,7 @@ export interface RoundBallot {
 
 export interface TournamentResult {
   id: string;
+  teamId: string; // Reference to team this result belongs to
   tournamentId: string;
   tournamentName: string;
   studentName?: string; // Student name from Tabroom (for unmatched students)

@@ -22,28 +22,29 @@ export function initiateAnonymousSignIn(authInstance: Auth): void {
 }
 
 /** Initiate email/password sign-up (returns promise for error handling). */
-export function initiateEmailSignUp(authInstance: Auth, firestore: Firestore, email: string, password: string, name: string, role: UserRole, studentId?: string): Promise<void> {
+export function initiateEmailSignUp(authInstance: Auth, firestore: Firestore, email: string, password: string, name: string, role: UserRole, studentId?: string, teamId?: string): Promise<void> {
   return createUserWithEmailAndPassword(authInstance, email, password)
     .then(userCredential => {
         const user = userCredential.user;
         const userDocRef = doc(firestore, 'users', user.uid);
 
-        // Check if this is Mr. Willeby's account
+        // Check if this is Mr. Willeby's account (superadmin)
         const isMrWilleby = user.email?.toLowerCase() === 'kaseywilleby@gmail.com';
-        const finalRole = isMrWilleby ? 'admin' : role;
+        const finalRole = isMrWilleby ? 'superadmin' : role;
 
         const userData: any = {
             id: user.uid,
             name: name,
             email: user.email,
             role: finalRole,
+            teamId: teamId || 'cywoods', // Default to cywoods team for now
             username: name.replace(/\s+/g, '.'),
             avatarUrl: '',
-            approved: finalRole === 'admin' ? true : false
+            approved: (finalRole === 'superadmin' || finalRole === 'coach') ? true : false
         };
 
-        // Only add studentId for non-admin users (students)
-        if (finalRole !== 'admin' && studentId) {
+        // Only add studentId for student users (not superadmin/coach)
+        if (finalRole !== 'superadmin' && finalRole !== 'coach' && studentId) {
             userData.studentId = studentId;
         }
         return setDoc(userDocRef, userData)

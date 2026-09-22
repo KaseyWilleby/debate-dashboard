@@ -2,92 +2,119 @@
  * @fileoverview Firestore Security Rules for Debate Dashboard.
  *
  * Core Philosophy:
- * This ruleset enforces a role-based access control with admin privileges
- * and user-ownership model for user profiles.
+ * This ruleset enforces a multi-tenant role-based access control with team isolation.
+ * Superadmins can access all teams. Coaches can manage their team. Users can only access
+ * their own team's data.
  *
  * Data Structure:
- * - /users/{userId}: Stores individual user profiles
- * - /sessions/{sessionId}: Stores session data
- * - /tournaments/{tournamentId}: Stores tournament information
- * - /savedSpeeches/{speechId}: Stores user speeches
- * - /writtenSpeeches/{speechId}: Stores written speeches
- * - /debateCases/{caseId}: Stores debate cases
- * - /debateTopics/{topicId}: Stores debate topics
- * - /congressDockets/{docketId}: Stores congress dockets
- * - /practiceRounds/{roundId}: Stores practice rounds
- * - /tournamentResults/{resultId}: Stores tournament results
+ * - /teams/{teamId}: Stores team information
+ * - /users/{userId}: Stores individual user profiles (with teamId)
+ * - /sessions/{sessionId}: Stores session data (team-scoped)
+ * - /tournaments/{tournamentId}: Stores tournament information (team-scoped)
+ * - /savedSpeeches/{speechId}: Stores user speeches (team-scoped)
+ * - /writtenSpeeches/{speechId}: Stores written speeches (team-scoped)
+ * - /debateCases/{caseId}: Stores debate cases (team-scoped)
+ * - /debateTopics/{topicId}: Stores debate topics (team-scoped)
+ * - /congressDockets/{docketId}: Stores congress dockets (team-scoped)
+ * - /practiceRounds/{roundId}: Stores practice rounds (team-scoped)
+ * - /tournamentResults/{resultId}: Stores tournament results (team-scoped)
  *
  * Key Security Decisions:
- * - Admin users (role === 'admin') can list and read all users
- * - Users can only manage their own profile
- * - Admins can manage tournaments and global resources
- * - Users can manage their own content (speeches, cases, etc.)
+ * - Superadmin users (role === 'superadmin') can access ALL teams and data
+ * - Coach users (role === 'coach') can manage their own team's data and users
+ * - Varsity/Novice users can only access their own team's data
+ * - All data is team-scoped using teamId field
+ * - Users can only manage their own profile (except coaches/superadmins)
  *
- * Last updated: 2025-11-05
+ * Last updated: 2026-09-21
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
+     * @description Manages access to team documents.
+     * @path /teams/{teamId}
+     * Superadmins can manage all teams. Users can read their own team.
+     */
+    match /teams/{teamId} {
+      allow get: if isSignedIn() && (isSuperAdmin() || getUserTeamId() == teamId);
+      allow list: if isSuperAdmin();
+      allow create, delete: if isSuperAdmin();
+      allow update: if isSuperAdmin() || (isCoach() && getUserTeamId() == teamId);
+    }
+
+    /**
      * @description Manages access to user profiles.
      * @path /users/{userId}
-     * All authenticated users can list and read users (for display purposes).
+     * Superadmins can access all users. Coaches can access users in their team.
+     * Users can access other users in their team (for display purposes).
      * Unauthenticated users can query by username for login purposes.
      */
     match /users/{userId} {
       allow get: if isOwner(userId) || isSignedIn();
       allow list: if isSignedIn() || request.auth == null; // Allow authenticated users and unauthenticated username lookup for login
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
-      allow delete: if isOwner(userId) || isAdmin();
+      allow update: if isOwner(userId) || isSuperAdmin() || (isCoach() && isSameTeam(resource.data.teamId));
+      allow delete: if isSuperAdmin();
     }
 
     /**
      * @description Manages access to session documents.
      * @path /sessions/{sessionId}
-     * All authenticated users can list sessions. Hosts, clients, and admins can modify.
+     * Users can access sessions in their team. Hosts, clients, coaches, and superadmins can modify.
      * Users can book themselves as clients.
      */
     match /sessions/{sessionId} {
-      allow get: if isSignedIn();
+      allow get: if isSignedIn() && (isSuperAdmin() || isSameTeam(resource.data.teamId));
       allow list: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.hostId == request.auth.uid;
+      allow create: if isSignedIn() &&
+        request.resource.data.hostId == request.auth.uid &&
+        request.resource.data.teamId == getUserTeamId();
       allow update: if isSignedIn() && (
-        resource.data.hostId == request.auth.uid ||
-        resource.data.clientId == request.auth.uid ||
-        request.resource.data.clientId == request.auth.uid ||
-        isAdmin()
+        isSuperAdmin() ||
+        (isSameTeam(resource.data.teamId) && (
+          resource.data.hostId == request.auth.uid ||
+          resource.data.clientId == request.auth.uid ||
+          request.resource.data.clientId == request.auth.uid ||
+          isCoach()
+        ))
       );
-      allow delete: if isSignedIn() && (resource.data.hostId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (
+        isSuperAdmin() ||
+        (isSameTeam(resource.data.teamId) && (resource.data.hostId == request.auth.uid || isCoach()))
+      );
     }
 
     /**
      * @description Manages access to tournament documents.
      * @path /tournaments/{tournamentId}
-     * All authenticated users can read and update entries. Only admins can create, delete, and modify other fields.
+     * Team members can read and update entries. Coaches/superadmins can manage all fields.
      */
     match /tournaments/{tournamentId} {
-      allow get, list: if isSignedIn();
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin() || (
-        isSignedIn() &&
-        // Only allow updating the entries or paperwork field, not other tournament fields
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['entries', 'paperwork', 'feeSheet'])
+      allow get, list: if isSignedIn() && (isSuperAdmin() || isSameTeam(resource.data.teamId));
+      allow create, delete: if isSignedIn() && (isSuperAdmin() || (isCoach() && request.resource.data.teamId == getUserTeamId()));
+      allow update: if isSignedIn() && (
+        isSuperAdmin() ||
+        (isSameTeam(resource.data.teamId) && isCoach()) ||
+        (isSameTeam(resource.data.teamId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['entries', 'paperwork', 'feeSheet']))
       );
     }
 
     /**
      * @description Manages access to saved speeches.
      * @path /savedSpeeches/{speechId}
-     * Users can manage their own speeches. Shared speeches are readable.
+     * Team members can manage their own speeches. Shared speeches are readable within team.
      */
     match /savedSpeeches/{speechId} {
-      allow get: if isSignedIn() && (resource.data.ownerId == request.auth.uid || request.auth.uid in resource.data.get('sharedWith', []));
+      allow get: if isSignedIn() && (
+        isSuperAdmin() ||
+        (isSameTeam(resource.data.teamId) && (resource.data.ownerId == request.auth.uid || request.auth.uid in resource.data.get('sharedWith', [])))
+      );
       allow list: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
-      allow delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.teamId == getUserTeamId();
+      allow update: if isSignedIn() && (isSuperAdmin() || (isSameTeam(resource.data.teamId) && (resource.data.ownerId == request.auth.uid || isCoach())));
+      allow delete: if isSignedIn() && (isSuperAdmin() || (isSameTeam(resource.data.teamId) && (resource.data.ownerId == request.auth.uid || isCoach())));
     }
 
     /**
@@ -95,11 +122,14 @@ service cloud.firestore {
      * @path /writtenSpeeches/{speechId}
      */
     match /writtenSpeeches/{speechId} {
-      allow get: if isSignedIn() && (resource.data.ownerId == request.auth.uid || request.auth.uid in resource.data.get('sharedWith', []));
+      allow get: if isSignedIn() && (
+        isSuperAdmin() ||
+        (isSameTeam(resource.data.teamId) && (resource.data.ownerId == request.auth.uid || request.auth.uid in resource.data.get('sharedWith', [])))
+      );
       allow list: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
-      allow delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.teamId == getUserTeamId();
+      allow update: if isSignedIn() && (isSuperAdmin() || (isSameTeam(resource.data.teamId) && (resource.data.ownerId == request.auth.uid || isCoach())));
+      allow delete: if isSignedIn() && (isSuperAdmin() || (isSameTeam(resource.data.teamId) && (resource.data.ownerId == request.auth.uid || isCoach())));
     }
 
     /**
@@ -107,10 +137,10 @@ service cloud.firestore {
      * @path /debateCases/{caseId}
      */
     match /debateCases/{caseId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
-      allow delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow get, list: if isSignedIn() && (isSuperAdmin() || isSameTeam(resource.data.teamId));
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.teamId == getUserTeamId();
+      allow update: if isSignedIn() && (isSuperAdmin() || (isSameTeam(resource.data.teamId) && (resource.data.ownerId == request.auth.uid || isCoach())));
+      allow delete: if isSignedIn() && (isSuperAdmin() || (isSameTeam(resource.data.teamId) && (resource.data.ownerId == request.auth.uid || isCoach())));
     }
 
     /**
@@ -118,8 +148,8 @@ service cloud.firestore {
      * @path /debateTopics/{topicId}
      */
     match /debateTopics/{topicId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isAdmin();
+      allow get, list: if isSignedIn() && (isSuperAdmin() || isSameTeam(resource.data.teamId));
+      allow create, update, delete: if isSignedIn() && (isSuperAdmin() || (isCoach() && request.resource.data.teamId == getUserTeamId()));
     }
 
     /**
@@ -127,8 +157,8 @@ service cloud.firestore {
      * @path /congressDockets/{docketId}
      */
     match /congressDockets/{docketId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isAdmin();
+      allow get, list: if isSignedIn() && (isSuperAdmin() || isSameTeam(resource.data.teamId));
+      allow create, update, delete: if isSignedIn() && (isSuperAdmin() || (isCoach() && request.resource.data.teamId == getUserTeamId()));
     }
 
     /**
@@ -136,23 +166,33 @@ service cloud.firestore {
      * @path /practiceRounds/{roundId}
      */
     match /practiceRounds/{roundId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && (request.auth.uid in request.resource.data.participants || isAdmin());
-      allow update, delete: if isSignedIn() && (request.auth.uid in resource.data.participants || isAdmin());
+      allow get, list: if isSignedIn() && (isSuperAdmin() || isSameTeam(resource.data.teamId));
+      allow create: if isSignedIn() && (
+        isSuperAdmin() ||
+        (request.resource.data.teamId == getUserTeamId() && (request.auth.uid in request.resource.data.participants || isCoach()))
+      );
+      allow update, delete: if isSignedIn() && (
+        isSuperAdmin() ||
+        (isSameTeam(resource.data.teamId) && (request.auth.uid in resource.data.participants || isCoach()))
+      );
     }
 
     /**
      * @description Manages access to tournament results.
      * @path /tournamentResults/{resultId}
-     * Users can read all results (for analytics comparison).
-     * Users can create/update their own results. Admins can manage all results.
-     * Admins can create results with null userId (for imported unmatched students).
+     * Team members can read results from their team. Coaches/superadmins can manage results.
      */
     match /tournamentResults/{resultId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || isAdmin());
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get, list: if isSignedIn() && (isSuperAdmin() || isSameTeam(resource.data.teamId));
+      allow create: if isSignedIn() && (
+        isSuperAdmin() ||
+        (request.resource.data.teamId == getUserTeamId() && (request.resource.data.userId == request.auth.uid || isCoach()))
+      );
+      allow update: if isSignedIn() && (
+        isSuperAdmin() ||
+        (isSameTeam(resource.data.teamId) && (resource.data.userId == request.auth.uid || isCoach()))
+      );
+      allow delete: if isSignedIn() && (isSuperAdmin() || (isSameTeam(resource.data.teamId) && isCoach()));
     }
 
     // ---- Helper functions ----
@@ -175,11 +215,36 @@ service cloud.firestore {
     }
 
     /**
-     * @description Checks if the user is an admin by reading their user document.
-     * @return {boolean} True if the user is an admin, false otherwise.
+     * @description Checks if the user is a superadmin by reading their user document.
+     * @return {boolean} True if the user is a superadmin, false otherwise.
      */
-    function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    function isSuperAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+    }
+
+    /**
+     * @description Checks if the user is a coach by reading their user document.
+     * @return {boolean} True if the user is a coach, false otherwise.
+     */
+    function isCoach() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coach';
+    }
+
+    /**
+     * @description Gets the current user's teamId from their user document.
+     * @return {string} The user's teamId.
+     */
+    function getUserTeamId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId;
+    }
+
+    /**
+     * @description Checks if a given teamId matches the current user's teamId.
+     * @param {string} teamId - The teamId to compare against the user's teamId.
+     * @return {boolean} True if the teamIds match, false otherwise.
+     */
+    function isSameTeam(teamId) {
+      return getUserTeamId() == teamId;
     }
   }
 }

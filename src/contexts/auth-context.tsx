@@ -17,7 +17,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (credentials: { email: string; password?: string }) => Promise<void>;
   logout: () => void;
-  signUp: (credentials: { email: string; password?: string, name: string, role: UserRole, studentId?: string }) => Promise<void>;
+  signUp: (credentials: { email: string; password?: string, name: string, role: UserRole, studentId?: string, teamId?: string }) => Promise<void>;
 }
 
 const AuthContext = React.createContext<AuthContextType | null>(null);
@@ -49,8 +49,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (credentials: { email: string; password?: string }) => {
     if(!auth) return;
     try {
-        await initiateEmailSignIn(auth, credentials.email, credentials.password || 'password123');
-        router.push('/dashboard/welcome');
+        const userCredential = await initiateEmailSignIn(auth, credentials.email, credentials.password || 'password123');
+        // Don't redirect here - let the useEffect in the root page handle it
+        // The redirect will happen after the user data is loaded with teamId
     } catch (error) {
         console.error("Login failed:", error);
         throw error;
@@ -68,11 +69,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
   
-  const signUp = async (credentials: { email: string; password?: string, name: string, role: UserRole, studentId?: string }) => {
+  const signUp = async (credentials: { email: string; password?: string, name: string, role: UserRole, studentId?: string, teamId?: string }) => {
     if(!auth || !firestore) return;
     try {
-        await initiateEmailSignUp(auth, firestore, credentials.email, credentials.password || 'password123', credentials.name, credentials.role, credentials.studentId);
-        router.push('/dashboard/welcome');
+        await initiateEmailSignUp(auth, firestore, credentials.email, credentials.password || 'password123', credentials.name, credentials.role, credentials.studentId, credentials.teamId);
+        // Don't redirect here - let the component handle it after getting team info
     } catch (error) {
         console.error("Sign up failed:", error);
         throw error;
