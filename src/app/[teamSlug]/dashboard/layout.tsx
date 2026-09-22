@@ -25,7 +25,7 @@ import { useEffect } from "react";
 
 type Hub = 'scheduler' | 'practice' | 'learning';
 
-const SchedulerNav = ({ pathname, isAdmin, teamSlug }: { pathname: string; isAdmin: boolean; teamSlug: string }) => {
+const SchedulerNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoach: boolean; teamSlug: string }) => {
     return (
         <>
             <SidebarMenuItem>
@@ -45,7 +45,7 @@ const SchedulerNav = ({ pathname, isAdmin, teamSlug }: { pathname: string; isAdm
               </SidebarMenuButton>
             </SidebarMenuItem>
 
-            {isAdmin && (
+            {isCoach && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/tournament-scheduler`)} tooltip="Tournament Manager">
                   <Link href={`/${teamSlug}/dashboard/tournament-scheduler`}><Calendar /><span>Tournament Manager</span></Link>
@@ -59,7 +59,7 @@ const SchedulerNav = ({ pathname, isAdmin, teamSlug }: { pathname: string; isAdm
               </SidebarMenuButton>
             </SidebarMenuItem>
 
-            {!isAdmin && (
+            {!isCoach && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/my-results`)} tooltip="My Results">
                   <Link href={`/${teamSlug}/dashboard/my-results`}><Trophy /><span>My Results</span></Link>
@@ -67,7 +67,7 @@ const SchedulerNav = ({ pathname, isAdmin, teamSlug }: { pathname: string; isAdm
               </SidebarMenuItem>
             )}
 
-            {isAdmin && (
+            {isCoach && (
               <>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/tournament-results-import`)} tooltip="Import Results">
@@ -85,7 +85,7 @@ const SchedulerNav = ({ pathname, isAdmin, teamSlug }: { pathname: string; isAdm
     );
 };
 
-const PracticeNav = ({ pathname, isAdmin, teamSlug }: { pathname: string; isAdmin: boolean; teamSlug: string }) => (
+const PracticeNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoach: boolean; teamSlug: string }) => (
   <>
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/practice-dashboard`)} tooltip="Dashboard">
@@ -117,7 +117,7 @@ const PracticeNav = ({ pathname, isAdmin, teamSlug }: { pathname: string; isAdmi
         <Link href={`/${teamSlug}/dashboard/debate-events`}><Gavel /><span>Debate Events</span></Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
-    {isAdmin && (
+    {isCoach && (
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/video-dashboard`)} tooltip="Video Dashboard">
           <Link href={`/${teamSlug}/dashboard/video-dashboard`}><Video /><span>Video Dashboard</span></Link>
@@ -185,7 +185,14 @@ export default function DashboardLayout({
     if (!isLoading && user && !user.approved && pathname !== `/${teamSlug}/dashboard/pending-approval`) {
       router.push(`/${teamSlug}/dashboard/pending-approval`);
     }
-  }, [user, isLoading, pathname, router]);
+  }, [user, isLoading, pathname, router, teamSlug]);
+
+  // Redirect superadmins to team management
+  useEffect(() => {
+    if (!isLoading && user?.role === 'superadmin' && !pathname.includes('/team-management')) {
+      router.push(`/${teamSlug}/dashboard/team-management`);
+    }
+  }, [user, isLoading, pathname, router, teamSlug]);
 
   React.useEffect(() => {
     setIsMounted(true);
@@ -248,8 +255,8 @@ export default function DashboardLayout({
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
-              {activeHub === 'scheduler' && <SchedulerNav pathname={pathname} isAdmin={user?.role === 'admin' || user?.role === 'coach'} teamSlug={teamSlug} />}
-              {activeHub === 'practice' && <PracticeNav pathname={pathname} isAdmin={user?.role === 'admin' || user?.role === 'coach'} teamSlug={teamSlug} />}
+              {activeHub === 'scheduler' && <SchedulerNav pathname={pathname} isCoach={user?.role === 'coach'} teamSlug={teamSlug} />}
+              {activeHub === 'practice' && <PracticeNav pathname={pathname} isCoach={user?.role === 'coach'} teamSlug={teamSlug} />}
               {activeHub === 'learning' && <LearningNav pathname={pathname} teamSlug={teamSlug} />}
             </SidebarMenu>
           </SidebarContent>
