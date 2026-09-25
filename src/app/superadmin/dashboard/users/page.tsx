@@ -195,6 +195,7 @@ export default function UsersManagerPage() {
       await updateDoc(doc(firestore, 'users', editingUser.id), {
         approved: editingUser.approved,
         role: editingUser.role,
+        teamId: editingUser.teamId,
       });
       toast({
         title: "User Updated",
@@ -653,7 +654,7 @@ export default function UsersManagerPage() {
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
             <DialogDescription>
-              Update user role and approval status
+              Update user team, role, and approval status
             </DialogDescription>
           </DialogHeader>
           {editingUser && (
@@ -664,6 +665,24 @@ export default function UsersManagerPage() {
                   <p className="font-medium">{editingUser.name}</p>
                   <p className="text-muted-foreground">{editingUser.email}</p>
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="team">Team</Label>
+                <Select
+                  value={editingUser.teamId}
+                  onValueChange={(val) => setEditingUser({ ...editingUser, teamId: val })}
+                >
+                  <SelectTrigger id="team">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teams?.map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role">Role</Label>

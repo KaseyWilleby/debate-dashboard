@@ -31,8 +31,9 @@ export default function LoginPage() {
         // Regular users go to their team dashboard
         router.push(`/${user.teamId}/dashboard/welcome`);
       } else {
-        // User doesn't have a teamId yet - needs migration
-        router.push('/cywoods/migrate-to-multi-tenant');
+        // User doesn't have a teamId - this shouldn't happen for regular users
+        console.error('User missing teamId:', user.id, user.email);
+        setError('Your account is not properly configured. Please contact your coach or administrator.');
       }
     }
   }, [user, authLoading, router]);
