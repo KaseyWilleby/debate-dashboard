@@ -4,9 +4,13 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, Gavel, BookOpen } from "lucide-react";
+import { Users, Gavel, BookOpen, Bell, UserCheck } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, where } from "firebase/firestore";
+import { User as AppUser } from "@/lib/types";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type Hub = 'scheduler' | 'practice' | 'learning';
 
@@ -15,6 +19,21 @@ export default function WelcomePage() {
   const params = useParams();
   const teamSlug = params?.teamSlug as string;
   const { user } = useAuth();
+  const { firestore } = useFirebase();
+
+  // Fetch pending user approvals for coaches
+  const isCoachOrAdmin = user?.role === 'coach' || user?.role === 'superadmin';
+  const pendingUsersQuery = useMemoFirebase(() => {
+    if (!firestore || !user || !isCoachOrAdmin) return null;
+    return query(
+      collection(firestore, 'users'),
+      where('teamId', '==', user.teamId),
+      where('approved', '==', false)
+    );
+  }, [firestore, user, isCoachOrAdmin]);
+
+  const { data: pendingUsers } = useCollection<AppUser>(pendingUsersQuery);
+  const pendingCount = pendingUsers?.length || 0;
 
   const handleHubSelection = (hub: Hub) => {
     localStorage.setItem('activeHub', hub);
@@ -37,6 +56,26 @@ export default function WelcomePage() {
           Choose a hub below to explore different features of your debate dashboard.
         </p>
       </div>
+
+      {/* Pending Approvals Notification */}
+      {isCoachOrAdmin && pendingCount > 0 && (
+        <Alert className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
+          <Bell className="h-4 w-4 text-yellow-600" />
+          <AlertTitle className="text-yellow-900 dark:text-yellow-100">
+            Pending User Approvals
+          </AlertTitle>
+          <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+            You have {pendingCount} user{pendingCount !== 1 ? 's' : ''} waiting for approval.{' '}
+            <Button
+              variant="link"
+              className="h-auto p-0 text-yellow-900 dark:text-yellow-100 underline font-semibold"
+              onClick={() => router.push(`/${teamSlug}/dashboard/users`)}
+            >
+              Review pending approvals
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
        <div className="grid gap-6 md:grid-cols-3">
             <Card className="flex flex-col items-center justify-center p-6 text-center hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => handleHubSelection('scheduler')}>

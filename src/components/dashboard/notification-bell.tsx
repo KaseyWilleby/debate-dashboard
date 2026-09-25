@@ -11,20 +11,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, MessageSquare, XCircle, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Bell, MessageSquare, XCircle, Loader2, UserCheck } from "lucide-react";
+import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import type { Notification } from "@/lib/types";
+import type { Notification, User as AppUser } from "@/lib/types";
 import React from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, doc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc, query, where } from 'firebase/firestore';
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 
 
 export function NotificationBell() {
   const router = useRouter();
+  const params = useParams();
+  const teamSlug = params?.teamSlug as string;
   const { user } = useAuth();
   const { firestore } = useFirebase();
 
@@ -34,6 +36,20 @@ export function NotificationBell() {
   }, [firestore, user]);
 
   const { data: notifications, isLoading } = useCollection<Notification>(notificationsQuery);
+
+  // Fetch pending user approvals for coaches
+  const isCoachOrAdmin = user?.role === 'coach' || user?.role === 'superadmin';
+  const pendingUsersQuery = useMemoFirebase(() => {
+    if (!firestore || !user || !isCoachOrAdmin) return null;
+    return query(
+      collection(firestore, 'users'),
+      where('teamId', '==', user.teamId),
+      where('approved', '==', false)
+    );
+  }, [firestore, user, isCoachOrAdmin]);
+
+  const { data: pendingUsers } = useCollection<AppUser>(pendingUsersQuery);
+  const pendingCount = pendingUsers?.length || 0;
   
   const handleNotificationClick = async (notification: Notification) => {
     if (user && firestore) {
@@ -51,7 +67,11 @@ export function NotificationBell() {
     }
   };
 
-  const unreadCount = notifications?.length || 0;
+  const handlePendingApprovalsClick = () => {
+    router.push(`/${teamSlug}/dashboard/users`);
+  };
+
+  const unreadCount = (notifications?.length || 0) + pendingCount;
 
   return (
     <DropdownMenu>
@@ -78,6 +98,31 @@ export function NotificationBell() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+
+        {/* Pending Approvals Section */}
+        {isCoachOrAdmin && pendingCount > 0 && (
+          <>
+            <DropdownMenuItem
+              onClick={handlePendingApprovalsClick}
+              className="flex items-start gap-3 p-2 cursor-pointer bg-yellow-50 dark:bg-yellow-950 border-l-4 border-yellow-500"
+            >
+              <div className="mt-1 text-yellow-600">
+                <UserCheck size={16} />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium leading-snug text-yellow-900 dark:text-yellow-100">
+                  Pending User Approvals
+                </p>
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  {pendingCount} user{pendingCount !== 1 ? 's' : ''} waiting for approval
+                </p>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+
+        {/* Regular Notifications */}
         {isLoading ? (
             <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
         ) : notifications && notifications.length > 0 ? (
@@ -105,9 +150,11 @@ export function NotificationBell() {
             </DropdownMenuItem>
           ))
         ) : (
-          <div className="p-4 text-center text-sm text-muted-foreground">
-            No new notifications
-          </div>
+          !isCoachOrAdmin || pendingCount === 0 ? (
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              No new notifications
+            </div>
+          ) : null
         )}
       </DropdownMenuContent>
     </DropdownMenu>
