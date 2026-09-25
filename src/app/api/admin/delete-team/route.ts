@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,6 +11,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
 
     // Verify the user is a superadmin
     const decodedToken = await adminAuth.verifyIdToken(token);
