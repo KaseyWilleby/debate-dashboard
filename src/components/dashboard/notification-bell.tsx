@@ -44,7 +44,8 @@ export function NotificationBell() {
     return query(
       collection(firestore, 'users'),
       where('teamId', '==', user.teamId),
-      where('approved', '==', false)
+      where('approved', '==', false),
+      where('deleted', '==', false)
     );
   }, [firestore, user, isCoachOrAdmin]);
 
