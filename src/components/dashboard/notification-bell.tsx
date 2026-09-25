@@ -52,6 +52,19 @@ export function NotificationBell() {
   // Filter out deleted/archived users in JavaScript to handle users without deleted field
   const pendingUsers = allPendingUsers?.filter(u => u.deleted !== true) || [];
   const pendingCount = pendingUsers?.length || 0;
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('[NotificationBell] Debug:', {
+      isCoachOrAdmin,
+      allPendingUsersCount: allPendingUsers?.length,
+      pendingUsersCount: pendingUsers?.length,
+      pendingCount,
+      userRole: user?.role,
+      userTeamId: user?.teamId,
+      pendingUsers: pendingUsers?.map(u => ({ name: u.name, deleted: u.deleted, approved: u.approved }))
+    });
+  }, [isCoachOrAdmin, allPendingUsers, pendingUsers, pendingCount, user]);
   
   const handleNotificationClick = async (notification: Notification) => {
     if (user && firestore) {
