@@ -10,6 +10,13 @@ export interface Team {
     primaryColor?: string;
     secondaryColor?: string;
     logoUrl?: string;
+    // Student permission settings
+    allowStudentDocketUpload?: boolean;
+    allowStudentBillCreation?: boolean;
+    allowStudentVideoRecording?: boolean;
+    allowStudentAnalytics?: boolean;
+    allowNoviceDebateEvents?: boolean;
+    allowVarsityDebateEvents?: boolean;
   };
   isActive: boolean;
   headCoachEmail?: string; // Primary contact for the school account

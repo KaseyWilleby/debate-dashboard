@@ -805,7 +805,7 @@ export default function StudentCongressPage() {
                                         Select a docket, then choose a bill or resolution to speak on.
                                     </CardDescription>
                                 </div>
-                                {user?.role === 'admin' && (
+                                {(user?.role === 'coach' || user?.role === 'superadmin') && (
                                     <div className="flex gap-2">
                                         <Button variant="outline" onClick={() => setIsCreateBillOpen(true)}>
                                             <PlusCircle className="mr-2" /> New Bill

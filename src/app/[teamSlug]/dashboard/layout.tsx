@@ -17,7 +17,7 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { BookOpenCheck, Calendar, Gavel, BookOpen, Briefcase, BookCopy, ClipboardList, Trophy, Users, Mic, Flag, Drama, BrainCircuit, LayoutDashboard, Globe, FileText, Video, BarChart3, Download, TestTube2, X } from "lucide-react";
+import { BookOpenCheck, Calendar, Gavel, BookOpen, Briefcase, BookCopy, ClipboardList, Trophy, Users, Mic, Flag, Drama, BrainCircuit, LayoutDashboard, Globe, FileText, Video, BarChart3, Download, TestTube2, X, Settings } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/contexts/auth-context";
@@ -80,6 +80,11 @@ const SchedulerNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoa
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/users`)} tooltip="User Management">
                     <Link href={`/${teamSlug}/dashboard/users`}><Users /><span>User Management</span></Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/team-options`)} tooltip="Team Options">
+                    <Link href={`/${teamSlug}/dashboard/team-options`}><Settings /><span>Team Options</span></Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </>
