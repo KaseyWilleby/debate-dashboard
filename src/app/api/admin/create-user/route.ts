@@ -44,7 +44,9 @@ export async function POST(request: NextRequest) {
       teamId: teamId,
       username: name.replace(/\s+/g, '.'),
       avatarUrl: '',
-      approved: (finalRole === 'superadmin' || finalRole === 'coach') ? true : false
+      approved: (finalRole === 'superadmin' || finalRole === 'coach') ? true : false,
+      deleted: false,
+      createdAt: new Date().toISOString()
     };
 
     // Only add studentId and recoveryPin for student users (not superadmin/coach)

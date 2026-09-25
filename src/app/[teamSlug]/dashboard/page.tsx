@@ -45,12 +45,13 @@ export default function DashboardPage() {
     return query(
       collection(firestore, 'users'),
       where('teamId', '==', user.teamId),
-      where('approved', '==', false),
-      where('deleted', '==', false)
+      where('approved', '==', false)
     );
   }, [firestore, user, isCoachOrAdmin]);
 
-  const { data: pendingUsers } = useCollection<User>(pendingUsersQuery);
+  const { data: allPendingUsers } = useCollection<User>(pendingUsersQuery);
+  // Filter out deleted users in JavaScript to handle users without deleted field
+  const pendingUsers = allPendingUsers?.filter(u => !u.deleted) || [];
   const pendingCount = pendingUsers?.length || 0;
 
   const handleApproveUser = async (userId: string, userName: string) => {
