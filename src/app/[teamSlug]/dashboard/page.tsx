@@ -7,11 +7,19 @@ import { format, isAfter, parseISO } from "date-fns";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Info, Users, ArrowRight, Calendar, Gavel, Video, Mic, BrainCircuit, Loader2 } from "lucide-react";
+import { Info, Users, ArrowRight, Calendar, Gavel, Video, Mic, BrainCircuit, Loader2, Bell, UserCheck, ChevronDown, ChevronUp, Check, X } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, query, where, updateDoc, doc } from "firebase/firestore";
 import { useAuth } from "@/contexts/auth-context";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 type Hub = 'scheduler' | 'practice' | 'learning';
 
@@ -21,12 +29,72 @@ export default function DashboardPage() {
   const [activeHub, setActiveHub] = React.useState<Hub | null>(null);
   const { user } = useAuth();
   const { firestore } = useFirebase();
+  const { toast } = useToast();
+  const [isExpanded, setIsExpanded] = React.useState(false);
 
   const tournamentsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, 'tournaments');
   }, [firestore, user]);
   const { data: tournaments } = useCollection<Tournament>(tournamentsQuery);
+
+  // Fetch pending user approvals for coaches
+  const isCoachOrAdmin = user?.role === 'coach' || user?.role === 'superadmin';
+  const pendingUsersQuery = useMemoFirebase(() => {
+    if (!firestore || !user || !isCoachOrAdmin) return null;
+    return query(
+      collection(firestore, 'users'),
+      where('teamId', '==', user.teamId),
+      where('approved', '==', false),
+      where('deleted', '==', false)
+    );
+  }, [firestore, user, isCoachOrAdmin]);
+
+  const { data: pendingUsers } = useCollection<User>(pendingUsersQuery);
+  const pendingCount = pendingUsers?.length || 0;
+
+  const handleApproveUser = async (userId: string, userName: string) => {
+    if (!firestore) return;
+
+    try {
+      await updateDoc(doc(firestore, 'users', userId), {
+        approved: true,
+      });
+      toast({
+        title: "User Approved",
+        description: `${userName} has been approved and can now access the dashboard.`,
+      });
+    } catch (error) {
+      console.error("Error approving user:", error);
+      toast({
+        title: "Error",
+        description: "Failed to approve user. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRejectUser = async (userId: string, userName: string) => {
+    if (!firestore) return;
+
+    try {
+      await updateDoc(doc(firestore, 'users', userId), {
+        approved: false,
+      });
+      toast({
+        title: "User Rejected",
+        description: `${userName}'s access has been revoked.`,
+        variant: "destructive",
+      });
+    } catch (error) {
+      console.error("Error rejecting user:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reject user. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -240,6 +308,75 @@ export default function DashboardPage() {
           {getHubDescription()}
         </p>
       </div>
+
+      {/* Pending Approvals Notification - Only show in Team Hub for coaches */}
+      {activeHub === 'scheduler' && isCoachOrAdmin && pendingCount > 0 && (
+        <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+          <Alert className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
+            <Bell className="h-4 w-4 text-yellow-600" />
+            <AlertTitle className="text-yellow-900 dark:text-yellow-100 flex items-center justify-between">
+              <span>Pending User Approvals</span>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-auto p-1 text-yellow-900 dark:text-yellow-100">
+                  {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </CollapsibleTrigger>
+            </AlertTitle>
+            <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+              <div className="mb-2">
+                You have {pendingCount} user{pendingCount !== 1 ? 's' : ''} waiting for approval.
+              </div>
+
+              <CollapsibleContent className="space-y-2 mt-3">
+                {pendingUsers?.map((pendingUser) => (
+                  <div
+                    key={pendingUser.id}
+                    className="flex items-center justify-between p-3 bg-white dark:bg-gray-900 rounded-md border border-yellow-300 dark:border-yellow-700"
+                  >
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-900 dark:text-gray-100">
+                        {pendingUser.name}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        {pendingUser.email}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="secondary" className="text-xs">
+                          {pendingUser.role}
+                        </Badge>
+                        {pendingUser.studentId && (
+                          <span className="text-xs text-gray-500">
+                            ID: {pendingUser.studentId}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="bg-green-600 hover:bg-green-700"
+                        onClick={() => handleApproveUser(pendingUser.id, pendingUser.name)}
+                      >
+                        <Check className="h-4 w-4 mr-1" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleRejectUser(pendingUser.id, pendingUser.name)}
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </CollapsibleContent>
+            </AlertDescription>
+          </Alert>
+        </Collapsible>
+      )}
 
       {renderDashboard()}
 
