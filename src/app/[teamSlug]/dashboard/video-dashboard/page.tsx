@@ -102,10 +102,10 @@ export default function VideoDashboardPage() {
     );
   }
 
-  if (user?.role !== 'admin') {
+  if (user?.role !== 'coach' && user?.role !== 'superadmin') {
     return (
       <div className="flex items-center justify-center h-96">
-        <p className="text-muted-foreground">Access denied. This page is only available to administrators.</p>
+        <p className="text-muted-foreground">Access denied. This page is only available to coaches and administrators.</p>
       </div>
     );
   }

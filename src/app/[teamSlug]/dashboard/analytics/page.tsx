@@ -224,7 +224,7 @@ export default function AnalyticsPage() {
   }, [filteredResults]);
 
   const selectedUser = users?.find(u => u.id === selectedUserId);
-  const canViewOthers = user?.role === 'admin';
+  const canViewOthers = (user?.role === 'coach' || user?.role === 'superadmin');
 
   if (!user) {
     return (

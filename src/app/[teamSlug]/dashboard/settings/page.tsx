@@ -77,13 +77,13 @@ export default function SettingsPage() {
         nsdaId: editedNsdaId,
       };
 
-      // Only include studentId for non-admin users
-      if (user.role !== 'admin') {
+      // Only include studentId for non-coach/superadmin users
+      if (!(user.role === 'coach' || user.role === 'superadmin')) {
         updateData.studentId = editedStudentId;
       }
 
-      // Include Tabroom credentials for admin users
-      if (user.role === 'admin') {
+      // Include Tabroom credentials for coach/superadmin users
+      if (user.role === 'coach' || user.role === 'superadmin') {
         updateData.tabroomEmail = editedTabroomEmail;
         updateData.tabroomPassword = editedTabroomPassword;
         updateData.tabroomChapterId = editedTabroomChapterId;
@@ -171,7 +171,7 @@ export default function SettingsPage() {
                 disabled={!isEditing}
               />
             </div>
-            {user.role !== 'admin' && (
+            {!(user.role === 'coach' || user.role === 'superadmin') && (
               <div className="space-y-2">
                 <Label htmlFor="studentId">Student ID</Label>
                 <Input
@@ -197,7 +197,7 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
               <Input id="role" value={user.role} disabled className="capitalize" />
-              <p className="text-xs text-muted-foreground">Contact an administrator to change your role</p>
+              <p className="text-xs text-muted-foreground">Contact a coach or administrator to change your role</p>
             </div>
           </div>
 
@@ -230,7 +230,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {user.role === 'admin' && (
+      {(user.role === 'coach' || user.role === 'superadmin') && (
         <Card>
           <CardHeader>
             <CardTitle>Tabroom Integration</CardTitle>

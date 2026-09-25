@@ -97,7 +97,7 @@ export default function DebateEventsPage() {
   const createFromSessionId = searchParams.get('createFromSession');
 
   const usersQuery = useMemoFirebase(() => {
-    if (!firestore || user?.role !== 'admin') return null;
+    if (!firestore || !(user?.role === 'coach' || user?.role === 'superadmin')) return null;
     return collection(firestore, 'users');
   }, [firestore, user?.role]);
   const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
@@ -428,7 +428,7 @@ export default function DebateEventsPage() {
       return Array.from(allMonths);
   }, [topics]);
   
-  const isLoading = isAuthLoading || (user?.role === 'admin' && areUsersLoading);
+  const isLoading = isAuthLoading || ((user?.role === 'coach' || user?.role === 'superadmin') && areUsersLoading);
 
   const tabList = [
     { value: 'case-creator', label: 'Case Creator', adminOnly: false },
@@ -436,7 +436,7 @@ export default function DebateEventsPage() {
     { value: 'topic-management', label: 'Topic Management', adminOnly: true }
   ];
 
-  const visibleTabs = tabList.filter(t => !t.adminOnly || user?.role === 'admin');
+  const visibleTabs = tabList.filter(t => !t.adminOnly || (user?.role === 'coach' || user?.role === 'superadmin'));
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-96"><Loader2 className="animate-spin" /></div>;
@@ -507,7 +507,7 @@ export default function DebateEventsPage() {
                                         </div>
                                     </div>
                                 </AccordionTrigger>
-                                {user?.role === 'admin' && (
+                                {(user?.role === 'coach' || user?.role === 'superadmin') && (
                                     <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleToggleArchiveTopic(topic.id); }}>
                                         {topic.isArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                                     </Button>
@@ -564,7 +564,7 @@ export default function DebateEventsPage() {
           </Card>
         </TabsContent>
 
-        {user?.role === 'admin' && (
+        {(user?.role === 'coach' || user?.role === 'superadmin') && (
             <TabsContent value="topic-management" className="mt-4 space-y-6">
             <Card>
                 <CardHeader>
@@ -830,7 +830,7 @@ function PracticeRoundItem({
     const affTeam = (round.affTeam || []).map(id => allUsers.find(u => u.id === id)?.name).filter(Boolean);
     const negTeam = (round.negTeam || []).map(id => allUsers.find(u => u.id === id)?.name).filter(Boolean);
 
-    const canDelete = user?.role === 'admin' || round.participants.includes(user?.id || '');
+    const canDelete = (user?.role === 'coach' || user?.role === 'superadmin') || round.participants.includes(user?.id || '');
     const isJudge = round.judges.includes(user?.id || '');
     const isParticipant = round.participants.includes(user?.id || '');
 
@@ -993,7 +993,7 @@ function PracticeRoundItem({
                     </TabsContent>
 
                     <TabsContent value="ballot" className="space-y-4">
-                        {isJudge || user?.role === 'admin' ? (
+                        {isJudge || (user?.role === 'coach' || user?.role === 'superadmin') ? (
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <Label>Winner</Label>
@@ -1089,7 +1089,7 @@ function PracticeRoundItem({
                     </TabsContent>
 
                     <TabsContent value="flow" className="space-y-4">
-                        {isParticipant || user?.role === 'admin' ? (
+                        {isParticipant || (user?.role === 'coach' || user?.role === 'superadmin') ? (
                             <div className="space-y-6">
                                 <div>
                                     <h4 className="font-semibold mb-2 flex items-center gap-2">

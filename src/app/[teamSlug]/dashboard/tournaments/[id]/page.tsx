@@ -49,7 +49,7 @@ export default function TournamentDetailsPage() {
   }
 
   const registrationClosed = tournament.registrationCloseDate && new Date(tournament.registrationCloseDate) < new Date();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = (user?.role === 'coach' || user?.role === 'superadmin');
 
   const handleFetchFeeSheet = async () => {
     // Debug logging

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,33 +25,208 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, UserPlus, Upload, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { MoreHorizontal, UserPlus, Upload, Loader2, CheckCircle, XCircle, AlertTriangle, Archive, Trash2, Key } from "lucide-react";
 
 import type { User, UserRole } from "@/lib/types";
 import CreateUserDialog from "@/components/dashboard/create-user-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn, getRoleBasedColor } from "@/lib/utils";
 import { useFirebase } from "@/firebase";
+import { useAuth } from "@/contexts/auth-context";
 import { doc, deleteDoc, addDoc, collection, updateDoc } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 
 export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
   const { firestore } = useFirebase();
+  const { user } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUserDeleted = (userId: string) => {
-    if (!firestore) return;
-    deleteDoc(doc(firestore, 'users', userId)).catch(error => {
+  // Delete confirmation state
+  const [showDeleteChoiceDialog, setShowDeleteChoiceDialog] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const [showPermanentDeleteDialog, setShowPermanentDeleteDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
+  // Reset password state
+  const [showResetPasswordDialog, setShowResetPasswordDialog] = useState(false);
+  const [userToResetPassword, setUserToResetPassword] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const handleDeleteClick = (user: User) => {
+    // Prevent deletion of master account
+    if (user.email?.toLowerCase() === 'kaseywilleby@gmail.com') {
+      toast({
+        title: "Cannot Delete Master Account",
+        description: "This is the master superadmin account and cannot be deleted for security reasons.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUserToDelete(user);
+    setDeleteConfirmText("");
+    setShowDeleteChoiceDialog(true);
+  };
+
+  const handleArchiveUser = async () => {
+    if (!firestore || !userToDelete || !user) return;
+
+    if (deleteConfirmText !== "Archive User") {
+      toast({
+        title: "Confirmation Failed",
+        description: 'Please type "Archive User" exactly to confirm',
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Soft delete - mark as deleted but keep in database
+      await updateDoc(doc(firestore, 'users', userToDelete.id), {
+        deleted: true,
+        deletedAt: new Date().toISOString(),
+        deletedBy: user.id,
+      });
+
+      toast({
+        title: "User Archived",
+        description: "The user has been archived and will no longer appear in the active users list."
+      });
+
+      setShowArchiveDialog(false);
+      setUserToDelete(null);
+      setDeleteConfirmText("");
+    } catch (error) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: `users/${userId}`,
-          operation: 'delete',
+        path: `users/${userToDelete.id}`,
+        operation: 'update',
       }));
-    });
-    toast({ title: "User Deleted", description: "The user has been removed from the system." });
+      toast({
+        title: "Archive Failed",
+        description: "Failed to archive user. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePermanentDelete = async () => {
+    if (!firestore || !userToDelete) return;
+
+    if (deleteConfirmText !== "Delete User") {
+      toast({
+        title: "Confirmation Failed",
+        description: 'Please type "Delete User" exactly to confirm',
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Hard delete - permanently remove from database
+      await deleteDoc(doc(firestore, 'users', userToDelete.id));
+
+      toast({
+        title: "User Permanently Deleted",
+        description: "The user has been permanently deleted from the database."
+      });
+
+      setShowPermanentDeleteDialog(false);
+      setUserToDelete(null);
+      setDeleteConfirmText("");
+    } catch (error) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: `users/${userToDelete.id}`,
+        operation: 'delete',
+      }));
+      toast({
+        title: "Delete Failed",
+        description: "Failed to permanently delete user. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleResetPasswordClick = (targetUser: User) => {
+    setUserToResetPassword(targetUser);
+    setNewPassword("");
+    setConfirmPassword("");
+    setShowResetPasswordDialog(true);
+  };
+
+  const handleResetPassword = async () => {
+    if (!userToResetPassword) return;
+
+    // Validate passwords match
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Password Mismatch",
+        description: "The passwords you entered do not match.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate password length
+    if (newPassword.length < 6) {
+      toast({
+        title: "Invalid Password",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userToResetPassword.id,
+          newPassword: newPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to reset password');
+      }
+
+      toast({
+        title: "Password Reset",
+        description: `Password for ${userToResetPassword.name} has been reset successfully.`
+      });
+
+      setShowResetPasswordDialog(false);
+      setUserToResetPassword(null);
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      toast({
+        title: "Reset Failed",
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleApproveUser = (userId: string) => {
@@ -191,7 +366,7 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(allUsers || []).map((user) => (
+              {(allUsers || []).filter(u => !u.deleted).map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -248,7 +423,13 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
                                 Edit
                              </button>
                         </CreateUserDialog>
-                        <DropdownMenuItem onClick={() => handleUserDeleted(user.id)}>Delete</DropdownMenuItem>
+                        {(user.role === 'varsity' || user.role === 'novice') && (
+                          <DropdownMenuItem onClick={() => handleResetPasswordClick(user)}>
+                            <Key className="mr-2 h-4 w-4" />
+                            Reset Password
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => handleDeleteClick(user)}>Delete</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -265,6 +446,230 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Delete Choice Dialog - Archive or Permanently Delete */}
+      <AlertDialog open={showDeleteChoiceDialog} onOpenChange={setShowDeleteChoiceDialog}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Delete User: {userToDelete?.name}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Choose how you want to delete this user:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-4 py-4">
+            {/* Archive Option */}
+            <button
+              onClick={() => {
+                setShowDeleteChoiceDialog(false);
+                setTimeout(() => setShowArchiveDialog(true), 100);
+              }}
+              className="text-left"
+            >
+              <Card className="border-2 hover:border-yellow-600 hover:shadow-md cursor-pointer transition-all">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Archive className="h-5 w-5 text-yellow-600" />
+                    Archive User (Recommended)
+                    <Badge variant="outline" className="ml-auto">Safer Option</Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    Hide the user from active lists while preserving all their data
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-sm">
+                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                    <li>User data is preserved in the database</li>
+                    <li>Can be recovered by superadmins later</li>
+                    <li>Historical records remain intact</li>
+                    <li>Recommended for most cases</li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </button>
+
+            {/* Permanent Delete Option */}
+            <button
+              onClick={() => {
+                setShowDeleteChoiceDialog(false);
+                setTimeout(() => setShowPermanentDeleteDialog(true), 100);
+              }}
+              className="text-left"
+            >
+              <Card className="border-2 border-destructive/50 hover:border-destructive hover:shadow-md cursor-pointer transition-all bg-destructive/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg text-destructive">
+                    <Trash2 className="h-5 w-5" />
+                    Permanently Delete
+                    <Badge variant="destructive" className="ml-auto">Cannot Undo</Badge>
+                  </CardTitle>
+                  <CardDescription className="text-destructive/90 font-medium">
+                    Completely remove the user and all their data from the database
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-sm">
+                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                    <li className="font-semibold text-destructive">All user data will be lost forever</li>
+                    <li className="font-semibold text-destructive">This action CANNOT be undone</li>
+                    <li>Historical records will be broken</li>
+                    <li>Only use if absolutely necessary</li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </button>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowDeleteChoiceDialog(false);
+              setDeleteConfirmText("");
+              setUserToDelete(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Archive Confirmation Dialog */}
+      <AlertDialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Archive className="h-5 w-5 text-yellow-600" />
+              Archive User
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will archive <span className="font-semibold text-foreground">{userToDelete?.name}</span>.
+              The user will no longer appear in the active users list, but their data will be preserved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-4">
+            <Label htmlFor="confirm-archive">
+              Type <span className="font-mono font-semibold">Archive User</span> to confirm:
+            </Label>
+            <Input
+              id="confirm-archive"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="Archive User"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowArchiveDialog(false);
+              setDeleteConfirmText("");
+              setUserToDelete(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              onClick={handleArchiveUser}
+              disabled={deleteConfirmText !== "Archive User"}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              Archive User
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Permanent Delete Confirmation Dialog */}
+      <AlertDialog open={showPermanentDeleteDialog} onOpenChange={setShowPermanentDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Permanently Delete User?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              WARNING: This will PERMANENTLY DELETE <span className="font-bold text-destructive">{userToDelete?.name}</span> from the database.
+              This action CANNOT be undone! All user data, history, and records will be lost forever.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-4">
+            <Label htmlFor="confirm-permanent-delete">
+              Type <span className="font-mono font-semibold">Delete User</span> to confirm permanent deletion:
+            </Label>
+            <Input
+              id="confirm-permanent-delete"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="Delete User"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowPermanentDeleteDialog(false);
+              setDeleteConfirmText("");
+              setUserToDelete(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              onClick={handlePermanentDelete}
+              disabled={deleteConfirmText !== "Delete User"}
+              variant="destructive"
+            >
+              Delete Forever
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reset Password Dialog */}
+      <AlertDialog open={showResetPasswordDialog} onOpenChange={setShowResetPasswordDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              Reset Password for {userToResetPassword?.name}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter a new password for this user. The user will be able to log in with this new password immediately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">New Password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password (min 6 characters)"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm Password</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowResetPasswordDialog(false);
+              setUserToResetPassword(null);
+              setNewPassword("");
+              setConfirmPassword("");
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              onClick={handleResetPassword}
+              disabled={!newPassword || !confirmPassword || newPassword.length < 6}
+            >
+              Reset Password
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

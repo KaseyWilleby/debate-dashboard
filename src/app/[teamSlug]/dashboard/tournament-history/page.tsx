@@ -717,7 +717,7 @@ export default function TournamentHistoryPage() {
     );
   }
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'coach' || user?.role === 'superadmin';
   const tournamentsNeedingResults = pastTournaments.filter(t => !hasResultsFor(t.id));
 
   return (

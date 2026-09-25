@@ -95,11 +95,11 @@ export default function TournamentSchedulerPage() {
   const { firestore } = useFirebase();
 
   const tournamentsQuery = useMemoFirebase(() => {
-    if (!firestore || !user || isAuthLoading || user?.role !== 'admin') return null;
+    if (!firestore || !user || isAuthLoading || (user?.role !== 'coach' && user?.role !== 'superadmin')) return null;
     return collection(firestore, 'tournaments');
   }, [firestore, user, isAuthLoading]);
   const { data: tournaments, isLoading: areTournamentsLoading } = useCollection<Tournament>(tournamentsQuery);
-  const isLoading = isAuthLoading || (user?.role === 'admin' && areTournamentsLoading);
+  const isLoading = isAuthLoading || ((user?.role === 'coach' || user?.role === 'superadmin') && areTournamentsLoading);
 
   // View mode state
   const [viewMode, setViewMode] = React.useState<'card' | 'list'>(() => {
@@ -288,13 +288,13 @@ export default function TournamentSchedulerPage() {
     return [...future, ...past];
   }, [filteredTournaments]);
 
-  // Redirect if not admin
-  if (!isAuthLoading && user?.role !== 'admin') {
+  // Redirect if not coach or superadmin
+  if (!isAuthLoading && user?.role !== 'coach' && user?.role !== 'superadmin') {
     return (
        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center h-96">
           <h3 className="text-xl font-semibold font-headline">Access Denied</h3>
           <p className="text-muted-foreground mt-2">
-            You must be an administrator to access this page.
+            You must be a coach or administrator to access this page.
           </p>
         </div>
     )
@@ -1176,8 +1176,8 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
                     ) : scrapedTournaments.length > 0 ? (
                         <ScrollArea className="h-72">
                             <div className="space-y-2 pr-4">
-                                {scrapedTournaments.map((t) => (
-                                    <div key={t.url} className="flex items-center justify-between p-2 rounded-md border bg-muted/50">
+                                {scrapedTournaments.map((t, index) => (
+                                    <div key={`${t.url}-${index}`} className="flex items-center justify-between p-2 rounded-md border bg-muted/50">
                                         <div>
                                             <p className="text-sm font-medium">{t.name}</p>
                                             <p className="text-xs text-muted-foreground">{t.date}</p>

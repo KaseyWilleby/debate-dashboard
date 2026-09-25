@@ -12,21 +12,23 @@ export default function UsersPage() {
     const { user, isLoading: isAuthLoading } = useAuth();
     const { firestore } = useFirebase();
 
+    const isCoachOrAdmin = user?.role === 'coach' || user?.role === 'superadmin';
+
     const usersQuery = useMemoFirebase(() => {
-        if (!firestore || !user || isAuthLoading || user?.role !== 'admin') return null;
+        if (!firestore || !user || isAuthLoading || !isCoachOrAdmin) return null;
         return collection(firestore, 'users');
-    }, [firestore, user, isAuthLoading]);
+    }, [firestore, user, isAuthLoading, isCoachOrAdmin]);
 
     const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
 
-    const isLoading = isAuthLoading || (user?.role === 'admin' && areUsersLoading);
+    const isLoading = isAuthLoading || (isCoachOrAdmin && areUsersLoading);
 
-    if (user?.role !== 'admin' && !isAuthLoading) {
+    if (!isCoachOrAdmin && !isAuthLoading) {
      return (
        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center h-96">
           <h3 className="text-xl font-semibold font-headline">Access Denied</h3>
           <p className="text-muted-foreground mt-2">
-            You must be an administrator to access this page.
+            You must be a coach or administrator to access this page.
           </p>
         </div>
     )

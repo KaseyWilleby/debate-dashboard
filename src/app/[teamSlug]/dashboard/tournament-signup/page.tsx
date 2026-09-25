@@ -284,7 +284,7 @@ export default function TournamentSignupPage() {
   };
 
   // Admin View - Shows who is signed up
-  if (user?.role === 'admin') {
+  if (user?.role === 'coach' || user?.role === 'superadmin') {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-start justify-between">

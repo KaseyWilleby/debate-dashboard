@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, Users, ArrowRight, BarChart3, Database } from "lucide-react";
+import { Building2, Users, ArrowRight, BarChart3, Database, TestTube2 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
@@ -91,9 +91,9 @@ export default function SuperadminDashboardPage() {
       </div>
 
       {/* Main Actions */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2" asChild>
-          <Link href="/superadmin/dashboard/teams">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Link href="/superadmin/dashboard/teams" className="block">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900">
@@ -120,11 +120,11 @@ export default function SuperadminDashboardPage() {
                 </div>
               </div>
             </CardContent>
-          </Link>
-        </Card>
+          </Card>
+        </Link>
 
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2" asChild>
-          <Link href="/superadmin/dashboard/users">
+        <Link href="/superadmin/dashboard/users" className="block">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-lg bg-purple-100 dark:bg-purple-900">
@@ -153,8 +153,35 @@ export default function SuperadminDashboardPage() {
                 )}
               </div>
             </CardContent>
-          </Link>
-        </Card>
+          </Card>
+        </Link>
+
+        <Link href="/superadmin/dashboard/test-team-dashboards" className="block">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900">
+                  <TestTube2 className="h-6 w-6 text-green-600 dark:text-green-300" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle className="text-xl">Test Team Dashboards</CardTitle>
+                  <CardDescription className="mt-1">
+                    Access team dashboards to test coach tools and functionality
+                  </CardDescription>
+                </div>
+                <ArrowRight className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-green-600" />
+                  <span className="text-muted-foreground">Full tool access</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Quick Actions */}

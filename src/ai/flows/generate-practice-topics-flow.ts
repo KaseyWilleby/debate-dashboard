@@ -195,26 +195,192 @@ const extempQuestions = {
 };
 
 const impromptuTopics = [
+    // Creative and Abstract
     "The color of Monday",
     "If silence was a sound",
     "A door that only opens once",
     "The secret life of garden gnomes",
-    "'Not all those who wander are lost.' - J.R.R. Tolkien",
     "A world without questions",
     "The taste of nostalgia",
-    "'The journey of a thousand miles begins with a single step.' - Lao Tzu",
     "What history forgot to write down",
     "The last page of your favorite book",
     "If animals could talk, which would be the rudest?",
-    "'I have not failed. I've just found 10,000 ways that won't work.' - Thomas A. Edison",
-    "The advice you would give your younger self",
     "A conversation between the sun and the moon",
     "The meaning of a semicolon",
     "If laughter was a currency",
-    "'The only thing we have to fear is fear itself.' - Franklin D. Roosevelt",
     "The world inside a snow globe",
     "An invention that should exist, but doesn't",
-    "The texture of a memory"
+    "The texture of a memory",
+    "If time had a flavor",
+    "The weight of a whisper",
+    "A mirror that shows your future",
+    "The language of rain",
+    "If dreams were downloadable",
+    "The soundtrack of your life",
+    "A book that writes itself",
+    "If thoughts had colors",
+    "The shape of happiness",
+    "A clock that runs backwards",
+
+    // Famous Quotes
+    "'Not all those who wander are lost.' - J.R.R. Tolkien",
+    "'The journey of a thousand miles begins with a single step.' - Lao Tzu",
+    "'I have not failed. I've just found 10,000 ways that won't work.' - Thomas A. Edison",
+    "'The only thing we have to fear is fear itself.' - Franklin D. Roosevelt",
+    "'Be the change you wish to see in the world.' - Gandhi",
+    "'In three words I can sum up everything I've learned about life: it goes on.' - Robert Frost",
+    "'To be yourself in a world that is constantly trying to make you something else is the greatest accomplishment.' - Ralph Waldo Emerson",
+    "'The unexamined life is not worth living.' - Socrates",
+    "'It is during our darkest moments that we must focus to see the light.' - Aristotle",
+    "'Life is what happens when you're busy making other plans.' - John Lennon",
+
+    // What If Scenarios
+    "If cats ruled the world",
+    "If cars could talk",
+    "If Monday was a person",
+    "If you could pause time for 10 seconds every hour",
+    "If everyone's thoughts appeared as text above their heads",
+    "If plants could walk",
+    "If memories were tradeable",
+    "If you could relive one day, which would it be?",
+    "If emotions were visible",
+    "If books could choose their readers",
+    "If music was mandatory",
+    "If kindness was a superpower",
+    "If you could only ask questions, never make statements",
+    "If failure was celebrated more than success",
+
+    // Personal Reflection
+    "The advice you would give your younger self",
+    "A lesson learned the hard way",
+    "Your biggest fear and why",
+    "The moment you felt most alive",
+    "A risk worth taking",
+    "The person who changed your perspective",
+    "Your proudest achievement",
+    "A mistake that taught you something valuable",
+    "The meaning of home",
+    "What makes you unique",
+    "Your definition of success",
+    "The power of saying no",
+    "Learning from failure",
+    "The importance of authenticity",
+
+    // Social and Contemporary
+    "The impact of social media on friendships",
+    "Why kindness matters",
+    "The value of disconnecting",
+    "First impressions versus lasting impressions",
+    "The art of listening",
+    "Why small talk isn't so small",
+    "The power of a compliment",
+    "Standing up for what you believe",
+    "The importance of mental health awareness",
+    "Finding balance in a busy world",
+    "The role of humor in difficult times",
+    "Why vulnerability is strength",
+    "The importance of stepping outside your comfort zone",
+    "Making time for what matters",
+
+    // Everyday Objects with Meaning
+    "An empty chair",
+    "A broken compass",
+    "A locked diary",
+    "An old photograph",
+    "A paper airplane",
+    "An hourglass",
+    "A red balloon",
+    "A handwritten letter",
+    "A worn-out pair of shoes",
+    "A blank canvas",
+    "A broken clock",
+    "A seashell",
+    "An unopened gift",
+    "A coffee stain",
+
+    // Fun and Lighthearted
+    "Why Mondays get a bad rap",
+    "If your pet could give you one piece of advice",
+    "The secret talent you wish you had",
+    "A day in the life of a pencil",
+    "Why socks disappear in the laundry",
+    "The perfect Saturday",
+    "If you could have dinner with any fictional character",
+    "Things that make you smile",
+    "Your favorite childhood memory",
+    "A food that describes your personality",
+    "The most embarrassing thing that's ever happened to you",
+    "If you could be invisible for a day",
+    "Your unpopular opinion",
+    "A conspiracy theory you find amusing",
+
+    // Values and Character
+    "The meaning of integrity",
+    "Why perseverance pays off",
+    "The value of honesty",
+    "What it means to be brave",
+    "The importance of gratitude",
+    "Leading by example",
+    "The power of forgiveness",
+    "What friendship really means",
+    "The courage to be different",
+    "Why empathy matters",
+    "The strength in admitting you're wrong",
+    "What it means to be a good person",
+    "The importance of keeping promises",
+    "Standing alone versus following the crowd",
+
+    // Education and Growth
+    "Why failure is the best teacher",
+    "The most important lesson school doesn't teach",
+    "Learning from mistakes",
+    "The value of curiosity",
+    "Why asking questions is important",
+    "What makes a great teacher",
+    "The importance of reading",
+    "Skills everyone should learn",
+    "The power of practice",
+    "Why creativity matters",
+    "Learning something new every day",
+    "The role of education in society",
+    "Why critical thinking is essential",
+    "The importance of being a lifelong learner",
+
+    // Technology and Future
+    "Life before smartphones",
+    "The benefits and drawbacks of technology",
+    "If AI could feel emotions",
+    "The future of communication",
+    "Technology's impact on relationships",
+    "The digital footprint we leave behind",
+    "Screen time: friend or foe?",
+    "Virtual reality versus real reality",
+    "The evolution of social connection",
+    "Privacy in the digital age",
+
+    // Nature and Environment
+    "What nature teaches us",
+    "The importance of protecting our planet",
+    "A world without trees",
+    "The ocean's secrets",
+    "Seasons as metaphors for life",
+    "The power of a sunrise",
+    "Why we need wild spaces",
+    "The wisdom of animals",
+    "Climate change and our responsibility",
+    "The beauty in everyday nature",
+
+    // Time and Change
+    "If you could time travel, where would you go?",
+    "The importance of living in the present",
+    "How change shapes us",
+    "Looking back versus looking forward",
+    "The power of a single moment",
+    "Why we fear change",
+    "Making the most of today",
+    "The passage of time",
+    "Growing older, growing wiser",
+    "The value of patience"
 ];
 
 function getRandomItems<T>(arr: T[], count: number): T[] {
@@ -411,7 +577,23 @@ const generatePracticeTopicsFlow = ai.defineFlow(
 
             return { topics: getRandomItems(questionsToUse, 3) };
         } else { // impromptu
-            return { topics: getRandomItems(impromptuTopics, 3) };
+            console.log(`[Fallback] Impromptu - Total topics: ${impromptuTopics.length}, Previously generated: ${input.previouslyGenerated?.length || 0}`);
+
+            // Filter out previously generated topics if provided
+            const availableTopics = input.previouslyGenerated && input.previouslyGenerated.length > 0
+                ? impromptuTopics.filter(t => !input.previouslyGenerated?.includes(t))
+                : impromptuTopics;
+
+            console.log(`[Fallback] Available topics after filtering: ${availableTopics.length}`);
+
+            // If we've exhausted all topics, reset and use all topics again
+            const topicsToUse = availableTopics.length >= 3 ? availableTopics : impromptuTopics;
+
+            if (topicsToUse === impromptuTopics && availableTopics.length < impromptuTopics.length) {
+                console.log(`[Fallback] Resetting topic pool - all ${impromptuTopics.length} topics have been used`);
+            }
+
+            return { topics: getRandomItems(topicsToUse, 3) };
         }
     }
 );

@@ -22,7 +22,7 @@ export function initiateAnonymousSignIn(authInstance: Auth): void {
 }
 
 /** Initiate email/password sign-up (returns promise for error handling). */
-export function initiateEmailSignUp(authInstance: Auth, firestore: Firestore, email: string, password: string, name: string, role: UserRole, studentId?: string, teamId?: string): Promise<void> {
+export function initiateEmailSignUp(authInstance: Auth, firestore: Firestore, email: string, password: string, name: string, role: UserRole, teamId: string, studentId?: string): Promise<void> {
   return createUserWithEmailAndPassword(authInstance, email, password)
     .then(userCredential => {
         const user = userCredential.user;
@@ -37,7 +37,7 @@ export function initiateEmailSignUp(authInstance: Auth, firestore: Firestore, em
             name: name,
             email: user.email,
             role: finalRole,
-            teamId: teamId || 'cywoods', // Default to cywoods team for now
+            teamId: teamId, // Team ID is now required
             username: name.replace(/\s+/g, '.'),
             avatarUrl: '',
             approved: (finalRole === 'superadmin' || finalRole === 'coach') ? true : false

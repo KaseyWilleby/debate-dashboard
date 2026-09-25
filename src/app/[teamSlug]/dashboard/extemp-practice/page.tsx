@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Play, Pause, RefreshCw, Loader2, Video, StopCircle, Save, ChevronsRight, Trash2, VideoIcon, Repeat, Camera, CameraOff, ArrowUp, ArrowDown, Share, FilePenLine, Minus, Plus } from "lucide-react";
+import { Play, Pause, RefreshCw, Loader2, Video, StopCircle, Save, ChevronsRight, Trash2, VideoIcon, Repeat, Camera, CameraOff, ArrowUp, ArrowDown, Share, FilePenLine, Minus, Plus, Timer } from "lucide-react";
 import { cn, getRoleBasedColor, formatTime } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { generatePracticeTopics, type GeneratePracticeTopicsInput } from "@/ai/flows/generate-practice-topics-flow";
@@ -166,13 +166,18 @@ export default function ExtempPracticePage() {
     const [extempCategory, setExtempCategory] = React.useState<ExtempCategory>('domestic');
 
     // Track previously generated questions to avoid duplicates
-    const [questionHistory, setQuestionHistory] = React.useState<{domestic: string[], foreign: string[]}>(() => {
-        if (typeof window === 'undefined') return { domestic: [], foreign: [] };
+    const [questionHistory, setQuestionHistory] = React.useState<{domestic: string[], foreign: string[], impromptu: string[]}>(() => {
+        if (typeof window === 'undefined') return { domestic: [], foreign: [], impromptu: [] };
         try {
             const stored = localStorage.getItem(EXTEMP_HISTORY_STORAGE_KEY);
-            return stored ? JSON.parse(stored) : { domestic: [], foreign: [] };
+            const parsed = stored ? JSON.parse(stored) : { domestic: [], foreign: [], impromptu: [] };
+            // Ensure impromptu key exists for backwards compatibility
+            if (!parsed.impromptu) {
+                parsed.impromptu = [];
+            }
+            return parsed;
         } catch (e) {
-            return { domestic: [], foreign: [] };
+            return { domestic: [], foreign: [], impromptu: [] };
         }
     });
     
@@ -191,9 +196,10 @@ export default function ExtempPracticePage() {
     const [prepTimerActive, setPrepTimerActive] = React.useState(false);
     const [speechTimerActive, setSpeechTimerActive] = React.useState(false);
     const [speechTimerDirection, setSpeechTimerDirection] = React.useState<TimerDirection>('down');
-    
+    const [isCombinedTimerMode, setIsCombinedTimerMode] = React.useState(false);
+
     const [speechTimerFlashState, setSpeechTimerFlashState] = React.useState<TimerFlashState>('none');
-    
+
     const prepTimeIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
     const speechTimeIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -418,6 +424,12 @@ export default function ExtempPracticePage() {
     }, []);
 
     React.useEffect(() => {
+        // Don't set flash state when in combined mode and speech timer hasn't been set yet
+        if (mode === 'impromptu' && isCombinedTimerMode && speechTime === 0 && !speechTimerActive) {
+            setSpeechTimerFlashState('none');
+            return;
+        }
+
         if (speechTimerDirection === 'down') {
             if (speechTime <= 0 && speechTimerActive) {
                 if (speechTimeIntervalRef.current) clearInterval(speechTimeIntervalRef.current);
@@ -434,7 +446,7 @@ export default function ExtempPracticePage() {
         } else {
             setSpeechTimerFlashState('none');
         }
-    }, [speechTime, speechTimerActive, stopRecording, speechTimerDirection]);
+    }, [speechTime, speechTimerActive, stopRecording, speechTimerDirection, mode, isCombinedTimerMode]);
 
     const handleModeChange = (newMode: string) => {
         if (newMode === mode) return;
@@ -451,19 +463,35 @@ export default function ExtempPracticePage() {
             };
             if (mode === 'extemp') {
                 input.extempCategory = extempCategory;
-                // Pass previously generated questions for this category to avoid duplicates
-                input.previouslyGenerated = questionHistory[extempCategory];
+                // Pass last 30 questions (10 generations) for this category to avoid duplicates
+                const recentHistory = questionHistory[extempCategory].slice(-30);
+                input.previouslyGenerated = recentHistory;
+            } else if (mode === 'impromptu') {
+                // Pass last 30 topics (10 generations) to avoid duplicates
+                const recentHistory = questionHistory.impromptu.slice(-30);
+                input.previouslyGenerated = recentHistory;
             }
             const result = await generatePracticeTopics(input);
             const newTopics = result.topics.map((text, id) => ({ id: id.toString(), text }));
             setTopics(newTopics);
 
-            // Update question history for extemp questions
+            // Update question history - keep only last 30 (10 generations)
             if (mode === 'extemp') {
-                setQuestionHistory(prev => ({
-                    ...prev,
-                    [extempCategory]: [...prev[extempCategory], ...result.topics]
-                }));
+                setQuestionHistory(prev => {
+                    const updated = [...prev[extempCategory], ...result.topics];
+                    return {
+                        ...prev,
+                        [extempCategory]: updated.slice(-30)
+                    };
+                });
+            } else if (mode === 'impromptu') {
+                setQuestionHistory(prev => {
+                    const updated = [...prev.impromptu, ...result.topics];
+                    return {
+                        ...prev,
+                        impromptu: updated.slice(-30)
+                    };
+                });
             }
         } catch (error) {
             console.error("Failed to generate topics:", error);
@@ -540,8 +568,9 @@ export default function ExtempPracticePage() {
         setIsCameraOn(false);
         setSpeechTimerDirection('down');
         setSpeechTimerFlashState('none');
+        setIsCombinedTimerMode(false);
         stopStream();
-        
+
         setIsTeleprompterActive(false);
         if (teleprompterRef.current) {
             const viewport = teleprompterRef.current.querySelector('div[data-radix-scroll-area-viewport]');
@@ -552,23 +581,77 @@ export default function ExtempPracticePage() {
 
     // Timer controls
     const startPrepTimer = () => {
-        if(prepTime <= 0) return;
         setPrepTimerActive(true);
-        prepTimeIntervalRef.current = setInterval(() => {
-            setPrepTime(prev => {
-                if (prev <= 1) {
-                    if (prepTimeIntervalRef.current) clearInterval(prepTimeIntervalRef.current);
-                    setPrepTimerActive(false);
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
+
+        if (mode === 'impromptu' && isCombinedTimerMode) {
+            // Combined mode: count up from 0 to 7:30
+            const TOTAL_TIME = 7.5 * 60;
+            prepTimeIntervalRef.current = setInterval(() => {
+                setPrepTime(prev => {
+                    // If we've reached the total time, stop
+                    if (prev >= TOTAL_TIME - 1) {
+                        if (prepTimeIntervalRef.current) clearInterval(prepTimeIntervalRef.current);
+                        setPrepTimerActive(false);
+                        // When time runs out in combined mode, speech timer gets 0
+                        setInitialSpeechTime(0);
+                        setSpeechTime(0);
+                        setIsCombinedTimerMode(false);
+
+                        // Show toast in next tick to avoid setState during render
+                        setTimeout(() => {
+                            toast({
+                                variant: 'destructive',
+                                title: 'Time Expired',
+                                description: 'You used all 7:30 for prep. No time remaining for speech.'
+                            });
+                        }, 0);
+                        return TOTAL_TIME;
+                    }
+                    // Count up
+                    return prev + 1;
+                });
+            }, 1000);
+        } else {
+            // Normal mode: count down
+            if (prepTime <= 0) {
+                setPrepTimerActive(false);
+                return;
+            }
+            prepTimeIntervalRef.current = setInterval(() => {
+                setPrepTime(prev => {
+                    if (prev <= 1) {
+                        if (prepTimeIntervalRef.current) clearInterval(prepTimeIntervalRef.current);
+                        setPrepTimerActive(false);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        }
     };
 
     const pausePrepTimer = () => {
         setPrepTimerActive(false);
         if (prepTimeIntervalRef.current) clearInterval(prepTimeIntervalRef.current);
+
+        // If in combined timer mode for impromptu, calculate remaining time and set speech timer
+        if (mode === 'impromptu' && isCombinedTimerMode) {
+            const TOTAL_TIME = 7.5 * 60; // 7:30 total
+            const timeUsedForPrep = prepTime; // This is counting up from 0
+            const remainingTime = TOTAL_TIME - timeUsedForPrep;
+
+            setInitialSpeechTime(remainingTime);
+            setSpeechTime(remainingTime);
+            setIsCombinedTimerMode(false);
+
+            // Show toast in next tick to avoid setState during render
+            setTimeout(() => {
+                toast({
+                    title: 'Prep Time Complete',
+                    description: `You used ${formatTime(timeUsedForPrep)} for prep. ${formatTime(remainingTime)} remaining for your speech.`
+                });
+            }, 0);
+        }
     };
 
     const startSpeechTimer = () => {
@@ -666,24 +749,49 @@ export default function ExtempPracticePage() {
         }, 1000);
     };
 
-    const handleRestartRecording = () => {
+    const handleRestartRecording = async () => {
+        // Save the current topic before resetting
+        const currentTopic = selectedTopic;
+
+        // Auto-save the current recording if it exists
+        if (recordedChunksRef.current.length > 0 && selectedTopic && user) {
+            try {
+                const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+
+                const newSavedSpeech: SavedSpeech = {
+                    id: `rec-${Date.now()}`,
+                    ownerId: user.id,
+                    topic: selectedTopic.text,
+                    notes,
+                    prepTime: prepTime,
+                    speechTime: speechTimerDirection === 'down' ? initialSpeechTime - speechTime : speechTime,
+                    mode,
+                    videoUrl: URL.createObjectURL(blob),
+                    date: new Date().toISOString(),
+                    sharedWith: [],
+                };
+
+                setSavedRecordings(prev => [...prev, newSavedSpeech]);
+
+                toast({ title: 'Recording Auto-Saved!', description: 'Your previous recording has been saved before restarting.' });
+            } catch (error) {
+                console.error("Error auto-saving speech: ", error);
+                toast({ variant: "destructive", title: "Auto-save failed", description: "Could not save previous recording." });
+            }
+        }
+
+        // Stop any active recording
         if (mediaRecorderRef.current) {
             if (mediaRecorderRef.current.state !== 'inactive') {
                 mediaRecorderRef.current.stop();
             }
         }
-        
-        if (teleprompterRef.current) {
-            const viewport = teleprompterRef.current.querySelector('div[data-radix-scroll-area-viewport]');
-            if (viewport) viewport.scrollTop = 0;
-        }
 
-        setSpeechTime(speechTimerDirection === 'down' ? initialSpeechTime : 0);
-        if (speechTimeIntervalRef.current) {
-            clearInterval(speechTimeIntervalRef.current);
-        }
-        restoreCameraStream(selectedVideoDeviceId);
-        initiateRecordingProcess();
+        // Reset everything back to initial state
+        resetPractice();
+
+        // Restore the topic so user can record the same topic again
+        setSelectedTopic(currentTopic);
     };
 
     const handleSaveSpeech = async () => {
@@ -795,6 +903,58 @@ export default function ExtempPracticePage() {
             return newDirection;
         });
     };
+
+    const adjustPrepTime = (seconds: number) => {
+        if (mode !== 'impromptu') return;
+
+        const TOTAL_TIME = 7.5 * 60; // 7:30 total for impromptu
+        const MIN_PREP = 30; // 30 seconds minimum
+        const MAX_PREP = TOTAL_TIME - 30; // Leave at least 30 seconds for speech
+
+        const newPrepTime = Math.max(MIN_PREP, Math.min(MAX_PREP, prepTime + seconds));
+        const newSpeechTime = TOTAL_TIME - newPrepTime;
+
+        setPrepTime(newPrepTime);
+        setInitialSpeechTime(newSpeechTime);
+        if (speechTimerDirection === 'down') {
+            setSpeechTime(newSpeechTime);
+        }
+    };
+
+    const toggleCombinedTimerMode = () => {
+        if (mode !== 'impromptu') return;
+
+        // Don't allow toggling while timer is running
+        if (prepTimerActive) return;
+
+        setIsCombinedTimerMode(prev => {
+            const newMode = !prev;
+            if (newMode) {
+                // Switching to combined mode - reset prep to 0 and speech to 0
+                setPrepTime(0);
+                setInitialSpeechTime(0);
+                setSpeechTime(0);
+            } else {
+                // Switching back to normal mode - reset to default
+                setPrepTime(2 * 60);
+                setInitialSpeechTime(5.5 * 60);
+                setSpeechTime(5.5 * 60);
+            }
+            return newMode;
+        });
+    };
+
+    // Show toast when combined timer mode changes
+    React.useEffect(() => {
+        if (mode === 'impromptu') {
+            if (isCombinedTimerMode) {
+                toast({
+                    title: 'Combined Timer Mode',
+                    description: 'Timer will count up from 0:00. Stop when ready - remaining time from 7:30 will be your speech time.'
+                });
+            }
+        }
+    }, [isCombinedTimerMode, mode, toast]);
 
     const openShareDialog = (speech: SavedSpeech) => {
         setSpeechToShare(speech);
@@ -1126,26 +1286,20 @@ export default function ExtempPracticePage() {
                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full overflow-hidden">
                         <div className="lg:col-span-2 flex flex-col gap-6 overflow-y-auto pr-2">
                             <Card>
-                                <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4">
-                                    <div>
-                                        <CardTitle>Record Speech</CardTitle>
-                                        <CardDescription>
-                                            {viewingSpeech && allUsers ? `Recorded by ${allUsers.find(u => u.id === viewingSpeech.ownerId)?.name || 'Unknown'}` : 'Record your speech for review.'}
-                                        </CardDescription>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        {!viewingSpeech && hasCameraPermission && (
-                                            <div className="flex items-center space-x-2">
-                                                <Switch id="camera-toggle" checked={isCameraOn} onCheckedChange={setIsCameraOn} />
-                                                <Label htmlFor="camera-toggle">Camera</Label>
-                                            </div>
-                                        )}
-                                        {!viewingSpeech && hasCameraPermission && videoDevices.length > 1 && (
+                                <CardHeader className="flex flex-row flex-wrap items-center gap-4">
+                                    <div className="flex items-center gap-4 flex-wrap">
+                                        <div>
+                                            <CardTitle>Record Speech</CardTitle>
+                                            <CardDescription>
+                                                {viewingSpeech && allUsers ? `Recorded by ${allUsers.find(u => u.id === viewingSpeech.ownerId)?.name || 'Unknown'}` : 'Record your speech for review.'}
+                                            </CardDescription>
+                                        </div>
+                                        {!viewingSpeech && !videoUrl && hasCameraPermission && videoDevices.length > 1 && (
                                             <Select value={selectedVideoDeviceId} onValueChange={(deviceId) => {
                                                 setSelectedVideoDeviceId(deviceId);
                                                 localStorage.setItem('selectedVideoDeviceId', deviceId);
                                             }}>
-                                                <SelectTrigger className="w-full md:w-[250px]">
+                                                <SelectTrigger className="w-[200px]">
                                                     <VideoIcon className="mr-2 h-4 w-4" />
                                                     <SelectValue placeholder="Select a camera" />
                                                 </SelectTrigger>
@@ -1156,6 +1310,16 @@ export default function ExtempPracticePage() {
                                                 </SelectContent>
                                             </Select>
                                         )}
+                                    </div>
+                                    <div className="flex-1 flex justify-center">
+                                        {!viewingSpeech && !videoUrl && hasCameraPermission && (
+                                            <div className="flex items-center space-x-2">
+                                                <Switch id="camera-toggle" checked={isCameraOn} onCheckedChange={setIsCameraOn} />
+                                                <Label htmlFor="camera-toggle">Camera ON/OFF</Label>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <div className="flex gap-2">
                                             {isRecording ? (
                                                 <Button variant="destructive" onClick={stopRecording}>
@@ -1165,7 +1329,7 @@ export default function ExtempPracticePage() {
                                                 <>
                                                     {videoUrl && !viewingSpeech ? (
                                                         <div className="flex gap-2">
-                                                            <Button variant="outline" onClick={handleRestartRecording}><Repeat className="mr-2"/> Restart</Button>
+                                                            <Button variant="outline" onClick={handleRestartRecording}><Repeat className="mr-2"/> Save and Redo</Button>
                                                             <Button variant="destructive" onClick={handleDeleteCurrentSpeech}>
                                                                 <Trash2 className="mr-2"/> Delete
                                                             </Button>
@@ -1175,8 +1339,8 @@ export default function ExtempPracticePage() {
                                                             </Button>
                                                         </div>
                                                     ) : !viewingSpeech && (
-                                                        <Button 
-                                                            onClick={initiateRecordingProcess} 
+                                                        <Button
+                                                            onClick={initiateRecordingProcess}
                                                             disabled={!selectedTopic || !hasCameraPermission || !isCameraOn || !!viewingSpeech || countdown !== null || (prepTimerActive && !isScriptedEvent)}
                                                         >
                                                             {countdown !== null ? <Loader2 className="mr-2 animate-spin" /> : <Video className="mr-2" />}
@@ -1303,6 +1467,11 @@ export default function ExtempPracticePage() {
                                         <Card>
                                             <CardHeader>
                                                 <CardTitle>Prep Timer</CardTitle>
+                                                {mode === 'impromptu' && (
+                                                    <CardDescription className="text-xs">
+                                                        {isCombinedTimerMode ? 'Counting prep time - Stop when ready to speak' : 'Total time: 7:30'}
+                                                    </CardDescription>
+                                                )}
                                             </CardHeader>
                                             <CardContent className="flex flex-col items-center gap-4">
                                                 <div className="text-6xl font-bold font-mono tabular-nums">
@@ -1312,10 +1481,41 @@ export default function ExtempPracticePage() {
                                                     <Button size="icon" onClick={prepTimerActive ? pausePrepTimer : startPrepTimer}>
                                                         {prepTimerActive ? <Pause /> : <Play />}
                                                     </Button>
-                                                    <Button size="icon" variant="outline" onClick={() => {pausePrepTimer(); setPrepTime(mode === 'impromptu' ? 2 * 60 : 30 * 60)}}>
+                                                    {mode === 'impromptu' && (
+                                                        <Button
+                                                            size="icon"
+                                                            variant={isCombinedTimerMode ? "default" : "outline"}
+                                                            onClick={toggleCombinedTimerMode}
+                                                            disabled={prepTimerActive}
+                                                            title={isCombinedTimerMode ? "Switch to normal mode" : "Switch to combined timer mode"}
+                                                        >
+                                                            <Timer />
+                                                        </Button>
+                                                    )}
+                                                    <Button size="icon" variant="outline" onClick={() => {pausePrepTimer(); setPrepTime(mode === 'impromptu' ? 2 * 60 : 30 * 60); if(mode === 'impromptu') {setInitialSpeechTime(5.5 * 60); setSpeechTime(5.5 * 60);} setIsCombinedTimerMode(false);}}>
                                                         <RefreshCw />
                                                     </Button>
                                                 </div>
+                                                {mode === 'impromptu' && !isCombinedTimerMode && (
+                                                    <div className="flex items-center gap-2 w-full justify-center">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => adjustPrepTime(-30)}
+                                                            disabled={prepTimerActive}
+                                                        >
+                                                            <Minus className="h-4 w-4 mr-1" /> 30s
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => adjustPrepTime(30)}
+                                                            disabled={prepTimerActive}
+                                                        >
+                                                            <Plus className="h-4 w-4 mr-1" /> 30s
+                                                        </Button>
+                                                    </div>
+                                                )}
                                             </CardContent>
                                         </Card>
                                     )}

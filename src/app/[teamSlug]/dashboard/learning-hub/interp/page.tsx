@@ -59,7 +59,7 @@ export default function InterpLearningPage() {
             Find tips on characterization, blocking, and finding the perfect piece.
           </p>
         </div>
-        {user?.role === 'admin' && (
+        {(user?.role === 'coach' || user?.role === 'superadmin') && (
            <Button onClick={() => setIsCreateOpen(true)}><PlusCircle className="mr-2"/> New Resource</Button>
         )}
       </div>
@@ -81,7 +81,7 @@ export default function InterpLearningPage() {
                             </div>
                         </div>
                     </Link>
-                    {user?.role === 'admin' && (
+                    {(user?.role === 'coach' || user?.role === 'superadmin') && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4 text-destructive"/></Button>

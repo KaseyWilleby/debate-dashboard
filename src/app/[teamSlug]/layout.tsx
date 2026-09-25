@@ -31,42 +31,70 @@ export default function TeamLayout({ children }: TeamLayoutProps) {
         return;
       }
 
+      console.log('[Team Access] Validating access for:', {
+        email: user.email,
+        role: user.role,
+        teamId: user.teamId,
+        targetTeamSlug: teamSlug
+      });
+
       try {
         // Check if this is the migration route - allow access for superadmins even if team doesn't exist
         const isMigrationRoute = window.location.pathname.includes('/migrate-to-multi-tenant');
         const isSuperAdmin = user.role === 'superadmin' || user.email === 'kaseywilleby@gmail.com';
 
+        console.log('[Team Access] Is superadmin?', isSuperAdmin, '(role:', user.role, 'email:', user.email, ')');
+
         if (isMigrationRoute && isSuperAdmin) {
           // Allow superadmins to access migration page even if team doesn't exist yet
+          console.log('[Team Access] Migration route - allowing superadmin access');
           setTeam(null);
           setAccessDenied(false);
           setTeamLoading(false);
           return;
         }
 
-        // First, try to find the team by slug
-        // For now, we'll use a simple approach - we'll need to add a teams collection
-        // For the MVP, we'll just check if the teamSlug matches the user's teamId
-
         // Fetch team document
         const teamDoc = await getDoc(doc(firestore, "teams", teamSlug));
 
         if (!teamDoc.exists()) {
           // Team doesn't exist
+          console.log('[Team Access] Team not found:', teamSlug);
+
+          // Allow superadmins to access even non-existent teams (for testing/setup)
+          if (isSuperAdmin) {
+            console.log('[Team Access] Superadmin accessing non-existent team - allowing access');
+            setTeam(null);
+            setAccessDenied(false);
+            setTeamLoading(false);
+            return;
+          }
+
           setAccessDenied(true);
           setTeamLoading(false);
           return;
         }
 
         const teamData = { id: teamDoc.id, ...teamDoc.data() } as Team;
+        console.log('[Team Access] Team found:', teamData.id, teamData.name);
 
         // Check if user has access to this team
         // Superadmins can access any team
         // Other users can only access their own team
-        if (user.role === 'superadmin' || user.teamId === teamData.id) {
+        const hasTeamAccess = isSuperAdmin || user.teamId === teamData.id;
+
+        console.log('[Team Access] Access check:', {
+          isSuperAdmin,
+          userTeamId: user.teamId,
+          teamDataId: teamData.id,
+          hasAccess: hasTeamAccess
+        });
+
+        if (hasTeamAccess) {
           setTeam(teamData);
           setAccessDenied(false);
         } else {
+          console.log('[Team Access] ACCESS DENIED');
           setAccessDenied(true);
         }
       } catch (error) {

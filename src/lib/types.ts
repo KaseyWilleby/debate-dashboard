@@ -12,9 +12,39 @@ export interface Team {
     logoUrl?: string;
   };
   isActive: boolean;
+  headCoachEmail?: string; // Primary contact for the school account
+  alternateCoachEmail?: string; // Secondary contact for the school account
+  address?: string; // Physical address of the school
+  approved?: boolean; // Whether the school has been approved by superadmin
+  trialEndsAt?: string; // ISO date when 30-day trial ends
+  subscriptionStatus?: 'trial' | 'active' | 'expired' | 'cancelled';
+  subscriptionPlanId?: string; // Future: link to payment plan
+  currentInvoiceId?: string; // Reference to current/latest invoice
+  deleted?: boolean; // Soft delete flag
+  deletedAt?: string; // When the team was deleted
+  deletedBy?: string; // User ID who deleted it
 }
 
 export type UserRole = 'superadmin' | 'coach' | 'varsity' | 'novice';
+
+export type InvoiceStatus = 'pending' | 'paid' | 'overdue' | 'cancelled';
+
+export interface Invoice {
+  id: string;
+  teamId: string; // Reference to team this invoice belongs to
+  invoiceNumber: string; // e.g., "INV-2026-001"
+  amount: number; // In dollars
+  dueDate: string; // ISO date
+  createdAt: string; // ISO date
+  status: InvoiceStatus;
+  description: string; // e.g., "Annual Subscription - Debate Dashboard"
+  billingPeriod: string; // e.g., "2026-2027 Academic Year"
+  payeeName: string; // "Kasey Willeby"
+  payeeAddress: string; // "19714 Redroot Dr. Houston TX 77084"
+  paidAt?: string; // ISO date when payment was received
+  paidBy?: string; // User ID who marked it as paid
+  notes?: string; // Admin notes
+}
 
 export interface User {
   id: string;
@@ -26,10 +56,14 @@ export interface User {
   avatarUrl: string;
   approved: boolean;
   studentId?: string;
+  recoveryPin?: string; // 4-digit PIN for password recovery (for students without email access)
   nsdaId?: string; // NSDA membership ID for matching tabroom results
   tabroomEmail?: string; // Tabroom.com login email
   tabroomPassword?: string; // Tabroom.com password (should be encrypted in production)
   tabroomChapterId?: string; // Tabroom chapter ID for accessing results (e.g., 26837 for Cy-Woods)
+  deleted?: boolean; // Soft delete flag
+  deletedAt?: string; // When the user was deleted
+  deletedBy?: string; // User ID who deleted this user
 }
 
 export interface Message {

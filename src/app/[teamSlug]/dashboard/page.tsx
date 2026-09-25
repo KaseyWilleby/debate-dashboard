@@ -214,12 +214,30 @@ export default function DashboardPage() {
       }
   }
 
+  const getHubTitle = () => {
+    switch (activeHub) {
+      case 'scheduler': return 'Team Hub';
+      case 'practice': return 'Practice Hub';
+      case 'learning': return 'Learning Hub';
+      default: return 'Team Hub';
+    }
+  };
+
+  const getHubDescription = () => {
+    switch (activeHub) {
+      case 'scheduler': return 'An overview of your upcoming events and sessions.';
+      case 'practice': return 'Track your practice sessions and recordings.';
+      case 'learning': return 'Explore resources and tutorials to improve your skills.';
+      default: return 'An overview of your upcoming events and sessions.';
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold font-headline">Schedule Hub</h1>
+        <h1 className="text-3xl font-bold font-headline">{getHubTitle()}</h1>
         <p className="text-muted-foreground">
-          An overview of your upcoming events and sessions.
+          {getHubDescription()}
         </p>
       </div>
 

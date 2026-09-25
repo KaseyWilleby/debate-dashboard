@@ -23,8 +23,8 @@ export default function Home() {
   // If user is already logged in, redirect to their appropriate dashboard
   useEffect(() => {
     if (!isLoading && user) {
+      // Check superadmin FIRST before checking teamId
       if (user.role === 'superadmin') {
-        // Superadmins go to the superadmin portal
         router.push('/superadmin/dashboard');
       } else if (user.teamId) {
         // Regular users go to their team dashboard

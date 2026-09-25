@@ -69,10 +69,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
   
-  const signUp = async (credentials: { email: string; password?: string, name: string, role: UserRole, studentId?: string, teamId?: string }) => {
+  const signUp = async (credentials: { email: string; password?: string, name: string, role: UserRole, teamId: string, studentId?: string }) => {
     if(!auth || !firestore) return;
     try {
-        await initiateEmailSignUp(auth, firestore, credentials.email, credentials.password || 'password123', credentials.name, credentials.role, credentials.studentId, credentials.teamId);
+        await initiateEmailSignUp(auth, firestore, credentials.email, credentials.password || 'password123', credentials.name, credentials.role, credentials.teamId, credentials.studentId);
         // Don't redirect here - let the component handle it after getting team info
     } catch (error) {
         console.error("Sign up failed:", error);

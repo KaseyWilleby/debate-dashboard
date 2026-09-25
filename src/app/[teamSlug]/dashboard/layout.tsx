@@ -17,11 +17,14 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { BookOpenCheck, Calendar, Gavel, BookOpen, Briefcase, BookCopy, ClipboardList, Trophy, Users, Mic, Flag, Drama, BrainCircuit, LayoutDashboard, Globe, FileText, Video, BarChart3, Download } from "lucide-react";
+import { BookOpenCheck, Calendar, Gavel, BookOpen, Briefcase, BookCopy, ClipboardList, Trophy, Users, Mic, Flag, Drama, BrainCircuit, LayoutDashboard, Globe, FileText, Video, BarChart3, Download, TestTube2, X } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/contexts/auth-context";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useFirebase } from "@/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { Team } from "@/lib/types";
 
 type Hub = 'scheduler' | 'practice' | 'learning';
 
@@ -29,8 +32,8 @@ const SchedulerNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoa
     return (
         <>
             <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === `/${teamSlug}/dashboard`} tooltip="Dashboard">
-                  <Link href={`/${teamSlug}/dashboard`}><LayoutDashboard /><span>Dashboard</span></Link>
+                <SidebarMenuButton asChild isActive={pathname === `/${teamSlug}/dashboard`} tooltip="Team Hub">
+                  <Link href={`/${teamSlug}/dashboard`}><LayoutDashboard /><span>Team Hub</span></Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -88,8 +91,8 @@ const SchedulerNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoa
 const PracticeNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoach: boolean; teamSlug: string }) => (
   <>
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/practice-dashboard`)} tooltip="Dashboard">
-        <Link href={`/${teamSlug}/dashboard/practice-dashboard`}><LayoutDashboard /><span>Dashboard</span></Link>
+      <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/practice-dashboard`)} tooltip="Practice Hub">
+        <Link href={`/${teamSlug}/dashboard/practice-dashboard`}><LayoutDashboard /><span>Practice Hub</span></Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
     <SidebarMenuItem>
@@ -177,15 +180,31 @@ export default function DashboardLayout({
   const params = useParams();
   const teamSlug = params?.teamSlug as string;
   const { user, isLoading } = useAuth();
+  const { firestore } = useFirebase();
   const [activeHub, setActiveHub] = React.useState<Hub>('scheduler');
   const [isMounted, setIsMounted] = React.useState(false);
+  const [teamData, setTeamData] = useState<Team | null>(null);
 
-  // Redirect superadmins to their own portal
+  // Note: Superadmins are allowed to access team dashboards for testing purposes
+  // Previously redirected superadmins to their portal, but this prevented testing functionality
+
+  // Fetch team data for the testing banner
   useEffect(() => {
-    if (!isLoading && user?.role === 'superadmin') {
-      router.push('/superadmin/dashboard');
+    async function fetchTeamData() {
+      if (!firestore || !teamSlug || !user?.role) return;
+
+      try {
+        const teamDoc = await getDoc(doc(firestore, "teams", teamSlug));
+        if (teamDoc.exists()) {
+          setTeamData({ id: teamDoc.id, ...teamDoc.data() } as Team);
+        }
+      } catch (error) {
+        console.error("Error fetching team data:", error);
+      }
     }
-  }, [user, isLoading, router]);
+
+    fetchTeamData();
+  }, [firestore, teamSlug, user?.role]);
 
   // Check if user needs approval
   useEffect(() => {
@@ -226,7 +245,7 @@ export default function DashboardLayout({
       <SidebarProvider>
         <Sidebar>
           <SidebarHeader>
-             <Button variant="ghost" className="w-full justify-start p-2 h-auto text-left">
+             <Button variant="ghost" className="w-full justify-start p-2 h-auto text-left" onClick={() => router.push(`/${teamSlug}/dashboard/welcome`)}>
               <div className="flex items-center gap-2 text-primary">
                 <Gavel />
                 <div className="flex flex-col">
@@ -238,11 +257,11 @@ export default function DashboardLayout({
             </Button>
              <div className="p-2">
                 <div className="text-center text-sm font-medium text-muted-foreground mb-2 capitalize">
-                    {activeHub === 'scheduler' ? 'Schedule Hub' : `${activeHub} Hub`}
+                    {activeHub === 'scheduler' ? 'Team Hub' : activeHub === 'practice' ? 'Practice Hub' : 'Learning Hub'}
                 </div>
                 <ToggleGroup type="single" value={activeHub} onValueChange={handleHubChange} className="w-full grid grid-cols-3">
-                    <ToggleGroupItem value="scheduler" aria-label="Scheduler Hub" className="flex-1">
-                        <Calendar className="h-4 w-4" />
+                    <ToggleGroupItem value="scheduler" aria-label="Team Hub" className="flex-1">
+                        <Users className="h-4 w-4" />
                     </ToggleGroupItem>
                     <ToggleGroupItem value="practice" aria-label="Practice Hub" className="flex-1">
                         <Gavel className="h-4 w-4" />
@@ -255,13 +274,40 @@ export default function DashboardLayout({
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
-              {activeHub === 'scheduler' && <SchedulerNav pathname={pathname} isCoach={user?.role === 'coach'} teamSlug={teamSlug} />}
-              {activeHub === 'practice' && <PracticeNav pathname={pathname} isCoach={user?.role === 'coach'} teamSlug={teamSlug} />}
+              {activeHub === 'scheduler' && <SchedulerNav pathname={pathname} isCoach={user?.role === 'coach' || user?.role === 'superadmin'} teamSlug={teamSlug} />}
+              {activeHub === 'practice' && <PracticeNav pathname={pathname} isCoach={user?.role === 'coach' || user?.role === 'superadmin'} teamSlug={teamSlug} />}
               {activeHub === 'learning' && <LearningNav pathname={pathname} teamSlug={teamSlug} />}
             </SidebarMenu>
           </SidebarContent>
         </Sidebar>
         <SidebarInset>
+          {/* Superadmin Testing Mode Banner */}
+          {user?.role === 'superadmin' && (
+            <div className="sticky top-0 z-50 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-3 border-b-2 border-orange-700 shadow-lg">
+              <div className="flex items-center justify-between max-w-7xl mx-auto">
+                <div className="flex items-center gap-3">
+                  <TestTube2 className="h-5 w-5 animate-pulse" />
+                  <div>
+                    <p className="font-semibold text-sm">
+                      Testing Mode - {teamData ? (teamData.displayName || teamData.name) : teamSlug}
+                    </p>
+                    <p className="text-xs text-orange-100">
+                      You are viewing this team's dashboard as a superadmin
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push('/superadmin/dashboard')}
+                  className="bg-white text-orange-600 hover:bg-orange-50 border-orange-300 font-semibold"
+                >
+                  Exit Testing Mode
+                </Button>
+              </div>
+            </div>
+          )}
+
           <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 sm:px-6">
             <SidebarTrigger className="sm:hidden" />
             <div className="ml-auto flex items-center gap-4">

@@ -527,12 +527,12 @@ export default function TournamentResultsImportPage() {
     }
   };
 
-  if (!user || user.role !== 'admin') {
+  if (!user || (user.role !== 'coach' && user.role !== 'superadmin')) {
     return (
       <div className="flex flex-col items-center justify-center h-96">
         <AlertCircle className="h-12 w-12 text-destructive mb-4" />
         <h2 className="text-2xl font-bold">Access Denied</h2>
-        <p className="text-muted-foreground">Only administrators can import tournament results.</p>
+        <p className="text-muted-foreground">Only coaches and administrators can import tournament results.</p>
       </div>
     );
   }
