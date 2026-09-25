@@ -49,8 +49,8 @@ export function NotificationBell() {
   }, [firestore, user, isCoachOrAdmin]);
 
   const { data: allPendingUsers } = useCollection<AppUser>(pendingUsersQuery);
-  // Filter out deleted users in JavaScript to handle users without deleted field
-  const pendingUsers = allPendingUsers?.filter(u => !u.deleted) || [];
+  // Filter out deleted/archived users in JavaScript to handle users without deleted field
+  const pendingUsers = allPendingUsers?.filter(u => u.deleted !== true) || [];
   const pendingCount = pendingUsers?.length || 0;
   
   const handleNotificationClick = async (notification: Notification) => {
