@@ -35,15 +35,35 @@ export default function TeamLayout({ children }: TeamLayoutProps) {
         email: user.email,
         role: user.role,
         teamId: user.teamId,
+        approved: user.approved,
         targetTeamSlug: teamSlug
       });
 
       try {
+        // Check if this is the pending approval route - allow unapproved users
+        const isPendingApprovalRoute = window.location.pathname.includes('/pending-approval');
+
         // Check if this is the migration route - allow access for superadmins even if team doesn't exist
         const isMigrationRoute = window.location.pathname.includes('/migrate-to-multi-tenant');
         const isSuperAdmin = user.role === 'superadmin' || user.email === 'kaseywilleby@gmail.com';
 
         console.log('[Team Access] Is superadmin?', isSuperAdmin, '(role:', user.role, 'email:', user.email, ')');
+
+        // If user is not approved and not on pending-approval page, redirect them
+        if (!user.approved && !isPendingApprovalRoute && !isSuperAdmin) {
+          console.log('[Team Access] User not approved - redirecting to pending-approval');
+          router.push(`/${teamSlug}/dashboard/pending-approval`);
+          return;
+        }
+
+        // Allow unapproved users to access the pending-approval page
+        if (isPendingApprovalRoute && !user.approved) {
+          console.log('[Team Access] Allowing access to pending-approval page');
+          setTeam(null);
+          setAccessDenied(false);
+          setTeamLoading(false);
+          return;
+        }
 
         if (isMigrationRoute && isSuperAdmin) {
           // Allow superadmins to access migration page even if team doesn't exist yet

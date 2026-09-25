@@ -28,8 +28,14 @@ export default function LoginPage() {
       if (user.role === 'superadmin') {
         router.push('/superadmin/dashboard');
       } else if (user.teamId) {
-        // Regular users go to their team dashboard
-        router.push(`/${user.teamId}/dashboard/welcome`);
+        // Check if user is approved
+        if (!user.approved) {
+          // Redirect to pending approval page
+          router.push(`/${user.teamId}/dashboard/pending-approval`);
+        } else {
+          // Regular approved users go to their team dashboard
+          router.push(`/${user.teamId}/dashboard/welcome`);
+        }
       } else {
         // User doesn't have a teamId - this shouldn't happen for regular users
         console.error('User missing teamId:', user.id, user.email);
