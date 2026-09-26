@@ -687,20 +687,39 @@ export default function StudentCongressPage() {
     };
 
 
-    const renderBillCard = (bill: CongressBill) => (
-        <Card 
-            key={bill.id}
-            className="cursor-pointer transition-all hover:bg-primary/10"
-            onClick={() => {
-                setBillForSpeechWriting(bill);
-                handleNewSpeech();
-            }}
-        >
-            <CardContent className="p-4 text-center">
-                <p className="font-medium">{bill.title}</p>
-            </CardContent>
-        </Card>
-    );
+    const renderBillCard = (bill: CongressBill) => {
+        // Count speeches by stance for this bill
+        const billSpeeches = writtenSpeeches.filter(s => s.billId === bill.id);
+        const affCount = billSpeeches.filter(s => s.stance === 'affirmative').length;
+        const negCount = billSpeeches.filter(s => s.stance === 'negative').length;
+
+        return (
+            <Card
+                key={bill.id}
+                className="cursor-pointer transition-all hover:bg-primary/10"
+                onClick={() => {
+                    setBillForSpeechWriting(bill);
+                    handleNewSpeech();
+                }}
+            >
+                <CardContent className="p-4">
+                    <p className="font-medium text-center mb-2">{bill.title}</p>
+                    {(affCount > 0 || negCount > 0) && (
+                        <div className="flex justify-center gap-3 text-xs">
+                            <div className="flex items-center gap-1">
+                                <ArrowUp className="h-3 w-3 text-green-600" />
+                                <span className="text-muted-foreground">Aff: {affCount}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <ArrowDown className="h-3 w-3 text-red-600" />
+                                <span className="text-muted-foreground">Neg: {negCount}</span>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        );
+    };
 
     const getTimerClass = (state: TimerFlashState) => {
         switch (state) {
@@ -1492,11 +1511,11 @@ export default function StudentCongressPage() {
                                                             </Button>
                                                         </div>
                                                     ) : !viewingSpeech && (
-                                                        <Button 
-                                                            onClick={initiateRecordingProcess} 
+                                                        <Button
+                                                            onClick={initiateRecordingProcess}
                                                             disabled={!selectedTopic || !hasCameraPermission || !isCameraOn || !!viewingSpeech || countdown !== null}
                                                         >
-                                                            {countdown !== null ? <Loader2 className="mr-2 animate-spin" /> : <Video className="mr-2" />}
+                                                            {countdown !== null ? <Loader2 className="mr-2 animate-spin" /> : <Camera className="mr-2" />}
                                                             {countdown !== null ? "Starting..." : "Record Speech"}
                                                         </Button>
                                                     )}
