@@ -410,3 +410,33 @@ export interface TournamentResult {
   date: string;
   createdAt: string;
 }
+
+// Assignment types
+export interface Assignment {
+  id: string;
+  title: string;
+  description: string;
+  teamId: string; // Which team this assignment is for
+  createdBy: string; // Coach user ID
+  createdAt: string; // ISO date
+  dueDate: string; // ISO date
+  allowResubmission: boolean; // Can students resubmit?
+  submissionsOpen: boolean; // Manually control if submissions are open
+  classPeriods?: string[]; // Optional: specific class periods this is for (empty = all periods)
+}
+
+export interface Submission {
+  id: string;
+  assignmentId: string; // Reference to Assignment
+  studentId: string; // User ID of student
+  studentName: string; // Student's name (for display)
+  recordingId: string; // Reference to SavedSpeech
+  recordingTitle: string; // Title of the recording (for display)
+  submittedAt: string; // ISO date
+  notes: string; // Student notes/comments
+  grade?: number | string; // Grade assigned by coach
+  feedback?: string; // Coach feedback
+  gradedBy?: string; // Coach user ID who graded
+  gradedAt?: string; // ISO date when graded
+  classPeriod?: string; // Student's class period at time of submission
+}

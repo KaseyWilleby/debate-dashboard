@@ -884,7 +884,7 @@ export default function PerformanceEventsPage() {
       </AlertDialog>
 
       <Dialog open={isPracticeSessionOpen} onOpenChange={(open) => { if (!open) { setIsPracticeSessionOpen(false); resetPractice(); }}}>
-        <DialogContent className="max-w-7xl h-[90vh]">
+        <DialogContent className="max-w-7xl h-[90vh]" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="font-headline text-2xl">
               Practice {eventTypeMap[activeTab]}

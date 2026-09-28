@@ -1451,7 +1451,7 @@ export default function StudentCongressPage() {
             </Dialog>
 
             <Dialog open={isPracticeSessionOpen} onOpenChange={(open) => !open && resetPractice()}>
-                <DialogContent className="max-w-7xl h-[90vh]">
+                <DialogContent className="max-w-7xl h-[90vh]" onInteractOutside={(e) => e.preventDefault()}>
                     <DialogHeader>
                         <DialogTitle className="font-headline text-2xl">
                            {viewingSpeech ? "Saved Speech" : "Practice Session"}
