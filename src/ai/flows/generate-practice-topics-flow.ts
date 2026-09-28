@@ -194,6 +194,24 @@ const extempQuestions = {
     ]
 };
 
+const impromptuQuotes = [
+    "'Not all those who wander are lost.' - J.R.R. Tolkien",
+    "'The journey of a thousand miles begins with a single step.' - Lao Tzu",
+    "'I have not failed. I've just found 10,000 ways that won't work.' - Thomas A. Edison",
+    "'The only thing we have to fear is fear itself.' - Franklin D. Roosevelt",
+    "'Be the change you wish to see in the world.' - Gandhi",
+    "'In three words I can sum up everything I've learned about life: it goes on.' - Robert Frost",
+    "'To be yourself in a world that is constantly trying to make you something else is the greatest accomplishment.' - Ralph Waldo Emerson",
+    "'The unexamined life is not worth living.' - Socrates",
+    "'It is during our darkest moments that we must focus to see the light.' - Aristotle",
+    "'Life is what happens when you're busy making other plans.' - John Lennon",
+    "'The best time to plant a tree was 20 years ago. The second best time is now.' - Chinese Proverb",
+    "'It does not matter how slowly you go as long as you do not stop.' - Confucius",
+    "'Everything you've ever wanted is on the other side of fear.' - George Addair",
+    "'Believe you can and you're halfway there.' - Theodore Roosevelt",
+    "'The only impossible journey is the one you never begin.' - Tony Robbins",
+];
+
 const impromptuTopics = [
     // Creative and Abstract
     "The color of Monday",
@@ -221,18 +239,6 @@ const impromptuTopics = [
     "If thoughts had colors",
     "The shape of happiness",
     "A clock that runs backwards",
-
-    // Famous Quotes
-    "'Not all those who wander are lost.' - J.R.R. Tolkien",
-    "'The journey of a thousand miles begins with a single step.' - Lao Tzu",
-    "'I have not failed. I've just found 10,000 ways that won't work.' - Thomas A. Edison",
-    "'The only thing we have to fear is fear itself.' - Franklin D. Roosevelt",
-    "'Be the change you wish to see in the world.' - Gandhi",
-    "'In three words I can sum up everything I've learned about life: it goes on.' - Robert Frost",
-    "'To be yourself in a world that is constantly trying to make you something else is the greatest accomplishment.' - Ralph Waldo Emerson",
-    "'The unexamined life is not worth living.' - Socrates",
-    "'It is during our darkest moments that we must focus to see the light.' - Aristotle",
-    "'Life is what happens when you're busy making other plans.' - John Lennon",
 
     // What If Scenarios
     "If cats ruled the world",
@@ -455,9 +461,11 @@ CRITICAL REQUIREMENTS:
 
 If the type is 'impromptu':
 - Generate three creative prompts that do not require prior knowledge
-- These can be abstract concepts, famous quotes, song lyrics, or 'what if' scenarios
+- CRITICAL: At least ONE of the three topics MUST be a famous quote (properly attributed)
+- The other topics can be abstract concepts, song lyrics, or 'what if' scenarios
 - The goal is to inspire a short, creative speech
 - Make each set of topics unique and varied
+- Examples of good quotes: "'Not all those who wander are lost.' - J.R.R. Tolkien", "'The journey of a thousand miles begins with a single step.' - Lao Tzu"
 
 Provide the three generated topics in the 'topics' array.
 `,
@@ -577,23 +585,33 @@ const generatePracticeTopicsFlow = ai.defineFlow(
 
             return { topics: getRandomItems(questionsToUse, 3) };
         } else { // impromptu
-            console.log(`[Fallback] Impromptu - Total topics: ${impromptuTopics.length}, Previously generated: ${input.previouslyGenerated?.length || 0}`);
+            console.log(`[Fallback] Impromptu - Total topics: ${impromptuTopics.length}, Total quotes: ${impromptuQuotes.length}, Previously generated: ${input.previouslyGenerated?.length || 0}`);
 
-            // Filter out previously generated topics if provided
+            // Filter out previously generated quotes and topics
+            const availableQuotes = input.previouslyGenerated && input.previouslyGenerated.length > 0
+                ? impromptuQuotes.filter(q => !input.previouslyGenerated?.includes(q))
+                : impromptuQuotes;
+
             const availableTopics = input.previouslyGenerated && input.previouslyGenerated.length > 0
                 ? impromptuTopics.filter(t => !input.previouslyGenerated?.includes(t))
                 : impromptuTopics;
 
-            console.log(`[Fallback] Available topics after filtering: ${availableTopics.length}`);
+            console.log(`[Fallback] Available quotes: ${availableQuotes.length}, Available topics: ${availableTopics.length}`);
 
-            // If we've exhausted all topics, reset and use all topics again
-            const topicsToUse = availableTopics.length >= 3 ? availableTopics : impromptuTopics;
+            // If we've exhausted quotes, reset to all quotes
+            const quotesToUse = availableQuotes.length >= 1 ? availableQuotes : impromptuQuotes;
 
-            if (topicsToUse === impromptuTopics && availableTopics.length < impromptuTopics.length) {
-                console.log(`[Fallback] Resetting topic pool - all ${impromptuTopics.length} topics have been used`);
-            }
+            // If we've exhausted topics, reset to all topics
+            const topicsToUse = availableTopics.length >= 2 ? availableTopics : impromptuTopics;
 
-            return { topics: getRandomItems(topicsToUse, 3) };
+            // Always include at least one quote
+            const selectedQuote = getRandomItems(quotesToUse, 1);
+            const selectedTopics = getRandomItems(topicsToUse, 2);
+
+            // Shuffle the combined array to randomize the position of the quote
+            const allSelected = [...selectedQuote, ...selectedTopics].sort(() => 0.5 - Math.random());
+
+            return { topics: allSelected };
         }
     }
 );
