@@ -1300,7 +1300,7 @@ export default function ExtempPracticePage() {
                                                 {viewingSpeech && allUsers ? `Recorded by ${allUsers.find(u => u.id === viewingSpeech.ownerId)?.name || 'Unknown'}` : 'Record your speech for review.'}
                                             </CardDescription>
                                         </div>
-                                        {!viewingSpeech && !videoUrl && hasCameraPermission && videoDevices.length > 1 && (
+                                        {!viewingSpeech && !videoUrl && hasCameraPermission && videoDevices.length >= 1 && (
                                             <Select value={selectedVideoDeviceId} onValueChange={(deviceId) => {
                                                 setSelectedVideoDeviceId(deviceId);
                                                 localStorage.setItem('selectedVideoDeviceId', deviceId);

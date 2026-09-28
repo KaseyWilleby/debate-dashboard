@@ -1476,7 +1476,7 @@ export default function StudentCongressPage() {
                                                 <Label htmlFor="camera-toggle">Camera</Label>
                                             </div>
                                         )}
-                                        {!viewingSpeech && hasCameraPermission && videoDevices.length > 1 && (
+                                        {!viewingSpeech && hasCameraPermission && videoDevices.length >= 1 && (
                                             <Select value={selectedVideoDeviceId} onValueChange={(deviceId) => {
                                                 setSelectedVideoDeviceId(deviceId);
                                                 localStorage.setItem('selectedVideoDeviceId', deviceId);
