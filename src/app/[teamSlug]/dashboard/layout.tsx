@@ -17,7 +17,7 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { BookOpenCheck, Calendar, Gavel, BookOpen, Briefcase, BookCopy, ClipboardList, Trophy, Users, Mic, Flag, Drama, BrainCircuit, LayoutDashboard, Globe, FileText, Video, BarChart3, Download, TestTube2, X, Settings } from "lucide-react";
+import { BookOpenCheck, Calendar, Gavel, BookOpen, Briefcase, BookCopy, ClipboardList, Trophy, Users, Mic, Flag, Drama, BrainCircuit, LayoutDashboard, Globe, FileText, Video, BarChart3, Download, TestTube2, X, Settings, ClipboardCheck } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/contexts/auth-context";
@@ -75,6 +75,11 @@ const SchedulerNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoa
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/tournament-results-import`)} tooltip="Import Results">
                     <Link href={`/${teamSlug}/dashboard/tournament-results-import`}><Download /><span>Import Results</span></Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/assignments`)} tooltip="Assignments">
+                    <Link href={`/${teamSlug}/dashboard/assignments`}><ClipboardCheck /><span>Assignments</span></Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
