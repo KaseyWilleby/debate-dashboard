@@ -46,7 +46,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, UserPlus, Upload, Loader2, CheckCircle, XCircle, AlertTriangle, Archive, Trash2, Key } from "lucide-react";
+import { MoreHorizontal, UserPlus, Upload, Loader2, CheckCircle, XCircle, AlertTriangle, Archive, Trash2, Key, Edit } from "lucide-react";
 
 import type { User, UserRole } from "@/lib/types";
 import CreateUserDialog from "@/components/dashboard/create-user-dialog";
@@ -64,6 +64,9 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Quick edit toggle state
+  const [isQuickEditEnabled, setIsQuickEditEnabled] = useState(false);
+
   // Filter users based on current user's role
   const visibleUsers = useMemo(() => {
     if (!user) return [];
@@ -73,9 +76,12 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
       return allUsers || [];
     }
 
-    // Coaches only see users from their own team (and users without a team won't be shown)
+    // Coaches only see users from their own team
+    // IMPORTANT: Filter out superadmins for security - coaches should never see or modify superadmin accounts
     if (user.role === 'coach' && user.teamId) {
-      return (allUsers || []).filter(u => u.teamId === user.teamId);
+      return (allUsers || []).filter(u =>
+        u.teamId === user.teamId && u.role !== 'superadmin'
+      );
     }
 
     return [];
@@ -377,13 +383,20 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
           </p>
         </div>
         <div className="flex gap-2">
-            <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
+            <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
                 accept=".csv"
-                onChange={handleCsvUpload} 
+                onChange={handleCsvUpload}
             />
+            <Button
+              variant={isQuickEditEnabled ? "default" : "outline"}
+              onClick={() => setIsQuickEditEnabled(!isQuickEditEnabled)}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Quick Edit
+            </Button>
             <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
                 <Upload className="mr-2" />
                 Upload CSV
@@ -434,35 +447,45 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
                     <span className="text-sm">{user.studentId || "—"}</span>
                   </TableCell>
                   <TableCell>
-                    <Select value={user.role} onValueChange={(value) => handleRoleChange(user.id, value as UserRole)}>
-                      <SelectTrigger className="w-[140px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="coach">Coach</SelectItem>
-                        <SelectItem value="varsity">Varsity</SelectItem>
-                        <SelectItem value="novice">Novice</SelectItem>
-                        <SelectItem value="superadmin">Superadmin</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {isQuickEditEnabled ? (
+                      <Select value={user.role} onValueChange={(value) => handleRoleChange(user.id, value as UserRole)}>
+                        <SelectTrigger className="w-[140px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="coach">Coach</SelectItem>
+                          <SelectItem value="varsity">Varsity</SelectItem>
+                          <SelectItem value="novice">Novice</SelectItem>
+                          <SelectItem value="superadmin">Superadmin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge variant="secondary" className="capitalize">{user.role}</Badge>
+                    )}
                   </TableCell>
                   <TableCell>
-                    <Select value={user.classPeriod || ''} onValueChange={(value) => handleClassPeriodChange(user.id, value)}>
-                      <SelectTrigger className="w-[130px]">
-                        <SelectValue placeholder="—" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">1st Period</SelectItem>
-                        <SelectItem value="2">2nd Period</SelectItem>
-                        <SelectItem value="3">3rd Period</SelectItem>
-                        <SelectItem value="4">4th Period</SelectItem>
-                        <SelectItem value="5">5th Period</SelectItem>
-                        <SelectItem value="6">6th Period</SelectItem>
-                        <SelectItem value="7">7th Period</SelectItem>
-                        <SelectItem value="8">8th Period</SelectItem>
-                        <SelectItem value="Club">Club</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {isQuickEditEnabled ? (
+                      <Select value={user.classPeriod || ''} onValueChange={(value) => handleClassPeriodChange(user.id, value)}>
+                        <SelectTrigger className="w-[130px]">
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1st Period</SelectItem>
+                          <SelectItem value="2">2nd Period</SelectItem>
+                          <SelectItem value="3">3rd Period</SelectItem>
+                          <SelectItem value="4">4th Period</SelectItem>
+                          <SelectItem value="5">5th Period</SelectItem>
+                          <SelectItem value="6">6th Period</SelectItem>
+                          <SelectItem value="7">7th Period</SelectItem>
+                          <SelectItem value="8">8th Period</SelectItem>
+                          <SelectItem value="Club">Club</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span className="text-sm">
+                        {user.classPeriod ? (user.classPeriod === 'Club' ? 'Club' : `${user.classPeriod}${user.classPeriod === '1' ? 'st' : user.classPeriod === '2' ? 'nd' : user.classPeriod === '3' ? 'rd' : 'th'} Period`) : '—'}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell>
                     {user.approved ? (
