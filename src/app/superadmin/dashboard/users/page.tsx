@@ -100,12 +100,6 @@ export default function UsersManagerPage() {
       filtered = filtered.filter(u => u.deleted);
     }
 
-    // Filter out coaches without team assignment
-    filtered = filtered.filter(u => {
-      if (u.role === 'coach' && !u.teamId) return false;
-      return true;
-    });
-
     // Search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
