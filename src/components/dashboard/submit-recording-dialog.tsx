@@ -32,13 +32,13 @@ export function SubmitRecordingDialog({ open, onOpenChange, recording }: SubmitR
 
   // Fetch available assignments for this team
   const assignmentsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
+    if (!firestore || !user || !user.teamId || !open) return null;
     return query(
       collection(firestore, 'assignments'),
       where('teamId', '==', user.teamId),
       where('submissionsOpen', '==', true)
     );
-  }, [firestore, user]);
+  }, [firestore, user, open]);
 
   const { data: assignments, isLoading } = useCollection<Assignment>(assignmentsQuery);
 
