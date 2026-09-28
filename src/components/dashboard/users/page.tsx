@@ -57,6 +57,23 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Filter users based on current user's role
+  const visibleUsers = useMemo(() => {
+    if (!user) return [];
+
+    // Superadmins see all users
+    if (user.role === 'superadmin') {
+      return allUsers || [];
+    }
+
+    // Coaches only see users from their own team (and users without a team won't be shown)
+    if (user.role === 'coach' && user.teamId) {
+      return (allUsers || []).filter(u => u.teamId === user.teamId);
+    }
+
+    return [];
+  }, [allUsers, user]);
+
   // Delete confirmation state
   const [showDeleteChoiceDialog, setShowDeleteChoiceDialog] = useState(false);
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
@@ -366,7 +383,7 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(allUsers || []).filter(u => !u.deleted).map((user) => (
+              {visibleUsers.filter(u => !u.deleted).map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -435,7 +452,7 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
                   </TableCell>
                 </TableRow>
               ))}
-                {!allUsers || allUsers.length === 0 && (
+                {!visibleUsers || visibleUsers.length === 0 && (
                     <TableRow>
                         <TableCell colSpan={4} className="h-24 text-center">
                             No users found.
