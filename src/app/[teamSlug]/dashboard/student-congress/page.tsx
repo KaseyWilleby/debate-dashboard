@@ -1303,16 +1303,16 @@ export default function StudentCongressPage() {
                                         <ToggleGroupItem value="negative">Negative</ToggleGroupItem>
                                     </ToggleGroup>
                                 </CardHeader>
-                                <CardContent className="flex-grow">
-                                    <Textarea 
+                                <CardContent className="flex-grow overflow-y-auto">
+                                    <Textarea
                                         placeholder="Write your speech here..."
-                                        className="h-full resize-none text-base"
+                                        className="min-h-[400px] resize-none text-base"
                                         value={speechContent}
                                         onChange={(e) => setSpeechContent(e.target.value)}
                                         readOnly={!!activeSpeech && activeSpeech.ownerId !== user?.id}
                                     />
                                 </CardContent>
-                                <CardFooter className="flex justify-end gap-2">
+                                <CardFooter className="flex justify-end gap-2 border-t pt-4">
                                     {activeSpeech && activeSpeech.ownerId === user?.id && (
                                         <Button variant="destructive" onClick={() => handleDeleteWrittenSpeech(activeSpeech.id)}>Delete</Button>
                                     )}
