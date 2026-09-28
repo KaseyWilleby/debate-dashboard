@@ -100,6 +100,12 @@ export default function UsersManagerPage() {
       filtered = filtered.filter(u => u.deleted);
     }
 
+    // Filter out coaches without team assignment
+    filtered = filtered.filter(u => {
+      if (u.role === 'coach' && !u.teamId) return false;
+      return true;
+    });
+
     // Search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -514,6 +520,7 @@ export default function UsersManagerPage() {
                     <TableHead className="cursor-pointer" onClick={() => handleSort('role')}>
                       Role {sortField === 'role' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </TableHead>
+                    <TableHead>Class Period</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -528,6 +535,9 @@ export default function UsersManagerPage() {
                         <Badge className={getRoleBadgeColor(user.role)}>
                           {user.role}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {user.classPeriod ? `${user.classPeriod}${user.classPeriod === '1' ? 'st' : user.classPeriod === '2' ? 'nd' : user.classPeriod === '3' ? 'rd' : 'th'} Period` : '-'}
                       </TableCell>
                       <TableCell>
                         {user.approved ? (
@@ -607,6 +617,7 @@ export default function UsersManagerPage() {
                         <TableHead>Email</TableHead>
                         <TableHead>Team</TableHead>
                         <TableHead>Role</TableHead>
+                        <TableHead>Class Period</TableHead>
                         <TableHead>Archived</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -621,6 +632,9 @@ export default function UsersManagerPage() {
                             <Badge className={getRoleBadgeColor(user.role)}>
                               {user.role}
                             </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {user.classPeriod ? `${user.classPeriod}${user.classPeriod === '1' ? 'st' : user.classPeriod === '2' ? 'nd' : user.classPeriod === '3' ? 'rd' : 'th'} Period` : '-'}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {user.deletedAt ? new Date(user.deletedAt).toLocaleDateString() : '-'}
