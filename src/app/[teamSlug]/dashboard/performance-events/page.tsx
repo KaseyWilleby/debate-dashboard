@@ -5,7 +5,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { FilePenLine, Trash2, Mic, Play, Pause, RefreshCw, Loader2, Video, StopCircle, Save, ChevronsRight, VideoIcon, Repeat, Camera, CameraOff, ArrowUp, ArrowDown, Share, Minus, Plus, Info } from "lucide-react";
+import { FilePenLine, Trash2, Mic, Play, Pause, RefreshCw, Loader2, Video, StopCircle, Save, ChevronsRight, VideoIcon, Repeat, Camera, CameraOff, ArrowUp, ArrowDown, Share, Minus, Plus, Info, Send } from "lucide-react";
 import type { SavedSpeech, User, WrittenSpeech, PracticeMode } from "@/lib/types";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { WriteSpeechDialog } from "@/components/dashboard/write-speech-dialog";
+import { SubmitRecordingDialog } from "@/components/dashboard/submit-recording-dialog";
 import { cn, formatTime } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -228,6 +229,10 @@ export default function PerformanceEventsPage() {
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
   const [speechToShare, setSpeechToShare] = React.useState<SavedSpeech | null>(null);
   const [usersToShareWith, setUsersToShareWith] = React.useState<string[]>([]);
+
+  // Submit state
+  const [isSubmitDialogOpen, setIsSubmitDialogOpen] = React.useState(false);
+  const [speechToSubmit, setSpeechToSubmit] = React.useState<SavedSpeech | null>(null);
 
   // Written speeches states
   const [writtenSpeeches, setWrittenSpeeches] = React.useState<WrittenSpeech[]>(() => {
@@ -690,6 +695,11 @@ export default function PerformanceEventsPage() {
     setIsShareDialogOpen(true);
   };
 
+  const openSubmitDialog = (speech: SavedSpeech) => {
+    setSpeechToSubmit(speech);
+    setIsSubmitDialogOpen(true);
+  };
+
   const handleConfirmShare = async () => {
     if (!speechToShare || !allUsers) return;
     
@@ -789,6 +799,9 @@ export default function PerformanceEventsPage() {
                                             <div className="flex gap-2">
                                                 <Button size="sm" variant="secondary" className="flex-1" onClick={() => handleViewArchivedSpeech(speech)}>
                                                     <ChevronsRight className="mr-2 h-4 w-4"/> View
+                                                </Button>
+                                                <Button size="sm" variant="default" onClick={() => openSubmitDialog(speech)}>
+                                                    <Send className="mr-2 h-4 w-4"/> Submit
                                                 </Button>
                                                 {allUsers && (
                                                     <Button size="sm" variant="outline" onClick={() => openShareDialog(speech)}>
@@ -1018,7 +1031,10 @@ export default function PerformanceEventsPage() {
                         </div>
                       </CardContent>
                        {user?.id === viewingSpeech.ownerId && allUsers && (
-                          <CardFooter className="p-4 border-t grid grid-cols-2 gap-2">
+                          <CardFooter className="p-4 border-t grid grid-cols-3 gap-2">
+                              <Button variant="default" className="w-full" onClick={() => openSubmitDialog(viewingSpeech)}>
+                                  <Send className="mr-2"/> Submit
+                              </Button>
                               <Button variant="outline" className="w-full" onClick={() => openShareDialog(viewingSpeech)}>
                                   <Share className="mr-2"/> Share
                               </Button>
@@ -1155,6 +1171,11 @@ export default function PerformanceEventsPage() {
           associatedRecordings={associatedRecordings}
           handleSaveWrittenSpeech={handleSaveWrittenSpeech}
           handleViewArchivedSpeech={handleViewArchivedSpeech}
+      />
+      <SubmitRecordingDialog
+          open={isSubmitDialogOpen}
+          onOpenChange={setIsSubmitDialogOpen}
+          recording={speechToSubmit}
       />
     </div>
   );

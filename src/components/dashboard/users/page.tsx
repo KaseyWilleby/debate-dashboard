@@ -26,6 +26,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -268,6 +275,34 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
     toast({ title: "User Rejected", description: "The user's access has been revoked.", variant: "destructive" });
   };
 
+  const handleRoleChange = async (userId: string, newRole: UserRole) => {
+    if (!firestore) return;
+    try {
+      await updateDoc(doc(firestore, 'users', userId), { role: newRole });
+      toast({ title: "Role Updated", description: "User role has been updated successfully." });
+    } catch (error) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: `users/${userId}`,
+        operation: 'update',
+      }));
+      toast({ title: "Update Failed", description: "Failed to update user role.", variant: "destructive" });
+    }
+  };
+
+  const handleClassPeriodChange = async (userId: string, newClassPeriod: string) => {
+    if (!firestore) return;
+    try {
+      await updateDoc(doc(firestore, 'users', userId), { classPeriod: newClassPeriod });
+      toast({ title: "Class Period Updated", description: "User class period has been updated successfully." });
+    } catch (error) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: `users/${userId}`,
+        operation: 'update',
+      }));
+      toast({ title: "Update Failed", description: "Failed to update class period.", variant: "destructive" });
+    }
+  };
+
   const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !firestore) return;
@@ -399,10 +434,35 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
                     <span className="text-sm">{user.studentId || "—"}</span>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className="capitalize">{user.role}</Badge>
+                    <Select value={user.role} onValueChange={(value) => handleRoleChange(user.id, value as UserRole)}>
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="coach">Coach</SelectItem>
+                        <SelectItem value="varsity">Varsity</SelectItem>
+                        <SelectItem value="novice">Novice</SelectItem>
+                        <SelectItem value="superadmin">Superadmin</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
-                  <TableCell className="text-sm">
-                    {user.classPeriod ? (user.classPeriod === 'Club' ? 'Club' : `${user.classPeriod}${user.classPeriod === '1' ? 'st' : user.classPeriod === '2' ? 'nd' : user.classPeriod === '3' ? 'rd' : 'th'} Period`) : '—'}
+                  <TableCell>
+                    <Select value={user.classPeriod || ''} onValueChange={(value) => handleClassPeriodChange(user.id, value)}>
+                      <SelectTrigger className="w-[130px]">
+                        <SelectValue placeholder="—" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1st Period</SelectItem>
+                        <SelectItem value="2">2nd Period</SelectItem>
+                        <SelectItem value="3">3rd Period</SelectItem>
+                        <SelectItem value="4">4th Period</SelectItem>
+                        <SelectItem value="5">5th Period</SelectItem>
+                        <SelectItem value="6">6th Period</SelectItem>
+                        <SelectItem value="7">7th Period</SelectItem>
+                        <SelectItem value="8">8th Period</SelectItem>
+                        <SelectItem value="Club">Club</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>
                     {user.approved ? (
