@@ -376,6 +376,7 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
                 <TableHead>User</TableHead>
                 <TableHead>Student ID</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Class Period</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
@@ -399,6 +400,9 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary" className="capitalize">{user.role}</Badge>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {user.classPeriod ? (user.classPeriod === 'Club' ? 'Club' : `${user.classPeriod}${user.classPeriod === '1' ? 'st' : user.classPeriod === '2' ? 'nd' : user.classPeriod === '3' ? 'rd' : 'th'} Period`) : '—'}
                   </TableCell>
                   <TableCell>
                     {user.approved ? (
@@ -454,7 +458,7 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
               ))}
                 {!visibleUsers || visibleUsers.length === 0 && (
                     <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center">
+                        <TableCell colSpan={6} className="h-24 text-center">
                             No users found.
                         </TableCell>
                     </TableRow>
