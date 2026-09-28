@@ -711,12 +711,26 @@ export default function UsersManagerPage() {
               {editingUser.role !== 'superadmin' && editingUser.role !== 'coach' && (
                 <div className="space-y-2">
                   <Label htmlFor="classPeriod">Class Period</Label>
-                  <Input
-                    id="classPeriod"
-                    placeholder="e.g., 1st Period, A Block"
+                  <Select
                     value={editingUser.classPeriod || ''}
-                    onChange={(e) => setEditingUser({ ...editingUser, classPeriod: e.target.value })}
-                  />
+                    onValueChange={(val) => setEditingUser({ ...editingUser, classPeriod: val })}
+                  >
+                    <SelectTrigger id="classPeriod">
+                      <SelectValue placeholder="Select period" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="1">1st Period</SelectItem>
+                      <SelectItem value="2">2nd Period</SelectItem>
+                      <SelectItem value="3">3rd Period</SelectItem>
+                      <SelectItem value="4">4th Period</SelectItem>
+                      <SelectItem value="5">5th Period</SelectItem>
+                      <SelectItem value="6">6th Period</SelectItem>
+                      <SelectItem value="7">7th Period</SelectItem>
+                      <SelectItem value="8">8th Period</SelectItem>
+                      <SelectItem value="9">9th Period</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
               <div className="flex items-center space-x-2">

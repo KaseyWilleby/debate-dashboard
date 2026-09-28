@@ -258,9 +258,27 @@ export default function CreateUserDialog({ children, userToEdit }: CreateUserDia
                 <FormField control={form.control} name="classPeriod" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Class Period (Optional)</FormLabel>
-                    <FormControl><Input {...field} placeholder="e.g. 1st Period, A Block" /></FormControl>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select period" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="1">1st Period</SelectItem>
+                        <SelectItem value="2">2nd Period</SelectItem>
+                        <SelectItem value="3">3rd Period</SelectItem>
+                        <SelectItem value="4">4th Period</SelectItem>
+                        <SelectItem value="5">5th Period</SelectItem>
+                        <SelectItem value="6">6th Period</SelectItem>
+                        <SelectItem value="7">7th Period</SelectItem>
+                        <SelectItem value="8">8th Period</SelectItem>
+                        <SelectItem value="9">9th Period</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormDescription>
-                      Class period for organizing students (e.g., "1st Period", "A Block")
+                      Class period for organizing students
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
