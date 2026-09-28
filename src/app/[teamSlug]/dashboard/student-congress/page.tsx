@@ -131,7 +131,7 @@ export default function StudentCongressPage() {
     const recordedChunksRef = React.useRef<Blob[]>([]);
 
     const [videoDevices, setVideoDevices] = React.useState<MediaDeviceInfo[]>([]);
-    const [selectedVideoDeviceId, setSelectedVideoDeviceId] = React.useState<string | undefined>(undefined);
+    const [selectedVideoDeviceId, setSelectedVideoDeviceId] = React.useState<string>('');
     const streamRef = React.useRef<MediaStream | null>(null);
     
     // Countdown states
@@ -334,7 +334,7 @@ export default function StudentCongressPage() {
         stopStream();
         try {
             const constraints: MediaStreamConstraints = {
-                video: deviceId ? { deviceId: { exact: deviceId } } : true,
+                video: deviceId && deviceId !== '' ? { deviceId: { exact: deviceId } } : true,
                 audio: true,
             };
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -360,14 +360,15 @@ export default function StudentCongressPage() {
         const listDevices = async () => {
              // Enumerate devices to populate the selector
              const devices = await navigator.mediaDevices.enumerateDevices();
-             const videoDevices = devices.filter(d => d.kind === 'videoinput');
+             // Filter out devices with empty deviceIds (can happen before permissions are granted)
+             const videoDevices = devices.filter(d => d.kind === 'videoinput' && d.deviceId && d.deviceId !== '');
              setVideoDevices(videoDevices);
- 
+
              // Select a device
              const storedDeviceId = localStorage.getItem('selectedVideoDeviceId');
-             let finalDeviceId = storedDeviceId;
-             if (!videoDevices.some(d => d.deviceId === storedDeviceId)) {
-                 finalDeviceId = videoDevices.length > 0 ? videoDevices[0].deviceId : undefined;
+             let finalDeviceId = storedDeviceId || '';
+             if (storedDeviceId && !videoDevices.some(d => d.deviceId === storedDeviceId)) {
+                 finalDeviceId = videoDevices.length > 0 ? videoDevices[0].deviceId : '';
              }
              setSelectedVideoDeviceId(finalDeviceId);
         }
@@ -1490,7 +1491,7 @@ export default function StudentCongressPage() {
                                             </div>
                                         )}
                                         {!viewingSpeech && hasCameraPermission && videoDevices.length >= 1 && (
-                                            <Select value={selectedVideoDeviceId} onValueChange={(deviceId) => {
+                                            <Select value={selectedVideoDeviceId || undefined} onValueChange={(deviceId) => {
                                                 setSelectedVideoDeviceId(deviceId);
                                                 localStorage.setItem('selectedVideoDeviceId', deviceId);
                                             }}>

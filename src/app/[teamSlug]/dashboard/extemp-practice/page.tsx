@@ -390,14 +390,15 @@ export default function ExtempPracticePage() {
         const listDevices = async () => {
              // Enumerate devices to populate the selector
              const devices = await navigator.mediaDevices.enumerateDevices();
-             const videoDevices = devices.filter(d => d.kind === 'videoinput');
+             // Filter out devices with empty deviceIds (can happen before permissions are granted)
+             const videoDevices = devices.filter(d => d.kind === 'videoinput' && d.deviceId && d.deviceId !== '');
              setVideoDevices(videoDevices);
- 
+
              // Select a device
              const storedDeviceId = localStorage.getItem('selectedVideoDeviceId');
-             let finalDeviceId = storedDeviceId;
-             if (!videoDevices.some(d => d.deviceId === storedDeviceId)) {
-                 finalDeviceId = videoDevices.length > 0 ? videoDevices[0].deviceId : undefined;
+             let finalDeviceId = storedDeviceId || '';
+             if (storedDeviceId && !videoDevices.some(d => d.deviceId === storedDeviceId)) {
+                 finalDeviceId = videoDevices.length > 0 ? videoDevices[0].deviceId : '';
              }
              setSelectedVideoDeviceId(finalDeviceId);
         }
