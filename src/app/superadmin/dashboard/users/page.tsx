@@ -712,14 +712,13 @@ export default function UsersManagerPage() {
                 <div className="space-y-2">
                   <Label htmlFor="classPeriod">Class Period</Label>
                   <Select
-                    value={editingUser.classPeriod || ''}
+                    value={editingUser.classPeriod || undefined}
                     onValueChange={(val) => setEditingUser({ ...editingUser, classPeriod: val })}
                   >
                     <SelectTrigger id="classPeriod">
                       <SelectValue placeholder="Select period" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
                       <SelectItem value="1">1st Period</SelectItem>
                       <SelectItem value="2">2nd Period</SelectItem>
                       <SelectItem value="3">3rd Period</SelectItem>

@@ -265,7 +265,6 @@ export default function CreateUserDialog({ children, userToEdit }: CreateUserDia
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
                         <SelectItem value="1">1st Period</SelectItem>
                         <SelectItem value="2">2nd Period</SelectItem>
                         <SelectItem value="3">3rd Period</SelectItem>
