@@ -221,7 +221,7 @@ export default function ExtempPracticePage() {
     const recordedChunksRef = React.useRef<Blob[]>([]);
 
     const [videoDevices, setVideoDevices] = React.useState<MediaDeviceInfo[]>([]);
-    const [selectedVideoDeviceId, setSelectedVideoDeviceId] = React.useState<string | undefined>(undefined);
+    const [selectedVideoDeviceId, setSelectedVideoDeviceId] = React.useState<string>('');
     const streamRef = React.useRef<MediaStream | null>(null);
     
     // Countdown states
@@ -364,7 +364,7 @@ export default function ExtempPracticePage() {
         stopStream();
         try {
             const constraints: MediaStreamConstraints = {
-                video: deviceId ? { deviceId: { exact: deviceId } } : true,
+                video: deviceId && deviceId !== '' ? { deviceId: { exact: deviceId } } : true,
                 audio: true,
             };
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -1314,7 +1314,7 @@ export default function ExtempPracticePage() {
                                             </CardDescription>
                                         </div>
                                         {!viewingSpeech && !videoUrl && hasCameraPermission && videoDevices.length >= 1 && (
-                                            <Select value={selectedVideoDeviceId} onValueChange={(deviceId) => {
+                                            <Select value={selectedVideoDeviceId || undefined} onValueChange={(deviceId) => {
                                                 setSelectedVideoDeviceId(deviceId);
                                                 localStorage.setItem('selectedVideoDeviceId', deviceId);
                                             }}>
