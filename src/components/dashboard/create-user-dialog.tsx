@@ -274,6 +274,7 @@ export default function CreateUserDialog({ children, userToEdit }: CreateUserDia
                         <SelectItem value="7">7th Period</SelectItem>
                         <SelectItem value="8">8th Period</SelectItem>
                         <SelectItem value="9">9th Period</SelectItem>
+                        <SelectItem value="Club">Club</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormDescription>

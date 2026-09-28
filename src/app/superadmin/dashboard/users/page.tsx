@@ -531,7 +531,7 @@ export default function UsersManagerPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm">
-                        {user.classPeriod ? `${user.classPeriod}${user.classPeriod === '1' ? 'st' : user.classPeriod === '2' ? 'nd' : user.classPeriod === '3' ? 'rd' : 'th'} Period` : '-'}
+                        {user.classPeriod ? (user.classPeriod === 'Club' ? 'Club' : `${user.classPeriod}${user.classPeriod === '1' ? 'st' : user.classPeriod === '2' ? 'nd' : user.classPeriod === '3' ? 'rd' : 'th'} Period`) : '-'}
                       </TableCell>
                       <TableCell>
                         {user.approved ? (
@@ -628,7 +628,7 @@ export default function UsersManagerPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm">
-                            {user.classPeriod ? `${user.classPeriod}${user.classPeriod === '1' ? 'st' : user.classPeriod === '2' ? 'nd' : user.classPeriod === '3' ? 'rd' : 'th'} Period` : '-'}
+                            {user.classPeriod ? (user.classPeriod === 'Club' ? 'Club' : `${user.classPeriod}${user.classPeriod === '1' ? 'st' : user.classPeriod === '2' ? 'nd' : user.classPeriod === '3' ? 'rd' : 'th'} Period`) : '-'}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {user.deletedAt ? new Date(user.deletedAt).toLocaleDateString() : '-'}
@@ -736,6 +736,7 @@ export default function UsersManagerPage() {
                       <SelectItem value="7">7th Period</SelectItem>
                       <SelectItem value="8">8th Period</SelectItem>
                       <SelectItem value="9">9th Period</SelectItem>
+                      <SelectItem value="Club">Club</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
