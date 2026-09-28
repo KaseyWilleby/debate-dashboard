@@ -18,6 +18,8 @@
  * - /congressDockets/{docketId}: Stores congress dockets (team-scoped)
  * - /practiceRounds/{roundId}: Stores practice rounds (team-scoped)
  * - /tournamentResults/{resultId}: Stores tournament results (team-scoped)
+ * - /assignments/{assignmentId}: Stores assignments created by coaches (team-scoped)
+ * - /submissions/{submissionId}: Stores student submissions to assignments (team-scoped via assignment)
  *
  * Key Security Decisions:
  * - Superadmin users (role === 'superadmin') can access ALL teams and data
@@ -26,7 +28,7 @@
  * - All data is team-scoped using teamId field
  * - Users can only manage their own profile (except coaches/superadmins)
  *
- * Last updated: 2026-09-21
+ * Last updated: 2026-09-28
  */
 rules_version = '2';
 service cloud.firestore {
@@ -224,6 +226,62 @@ service cloud.firestore {
       allow update, delete: if isSuperAdmin() || isSuperAdminEmail();
     }
 
+    /**
+     * @description Manages access to assignments.
+     * @path /assignments/{assignmentId}
+     * Coaches/superadmins can create and manage assignments for their team.
+     * Students can read assignments for their team.
+     */
+    match /assignments/{assignmentId} {
+      allow get: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
+      allow list: if isSignedIn(); // Allow listing, application will filter by teamId and submissionsOpen
+      allow create: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && request.resource.data.teamId == getUserTeamId() && request.resource.data.createdBy == request.auth.uid)
+      );
+      allow update: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(resource.data.teamId))
+      );
+      allow delete: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(resource.data.teamId) && resource.data.createdBy == request.auth.uid)
+      );
+    }
+
+    /**
+     * @description Manages access to assignment submissions.
+     * @path /submissions/{submissionId}
+     * Students can create and read their own submissions.
+     * Coaches/superadmins can read and grade all submissions for their team.
+     */
+    match /submissions/{submissionId} {
+      allow get: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        resource.data.studentId == request.auth.uid ||
+        (isCoach() && isSameTeam(getAssignmentTeamId(resource.data.assignmentId)))
+      );
+      allow list: if isSignedIn(); // Allow listing, application will filter by assignmentId or studentId
+      allow create: if isSignedIn() && (
+        request.resource.data.studentId == request.auth.uid &&
+        isSameTeam(getAssignmentTeamId(request.resource.data.assignmentId))
+      );
+      allow update: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(getAssignmentTeamId(resource.data.assignmentId)))
+      );
+      allow delete: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(getAssignmentTeamId(resource.data.assignmentId)))
+      );
+    }
+
     // ---- Helper functions ----
 
     /**
@@ -285,6 +343,15 @@ service cloud.firestore {
      */
     function isSameTeam(teamId) {
       return getUserTeamId() == teamId;
+    }
+
+    /**
+     * @description Gets the teamId for a given assignment.
+     * @param {string} assignmentId - The assignment document ID.
+     * @return {string} The assignment's teamId.
+     */
+    function getAssignmentTeamId(assignmentId) {
+      return get(/databases/$(database)/documents/assignments/$(assignmentId)).data.teamId;
     }
   }
 }
