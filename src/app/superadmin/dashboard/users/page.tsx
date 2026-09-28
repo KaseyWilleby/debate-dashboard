@@ -192,11 +192,18 @@ export default function UsersManagerPage() {
     setIsSubmitting(true);
 
     try {
-      await updateDoc(doc(firestore, 'users', editingUser.id), {
+      const updateData: any = {
         approved: editingUser.approved,
         role: editingUser.role,
         teamId: editingUser.teamId,
-      });
+      };
+
+      // Add classPeriod for students (if provided)
+      if (editingUser.role !== 'superadmin' && editingUser.role !== 'coach') {
+        updateData.classPeriod = editingUser.classPeriod || '';
+      }
+
+      await updateDoc(doc(firestore, 'users', editingUser.id), updateData);
       toast({
         title: "User Updated",
         description: `${editingUser.name} has been updated`,
@@ -701,6 +708,17 @@ export default function UsersManagerPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {editingUser.role !== 'superadmin' && editingUser.role !== 'coach' && (
+                <div className="space-y-2">
+                  <Label htmlFor="classPeriod">Class Period</Label>
+                  <Input
+                    id="classPeriod"
+                    placeholder="e.g., 1st Period, A Block"
+                    value={editingUser.classPeriod || ''}
+                    onChange={(e) => setEditingUser({ ...editingUser, classPeriod: e.target.value })}
+                  />
+                </div>
+              )}
               <div className="flex items-center space-x-2">
                 <Switch
                   id="approved"

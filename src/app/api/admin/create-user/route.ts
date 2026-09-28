@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   try {
     const startTime = Date.now();
     const body = await request.json();
-    const { email, password, name, role, teamId, studentId, recoveryPin } = body;
+    const { email, password, name, role, teamId, studentId, recoveryPin, classPeriod } = body;
 
     // Validate required fields
     if (!email || !password || !name || !role || !teamId) {
@@ -49,13 +49,16 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString()
     };
 
-    // Only add studentId and recoveryPin for student users (not superadmin/coach)
+    // Only add studentId, recoveryPin, and classPeriod for student users (not superadmin/coach)
     if (finalRole !== 'superadmin' && finalRole !== 'coach') {
       if (studentId) {
         userData.studentId = studentId;
       }
       if (recoveryPin) {
         userData.recoveryPin = recoveryPin;
+      }
+      if (classPeriod) {
+        userData.classPeriod = classPeriod;
       }
     }
 

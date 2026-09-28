@@ -162,7 +162,13 @@ export default function ExtempPracticePage() {
 
     const [mode, setMode] = React.useState<PracticeMode>("extemp");
     const [isLoadingTopics, setIsLoadingTopics] = React.useState(false);
-    const [topics, setTopics] = React.useState<Topic[]>([]);
+    const [topicsByMode, setTopicsByMode] = React.useState<Record<PracticeMode, Topic[]>>({
+        extemp: [],
+        impromptu: [],
+        informative: [],
+        oratory: []
+    });
+    const topics = topicsByMode[mode]; // Get topics for current mode
     const [extempCategory, setExtempCategory] = React.useState<ExtempCategory>('domestic');
 
     // Track previously generated questions to avoid duplicates
@@ -456,7 +462,7 @@ export default function ExtempPracticePage() {
 
     const handleGenerateTopics = async () => {
         setIsLoadingTopics(true);
-        setTopics([]);
+        setTopicsByMode(prev => ({ ...prev, [mode]: [] })); // Clear topics for current mode only
         try {
             const input: GeneratePracticeTopicsInput = {
                 type: mode as "extemp" | "impromptu",
@@ -473,7 +479,7 @@ export default function ExtempPracticePage() {
             }
             const result = await generatePracticeTopics(input);
             const newTopics = result.topics.map((text, id) => ({ id: id.toString(), text }));
-            setTopics(newTopics);
+            setTopicsByMode(prev => ({ ...prev, [mode]: newTopics })); // Set topics for current mode only
 
             // Update question history - keep only last 30 (10 generations)
             if (mode === 'extemp') {

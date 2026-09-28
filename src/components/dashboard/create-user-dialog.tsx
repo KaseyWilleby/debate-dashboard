@@ -44,6 +44,7 @@ const userSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters.").or(z.literal('')).optional(),
   studentId: z.string().optional(),
   recoveryPin: z.string().length(4, "PIN must be exactly 4 digits.").regex(/^\d+$/, "PIN must contain only numbers.").or(z.literal('')).optional(),
+  classPeriod: z.string().optional(),
 });
 
 interface CreateUserDialogProps {
@@ -75,6 +76,7 @@ export default function CreateUserDialog({ children, userToEdit }: CreateUserDia
         teamId: userToEdit.teamId,
         studentId: userToEdit.studentId || "",
         recoveryPin: userToEdit.recoveryPin || "",
+        classPeriod: userToEdit.classPeriod || "",
     } : {
       name: "",
       email: "",
@@ -83,6 +85,7 @@ export default function CreateUserDialog({ children, userToEdit }: CreateUserDia
       password: "",
       studentId: "",
       recoveryPin: "",
+      classPeriod: "",
     },
   });
 
@@ -95,6 +98,7 @@ export default function CreateUserDialog({ children, userToEdit }: CreateUserDia
             teamId: userToEdit.teamId,
             studentId: userToEdit.studentId || "",
             recoveryPin: userToEdit.recoveryPin || "",
+            classPeriod: userToEdit.classPeriod || "",
         } : {
           name: "",
           email: "",
@@ -103,6 +107,7 @@ export default function CreateUserDialog({ children, userToEdit }: CreateUserDia
           password: "",
           studentId: "",
           recoveryPin: "",
+          classPeriod: "",
         });
     }
   }, [open, form, userToEdit, isSuperAdmin, user?.teamId]);
@@ -151,6 +156,7 @@ export default function CreateUserDialog({ children, userToEdit }: CreateUserDia
                     teamId: values.teamId,
                     studentId: values.studentId,
                     recoveryPin: values.recoveryPin,
+                    classPeriod: values.classPeriod,
                 }),
             });
 
@@ -245,6 +251,16 @@ export default function CreateUserDialog({ children, userToEdit }: CreateUserDia
                     <FormControl><Input {...field} placeholder="4-digit PIN" maxLength={4} type="password" /></FormControl>
                     <FormDescription>
                       4-digit PIN for password recovery (helpful for students without email access)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="classPeriod" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Class Period (Optional)</FormLabel>
+                    <FormControl><Input {...field} placeholder="e.g. 1st Period, A Block" /></FormControl>
+                    <FormDescription>
+                      Class period for organizing students (e.g., "1st Period", "A Block")
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

@@ -64,6 +64,7 @@ export interface User {
   approved: boolean;
   studentId?: string;
   recoveryPin?: string; // 4-digit PIN for password recovery (for students without email access)
+  classPeriod?: string; // Class period for organizing students (e.g., "1st Period", "A Block", etc.)
   nsdaId?: string; // NSDA membership ID for matching tabroom results
   tabroomEmail?: string; // Tabroom.com login email
   tabroomPassword?: string; // Tabroom.com password (should be encrypted in production)
