@@ -1288,12 +1288,12 @@ export default function StudentCongressPage() {
             />
 
              <Dialog open={!!billForSpeechWriting} onOpenChange={(open) => { if (!open) setBillForSpeechWriting(null)}}>
-                <DialogContent className="max-w-7xl h-[90vh]">
+                <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col">
                     <DialogHeader>
                         <DialogTitle>{billForSpeechWriting?.title}</DialogTitle>
                         <DialogDescription>Write or edit your speeches for this legislation.</DialogDescription>
                     </DialogHeader>
-                    <div className="grid md:grid-cols-3 gap-6 h-full overflow-hidden py-4">
+                    <div className="grid md:grid-cols-3 gap-6 flex-1 overflow-y-auto py-4 min-h-0">
                         <div className="md:col-span-1 h-full flex flex-col">
                            <Card className="flex-grow flex flex-col">
                                 <CardHeader>
