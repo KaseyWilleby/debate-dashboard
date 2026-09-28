@@ -4,10 +4,18 @@
 runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
-  maxInstances: 1
+  minInstances: 1
+  maxInstances: 10
+  # Increase memory and CPU to handle large dependencies like puppeteer
+  cpu: 2
+  memoryMiB: 2048
+  # Increase concurrency
+  concurrency: 80
 
 env:
   - variable: GOOGLE_GENAI_API_KEY
     secret: GOOGLE_GENAI_API_KEY
   - variable: NEWS_API_KEY
     secret: NEWS_API_KEY
+  - variable: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+    value: "true"
