@@ -46,6 +46,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Toggle } from "@/components/ui/toggle";
 import { MoreHorizontal, UserPlus, Upload, Loader2, CheckCircle, XCircle, AlertTriangle, Archive, Trash2, Key, Edit } from "lucide-react";
 
 import type { User, UserRole } from "@/lib/types";
@@ -390,13 +391,6 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
                 accept=".csv"
                 onChange={handleCsvUpload}
             />
-            <Button
-              variant={isQuickEditEnabled ? "default" : "outline"}
-              onClick={() => setIsQuickEditEnabled(!isQuickEditEnabled)}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Quick Edit
-            </Button>
             <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
                 <Upload className="mr-2" />
                 Upload CSV
@@ -412,10 +406,23 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>
-            A list of all users in the system.
-          </CardDescription>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle>All Users</CardTitle>
+              <CardDescription>
+                A list of all users in the system.
+              </CardDescription>
+            </div>
+            <Toggle
+              pressed={isQuickEditEnabled}
+              onPressedChange={setIsQuickEditEnabled}
+              aria-label="Toggle quick edit mode"
+              className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Quick Edit
+            </Toggle>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -432,23 +439,23 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {visibleUsers.filter(u => !u.deleted).map((user) => (
-                <TableRow key={user.id}>
+              {visibleUsers.filter(u => !u.deleted).map((tableUser) => (
+                <TableRow key={tableUser.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar>
-                        <AvatarFallback className={cn(getRoleBasedColor(user.role))}>{user.name ? user.name.split(" ").map(n => n[0]).join("") : "?"}</AvatarFallback>
+                        <AvatarFallback className={cn(getRoleBasedColor(tableUser.role))}>{tableUser.name ? tableUser.name.split(" ").map(n => n[0]).join("") : "?"}</AvatarFallback>
                       </Avatar>
-                      <div className="font-medium">{user.name || "No Name"}</div>
-                      <div className="text-sm text-muted-foreground">{user.email || "No Email"}</div>
+                      <div className="font-medium">{tableUser.name || "No Name"}</div>
+                      <div className="text-sm text-muted-foreground">{tableUser.email || "No Email"}</div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="text-sm">{user.studentId || "—"}</span>
+                    <span className="text-sm">{tableUser.studentId || "—"}</span>
                   </TableCell>
                   <TableCell>
                     {isQuickEditEnabled ? (
-                      <Select value={user.role} onValueChange={(value) => handleRoleChange(user.id, value as UserRole)}>
+                      <Select value={tableUser.role} onValueChange={(value) => handleRoleChange(tableUser.id, value as UserRole)}>
                         <SelectTrigger className="w-[140px]">
                           <SelectValue />
                         </SelectTrigger>
@@ -456,16 +463,18 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
                           <SelectItem value="coach">Coach</SelectItem>
                           <SelectItem value="varsity">Varsity</SelectItem>
                           <SelectItem value="novice">Novice</SelectItem>
-                          <SelectItem value="superadmin">Superadmin</SelectItem>
+                          {user?.role === 'superadmin' && (
+                            <SelectItem value="superadmin">Superadmin</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     ) : (
-                      <Badge variant="secondary" className="capitalize">{user.role}</Badge>
+                      <Badge variant="secondary" className="capitalize">{tableUser.role}</Badge>
                     )}
                   </TableCell>
                   <TableCell>
                     {isQuickEditEnabled ? (
-                      <Select value={user.classPeriod || ''} onValueChange={(value) => handleClassPeriodChange(user.id, value)}>
+                      <Select value={tableUser.classPeriod || ''} onValueChange={(value) => handleClassPeriodChange(tableUser.id, value)}>
                         <SelectTrigger className="w-[130px]">
                           <SelectValue placeholder="—" />
                         </SelectTrigger>
@@ -483,12 +492,12 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
                       </Select>
                     ) : (
                       <span className="text-sm">
-                        {user.classPeriod ? (user.classPeriod === 'Club' ? 'Club' : `${user.classPeriod}${user.classPeriod === '1' ? 'st' : user.classPeriod === '2' ? 'nd' : user.classPeriod === '3' ? 'rd' : 'th'} Period`) : '—'}
+                        {tableUser.classPeriod ? (tableUser.classPeriod === 'Club' ? 'Club' : `${tableUser.classPeriod}${tableUser.classPeriod === '1' ? 'st' : tableUser.classPeriod === '2' ? 'nd' : tableUser.classPeriod === '3' ? 'rd' : 'th'} Period`) : '—'}
                       </span>
                     )}
                   </TableCell>
                   <TableCell>
-                    {user.approved ? (
+                    {tableUser.approved ? (
                       <Badge variant="default" className="bg-green-500">
                         <CheckCircle className="mr-1 h-3 w-3" />
                         Approved
@@ -510,30 +519,30 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        {!user.approved && (
-                          <DropdownMenuItem onClick={() => handleApproveUser(user.id)}>
+                        {!tableUser.approved && (
+                          <DropdownMenuItem onClick={() => handleApproveUser(tableUser.id)}>
                             <CheckCircle className="mr-2 h-4 w-4" />
                             Approve User
                           </DropdownMenuItem>
                         )}
-                        {user.approved && (
-                          <DropdownMenuItem onClick={() => handleRejectUser(user.id)}>
+                        {tableUser.approved && (
+                          <DropdownMenuItem onClick={() => handleRejectUser(tableUser.id)}>
                             <XCircle className="mr-2 h-4 w-4" />
                             Revoke Access
                           </DropdownMenuItem>
                         )}
-                         <CreateUserDialog userToEdit={user}>
+                         <CreateUserDialog userToEdit={tableUser}>
                              <button className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full">
                                 Edit
                              </button>
                         </CreateUserDialog>
-                        {(user.role === 'varsity' || user.role === 'novice') && (
-                          <DropdownMenuItem onClick={() => handleResetPasswordClick(user)}>
+                        {(tableUser.role === 'varsity' || tableUser.role === 'novice') && (
+                          <DropdownMenuItem onClick={() => handleResetPasswordClick(tableUser)}>
                             <Key className="mr-2 h-4 w-4" />
                             Reset Password
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem onClick={() => handleDeleteClick(user)}>Delete</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDeleteClick(tableUser)}>Delete</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
