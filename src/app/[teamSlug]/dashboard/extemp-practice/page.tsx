@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Play, Pause, RefreshCw, Loader2, Video, StopCircle, Save, ChevronsRight, Trash2, VideoIcon, Repeat, Camera, CameraOff, ArrowUp, ArrowDown, Share, FilePenLine, Minus, Plus, Timer } from "lucide-react";
+import { Play, Pause, RefreshCw, Loader2, Video, StopCircle, Save, ChevronsRight, Trash2, VideoIcon, Repeat, Camera, CameraOff, ArrowUp, ArrowDown, Share, FilePenLine, Minus, Plus, Timer, Send } from "lucide-react";
 import { cn, getRoleBasedColor, formatTime } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { generatePracticeTopics, type GeneratePracticeTopicsInput } from "@/ai/flows/generate-practice-topics-flow";
@@ -59,6 +59,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { WriteSpeechDialog } from "@/components/dashboard/write-speech-dialog";
+import { SubmitRecordingDialog } from "@/components/dashboard/submit-recording-dialog";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection } from "firebase/firestore";
 
@@ -231,6 +232,10 @@ export default function ExtempPracticePage() {
     const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
     const [speechToShare, setSpeechToShare] = React.useState<SavedSpeech | null>(null);
     const [usersToShareWith, setUsersToShareWith] = React.useState<string[]>([]);
+
+    // Submit state
+    const [isSubmitDialogOpen, setIsSubmitDialogOpen] = React.useState(false);
+    const [speechToSubmit, setSpeechToSubmit] = React.useState<SavedSpeech | null>(null);
     
     // Written speeches states
     const [isWritingDialogOpen, setIsWritingDialogOpen] = React.useState(false);
@@ -968,6 +973,11 @@ export default function ExtempPracticePage() {
         setIsShareDialogOpen(true);
     };
 
+    const openSubmitDialog = (speech: SavedSpeech) => {
+        setSpeechToSubmit(speech);
+        setIsSubmitDialogOpen(true);
+    };
+
     const handleConfirmShare = async () => {
         if (!speechToShare) return;
         
@@ -1176,6 +1186,9 @@ export default function ExtempPracticePage() {
                                             </Button>
                                              {isOwner && (
                                                 <>
+                                                    <Button size="sm" variant="default" onClick={() => openSubmitDialog(speech)}>
+                                                        <Send className="mr-2 h-4 w-4"/> Submit
+                                                    </Button>
                                                     {allUsers && (
                                                         <Button size="sm" variant="outline" onClick={() => openShareDialog(speech)}>
                                                             <Share className="mr-2 h-4 w-4"/> Share
@@ -1418,11 +1431,16 @@ export default function ExtempPracticePage() {
                                                      <p className="font-medium">{format(new Date(viewingSpeech.date), 'PPP')}</p>
                                                 </div>
                                             </CardContent>
-                                             {user?.id === viewingSpeech.ownerId && allUsers && (
-                                                <CardFooter className="p-4 border-t grid grid-cols-2 gap-2">
-                                                    <Button variant="outline" className="w-full" onClick={() => openShareDialog(viewingSpeech)}>
-                                                        <Share className="mr-2"/> Share
+                                             {user?.id === viewingSpeech.ownerId && (
+                                                <CardFooter className="p-4 border-t grid grid-cols-3 gap-2">
+                                                    <Button variant="default" className="w-full" onClick={() => openSubmitDialog(viewingSpeech)}>
+                                                        <Send className="mr-2"/> Submit
                                                     </Button>
+                                                    {allUsers && (
+                                                        <Button variant="outline" className="w-full" onClick={() => openShareDialog(viewingSpeech)}>
+                                                            <Share className="mr-2"/> Share
+                                                        </Button>
+                                                    )}
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
                                                             <Button variant="destructive" className="w-full">
@@ -1607,6 +1625,13 @@ export default function ExtempPracticePage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <SubmitRecordingDialog
+                open={isSubmitDialogOpen}
+                onOpenChange={setIsSubmitDialogOpen}
+                recording={speechToSubmit}
+            />
+
             <WriteSpeechDialog 
                 isWritingDialogOpen={isWritingDialogOpen}
                 setIsWritingDialogOpen={setIsWritingDialogOpen}
