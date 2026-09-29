@@ -373,7 +373,12 @@ export default function AssignmentsPage() {
               </TableHeader>
               <TableBody>
                 {assignments.map((assignment) => {
-                  const isPastDue = new Date(assignment.dueDate) < new Date();
+                  // Compare only dates, not times - due date should be past due only if it's a previous day
+                  const dueDate = new Date(assignment.dueDate);
+                  const today = new Date();
+                  const dueDateOnly = new Date(dueDate.getUTCFullYear(), dueDate.getUTCMonth(), dueDate.getUTCDate());
+                  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                  const isPastDue = dueDateOnly < todayOnly;
                   const submissionCount = getSubmissionCount(assignment.id);
 
                   return (

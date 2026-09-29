@@ -255,6 +255,27 @@ export default function ExtempPracticePage() {
 
     // Migration state
     const [isMigrateDialogOpen, setIsMigrateDialogOpen] = React.useState(false);
+    const [hasCheckedForMigration, setHasCheckedForMigration] = React.useState(false);
+
+    // Auto-detect local recordings and prompt migration on first load
+    React.useEffect(() => {
+        if (hasCheckedForMigration || !user) return;
+
+        try {
+            const stored = localStorage.getItem(SAVED_SPEECHES_STORAGE_KEY);
+            if (stored) {
+                const recordings = JSON.parse(stored);
+                if (recordings && recordings.length > 0) {
+                    // Automatically open migration dialog if local recordings found
+                    setIsMigrateDialogOpen(true);
+                }
+            }
+        } catch (e) {
+            console.error("Error checking for local recordings:", e);
+        }
+
+        setHasCheckedForMigration(true);
+    }, [user, hasCheckedForMigration]);
 
     // Written speeches states
     const [isWritingDialogOpen, setIsWritingDialogOpen] = React.useState(false);
