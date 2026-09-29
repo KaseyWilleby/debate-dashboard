@@ -282,6 +282,38 @@ service cloud.firestore {
       );
     }
 
+    // Congress Dockets collection - shared dockets for Student Congress practice
+    match /congressDockets/{docketId} {
+      // Anyone can read dockets from their team
+      allow get: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        isSameTeam(resource.data.teamId)
+      );
+      allow list: if isSignedIn();
+
+      // Only coaches and superadmins can create dockets
+      allow create: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && request.resource.data.teamId == getUserTeamId())
+      );
+
+      // Only coaches from the same team and superadmins can update dockets
+      allow update: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(resource.data.teamId))
+      );
+
+      // Only coaches from the same team and superadmins can delete dockets
+      allow delete: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(resource.data.teamId))
+      );
+    }
+
     // ---- Helper functions ----
 
     /**

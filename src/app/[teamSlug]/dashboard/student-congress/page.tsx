@@ -60,7 +60,7 @@ import { CongressSimulator } from "@/components/dashboard/congress-simulator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, addDoc, updateDoc, deleteDoc, doc, query, where } from "firebase/firestore";
 import { Input } from "@/components/ui/input";
 import { extractBillsFromPdf } from "@/ai/flows/extract-bills-from-pdf-flow";
 import { SubmitRecordingDialog } from "@/components/dashboard/submit-recording-dialog";
@@ -87,15 +87,15 @@ export default function StudentCongressPage() {
     }, [firestore, user]);
     const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersCollectionRef);
 
-    const [congressDockets, setCongressDockets] = React.useState<CongressDocket[]>(() => {
-        if (typeof window === 'undefined') return initialDockets;
-        try {
-            const stored = localStorage.getItem(CONGRESS_DOCKETS_STORAGE_KEY);
-            return stored ? JSON.parse(stored) : initialDockets;
-        } catch (e) {
-            return initialDockets;
-        }
-    });
+    // Fetch congress dockets from Firestore
+    const congressDocketsQuery = useMemoFirebase(() => {
+        if (!firestore || !user?.teamId) return null;
+        return query(
+            collection(firestore, 'congressDockets'),
+            where('teamId', '==', user.teamId)
+        );
+    }, [firestore, user?.teamId]);
+    const { data: congressDockets, isLoading: areDocketsLoading } = useCollection<CongressDocket>(congressDocketsQuery);
 
     const [selectedDocket, setSelectedDocket] = React.useState<CongressDocket | null>(null);
     const [billForDetail, setBillForDetail] = React.useState<CongressBill | null>(null);
@@ -161,7 +161,7 @@ export default function StudentCongressPage() {
     const [speechStance, setSpeechStance] = React.useState<SpeechStance>('affirmative');
 
      const [filterBillId, setFilterBillId] = React.useState<string>('all');
-     const allBills = React.useMemo(() => congressDockets.flatMap(d => d.items), [congressDockets]);
+     const allBills = React.useMemo(() => (congressDockets || []).flatMap(d => d.items), [congressDockets]);
 
     const billSpeeches = React.useMemo(() => {
         if (!user || !billForSpeechWriting || !allUsers) return [];
@@ -177,12 +177,6 @@ export default function StudentCongressPage() {
             });
 
     }, [writtenSpeeches, billForSpeechWriting, user, allUsers]);
-    
-    React.useEffect(() => {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem(CONGRESS_DOCKETS_STORAGE_KEY, JSON.stringify(congressDockets));
-        }
-    }, [congressDockets]);
 
     React.useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -742,24 +736,33 @@ export default function StudentCongressPage() {
     };
     
     const handleDocketChange = (docketId: string) => {
-        const docket = congressDockets.find(d => d.id === docketId);
+        const docket = congressDockets?.find(d => d.id === docketId);
         setSelectedDocket(docket || null);
     }
 
-    const handleDeleteDocket = (docketId: string) => {
-        const updatedDockets = congressDockets.filter(d => d.id !== docketId);
-        setCongressDockets(updatedDockets);
-        localStorage.setItem(CONGRESS_DOCKETS_STORAGE_KEY, JSON.stringify(updatedDockets));
+    const handleDeleteDocket = async (docketId: string) => {
+        if (!firestore) return;
 
-        // If the deleted docket was selected, clear the selection
-        if (selectedDocket?.id === docketId) {
-            setSelectedDocket(null);
+        try {
+            await deleteDoc(doc(firestore, 'congressDockets', docketId));
+
+            // If the deleted docket was selected, clear the selection
+            if (selectedDocket?.id === docketId) {
+                setSelectedDocket(null);
+            }
+
+            toast({
+                title: "Docket Deleted",
+                description: "The docket has been removed successfully.",
+            });
+        } catch (error) {
+            console.error("Error deleting docket:", error);
+            toast({
+                title: "Error",
+                description: "Failed to delete docket. Please try again.",
+                variant: "destructive",
+            });
         }
-
-        toast({
-            title: "Docket Deleted",
-            description: "The docket has been removed successfully.",
-        });
     }
 
     const Motion = ({ name, description, vote, isDebatable }: { name: string, description: string, vote: string, isDebatable: boolean }) => (
@@ -793,35 +796,54 @@ export default function StudentCongressPage() {
         return allBills.find(b => b.id === billId);
     }, [viewingSpeech, selectedTopic, allBills]);
 
-    const handleCreateBill = (title: string, fullText: string, docketId: string) => {
+    const handleCreateBill = async (title: string, fullText: string, docketId: string) => {
+        if (!firestore) return;
+
         const newBill: CongressBill = {
             id: `bill-${Date.now()}`,
             title,
             fullText,
         };
 
-        setCongressDockets(prev => {
-            return prev.map(docket => {
-                if (docket.id === docketId) {
-                    return { ...docket, items: [...docket.items, newBill] };
-                }
-                return docket;
+        try {
+            const targetDocket = congressDockets?.find(d => d.id === docketId);
+            if (!targetDocket) {
+                toast({ variant: 'destructive', title: 'Error', description: 'Docket not found.' });
+                return;
+            }
+
+            await updateDoc(doc(firestore, 'congressDockets', docketId), {
+                items: [...targetDocket.items, newBill]
             });
-        });
-        toast({ title: 'Bill Created', description: `Added "${title}" to the docket.` });
-        setIsCreateBillOpen(false);
-    };
-    
-    const handleUploadDocket = (docket: CongressDocket) => {
-        if (congressDockets.some(d => d.id === docket.id || d.name === docket.name)) {
-            toast({ variant: 'destructive', title: 'Docket Exists', description: 'A docket with this ID or name already exists.' });
-            return;
+
+            toast({ title: 'Bill Created', description: `Added "${title}" to the docket.` });
+            setIsCreateBillOpen(false);
+        } catch (error) {
+            console.error("Error creating bill:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to create bill. Please try again.' });
         }
-        setCongressDockets(prev => [...prev, docket]);
-        toast({ title: 'Docket Uploaded', description: `"${docket.name}" has been added.` });
     };
 
-    const isLoading = isAuthLoading || areUsersLoading;
+    const handleUploadDocket = async (docket: CongressDocket) => {
+        if (!firestore || !user?.teamId) return;
+
+        if (congressDockets?.some(d => d.name === docket.name)) {
+            toast({ variant: 'destructive', title: 'Docket Exists', description: 'A docket with this name already exists.' });
+            return;
+        }
+
+        try {
+            // Ensure the docket has the correct teamId
+            const docketWithTeam = { ...docket, teamId: user.teamId };
+            await addDoc(collection(firestore, 'congressDockets'), docketWithTeam);
+            toast({ title: 'Docket Uploaded', description: `"${docket.name}" has been added.` });
+        } catch (error) {
+            console.error("Error uploading docket:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to upload docket. Please try again.' });
+        }
+    };
+
+    const isLoading = isAuthLoading || areUsersLoading || areDocketsLoading;
 
     if (isLoading) {
         return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin" /></div>;
@@ -868,17 +890,17 @@ export default function StudentCongressPage() {
                                         <SelectValue placeholder="Select a docket..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {congressDockets.map(docket => (
+                                        {(congressDockets || []).map(docket => (
                                             <SelectItem key={docket.id} value={docket.id}>{docket.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
 
-                                {(user?.role === 'coach' || user?.role === 'superadmin') && congressDockets.length > 0 && (
+                                {(user?.role === 'coach' || user?.role === 'superadmin') && (congressDockets || []).length > 0 && (
                                     <div className="border rounded-md p-3 bg-muted/30">
                                         <p className="text-sm font-medium mb-2 text-muted-foreground">Manage Dockets</p>
                                         <div className="space-y-2">
-                                            {congressDockets.map(docket => (
+                                            {(congressDockets || []).map(docket => (
                                                 <div key={docket.id} className="flex items-center justify-between bg-background rounded-md p-2 border">
                                                     <span className="text-sm">{docket.name}</span>
                                                     <AlertDialog>
@@ -1331,10 +1353,10 @@ export default function StudentCongressPage() {
                 </TabsContent>
             </Tabs>
             
-            <CreateBillDialog 
+            <CreateBillDialog
                 isOpen={isCreateBillOpen}
                 onOpenChange={setIsCreateBillOpen}
-                dockets={congressDockets}
+                dockets={congressDockets || []}
                 onCreate={handleCreateBill}
             />
 
