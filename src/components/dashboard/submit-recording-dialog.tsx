@@ -45,12 +45,32 @@ export function SubmitRecordingDialog({ open, onOpenChange, recording }: SubmitR
   // Filter assignments based on class period
   const availableAssignments = React.useMemo(() => {
     if (!assignments) return [];
-    return assignments.filter(a => {
+
+    console.log('=== ASSIGNMENT FILTER DEBUG ===');
+    console.log('Student class period:', user?.classPeriod);
+    console.log('Total assignments fetched:', assignments.length);
+
+    const filtered = assignments.filter(a => {
+      console.log(`\nAssignment: "${a.title}"`);
+      console.log('  - Class periods:', a.classPeriods);
+      console.log('  - Submissions open:', a.submissionsOpen);
+
       // If assignment has no specific class periods, it's for everyone
-      if (!a.classPeriods || a.classPeriods.length === 0) return true;
+      if (!a.classPeriods || a.classPeriods.length === 0) {
+        console.log('  ✓ VISIBLE (no class period restriction)');
+        return true;
+      }
+
       // Otherwise, check if user's class period is in the assignment's allowed periods
-      return user?.classPeriod && a.classPeriods.includes(user.classPeriod);
+      const matches = user?.classPeriod && a.classPeriods.includes(user.classPeriod);
+      console.log(`  ${matches ? '✓' : '✗'} ${matches ? 'VISIBLE' : 'HIDDEN'} (student period "${user?.classPeriod}" ${matches ? 'matches' : 'does not match'})`);
+      return matches;
     }).sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+
+    console.log('\nFiltered assignments count:', filtered.length);
+    console.log('=== END DEBUG ===\n');
+
+    return filtered;
   }, [assignments, user]);
 
   // Check if already submitted to selected assignment
