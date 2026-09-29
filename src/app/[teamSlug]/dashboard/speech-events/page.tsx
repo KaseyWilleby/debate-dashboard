@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Play, Pause, RefreshCw, Loader2, Video, StopCircle, Save, ChevronsRight, Trash2, VideoIcon, Repeat, Camera, CameraOff, ArrowUp, ArrowDown, Share, FilePenLine, Minus, Plus, Timer, Send } from "lucide-react";
+import { Play, Pause, RefreshCw, Loader2, Video, StopCircle, Save, ChevronsRight, Trash2, VideoIcon, Repeat, Camera, CameraOff, ArrowUp, ArrowDown, Share, FilePenLine, Minus, Plus, Timer, Send, Upload } from "lucide-react";
 import { cn, getRoleBasedColor, formatTime } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { generatePracticeTopics, type GeneratePracticeTopicsInput } from "@/ai/flows/generate-practice-topics-flow";
@@ -60,6 +60,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { WriteSpeechDialog } from "@/components/dashboard/write-speech-dialog";
 import { SubmitRecordingDialog } from "@/components/dashboard/submit-recording-dialog";
+import { MigrateRecordingsDialog } from "@/components/dashboard/migrate-recordings-dialog";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, deleteDoc, doc, query, where } from "firebase/firestore";
 
@@ -246,7 +247,10 @@ export default function ExtempPracticePage() {
     // Submit state
     const [isSubmitDialogOpen, setIsSubmitDialogOpen] = React.useState(false);
     const [speechToSubmit, setSpeechToSubmit] = React.useState<SavedSpeech | null>(null);
-    
+
+    // Migration state
+    const [isMigrateDialogOpen, setIsMigrateDialogOpen] = React.useState(false);
+
     // Written speeches states
     const [isWritingDialogOpen, setIsWritingDialogOpen] = React.useState(false);
     const [speechToEdit, setSpeechToEdit] = React.useState<WrittenSpeech | null>(null);
@@ -1051,6 +1055,10 @@ export default function ExtempPracticePage() {
                     <h1 className="text-3xl font-bold font-headline">Speech Events</h1>
                     <p className="text-muted-foreground">Hone your speaking skills with timed practice sessions.</p>
                 </div>
+                <Button variant="outline" size="sm" onClick={() => setIsMigrateDialogOpen(true)}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Migrate Old Recordings
+                </Button>
             </div>
 
             <Tabs value={mode} onValueChange={handleModeChange} className="w-full">
@@ -1642,13 +1650,18 @@ export default function ExtempPracticePage() {
                 recording={speechToSubmit}
             />
 
-            <WriteSpeechDialog 
+            <WriteSpeechDialog
                 isWritingDialogOpen={isWritingDialogOpen}
                 setIsWritingDialogOpen={setIsWritingDialogOpen}
                 speechToEdit={speechToEdit}
                 associatedRecordings={associatedRecordings}
                 handleSaveWrittenSpeech={handleSaveWrittenSpeech}
                 handleViewArchivedSpeech={handleViewArchivedSpeech}
+            />
+
+            <MigrateRecordingsDialog
+                open={isMigrateDialogOpen}
+                onOpenChange={setIsMigrateDialogOpen}
             />
         </div>
     );
