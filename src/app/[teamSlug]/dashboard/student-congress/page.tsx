@@ -60,7 +60,7 @@ import { CongressSimulator } from "@/components/dashboard/congress-simulator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, addDoc, updateDoc, deleteDoc, doc, query, where } from "firebase/firestore";
+import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, arrayUnion } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Input } from "@/components/ui/input";
 import { extractBillsFromPdf } from "@/ai/flows/extract-bills-from-pdf-flow";
@@ -153,11 +153,14 @@ export default function StudentCongressPage() {
     const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
     const [speechToShare, setSpeechToShare] = React.useState<SavedSpeech | WrittenSpeech | null>(null);
     const [usersToShareWith, setUsersToShareWith] = React.useState<string[]>([]);
-    const [newFeedback, setNewFeedback] = React.useState("");
 
     // Submit state
     const [isSubmitDialogOpen, setIsSubmitDialogOpen] = React.useState(false);
     const [speechToSubmit, setSpeechToSubmit] = React.useState<SavedSpeech | null>(null);
+
+    // Feedback state
+    const [feedbackText, setFeedbackText] = React.useState('');
+    const [isSubmittingFeedback, setIsSubmittingFeedback] = React.useState(false);
 
     // Written Speeches State
     const [writtenSpeeches, setWrittenSpeeches] = React.useState<WrittenSpeech[]>(() => {
@@ -674,39 +677,57 @@ export default function StudentCongressPage() {
     };
 
     const handleConfirmShare = async () => {
-        if (!speechToShare || !allUsers || !firestore) return;
+        if (!speechToShare || !firestore) return;
 
         try {
             if ('videoUrl' in speechToShare) { // It's a SavedSpeech (recorded)
                 await updateDoc(doc(firestore, 'savedSpeeches', speechToShare.id), {
                     sharedWith: usersToShareWith
                 });
-                if (viewingSpeech?.id === speechToShare.id) {
-                    setViewingSpeech(prev => prev ? {...prev, sharedWith: usersToShareWith} : null);
-                }
             } else { // It's a WrittenSpeech
                 const updatedSpeech: WrittenSpeech = { ...speechToShare, sharedWith: usersToShareWith };
                 setWrittenSpeeches(prev => prev.map(s => s.id === updatedSpeech.id ? updatedSpeech : s));
             }
 
-            toast({ title: 'Sharing Updated' });
+            toast({ title: 'Sharing Updated', description: 'Speech has been shared with selected users.' });
+            setIsShareDialogOpen(false);
+            setSpeechToShare(null);
+            setUsersToShareWith([]);
         } catch (error) {
-            console.error("Error updating sharing settings:", error);
-            toast({ variant: 'destructive', title: 'Sharing Failed', description: (error as Error).message });
+            console.error("Error updating sharing:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to update sharing.' });
         }
-    
-        setIsShareDialogOpen(false);
-        setSpeechToShare(null);
     }
-    
+
     const handleAddFeedback = async () => {
-        if (!newFeedback.trim() || !user || !viewingSpeech) return;
-        
-        // This is a placeholder as the type doesn't support feedback
-        toast({ title: "Feedback functionality is not fully implemented." });
+        if (!viewingSpeech || !user || !firestore || !feedbackText.trim()) {
+            toast({ variant: 'destructive', title: 'Cannot Add Feedback', description: 'Please enter feedback text.' });
+            return;
+        }
 
-    };
+        setIsSubmittingFeedback(true);
+        try {
+            const newFeedback = {
+                id: `feedback-${Date.now()}`,
+                authorId: user.id,
+                authorName: user.name,
+                content: feedbackText.trim(),
+                timestamp: new Date().toISOString()
+            };
 
+            await updateDoc(doc(firestore, 'savedSpeeches', viewingSpeech.id), {
+                feedback: arrayUnion(newFeedback)
+            });
+
+            setFeedbackText('');
+            toast({ title: 'Feedback Added', description: 'Your feedback has been saved.' });
+        } catch (error) {
+            console.error("Error adding feedback:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to add feedback.' });
+        } finally {
+            setIsSubmittingFeedback(false);
+        }
+    }
 
     const renderBillCard = (bill: CongressBill) => {
         // Count speeches by stance for this bill
@@ -1775,14 +1796,73 @@ export default function StudentCongressPage() {
                                             </div>
                                         </CardContent>
                                     </Card>
-                                    <Card>
-                                        <CardHeader><CardTitle>Speech Text</CardTitle></CardHeader>
-                                        <CardContent>
-                                            <ScrollArea className="h-48">
-                                                 <p className="text-sm text-muted-foreground whitespace-pre-wrap pr-4">{currentSpeechContent || "No speech content loaded."}</p>
-                                            </ScrollArea>
-                                        </CardContent>
-                                    </Card>
+                                    {(!viewingSpeech || viewingSpeech.ownerId === user?.id) && (
+                                        <Card>
+                                            <CardHeader>
+                                                <CardTitle>Speech Text</CardTitle>
+                                                <CardDescription>Private speech content visible only to you.</CardDescription>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <ScrollArea className="h-48">
+                                                     <p className="text-sm text-muted-foreground whitespace-pre-wrap pr-4">{currentSpeechContent || "No speech content loaded."}</p>
+                                                </ScrollArea>
+                                            </CardContent>
+                                        </Card>
+                                    )}
+
+                                    {viewingSpeech && (
+                                        <Card>
+                                            <CardHeader>
+                                                <CardTitle>Feedback</CardTitle>
+                                                <CardDescription>
+                                                    {viewingSpeech.ownerId === user?.id
+                                                        ? 'Feedback from others on your speech.'
+                                                        : 'Share your thoughts on this speech.'}
+                                                </CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="space-y-4">
+                                                {viewingSpeech.feedback && viewingSpeech.feedback.length > 0 ? (
+                                                    <div className="space-y-3 mb-4">
+                                                        {viewingSpeech.feedback.map((fb) => (
+                                                            <div key={fb.id} className="border rounded-md p-3 space-y-1">
+                                                                <div className="flex items-center justify-between text-sm">
+                                                                    <span className="font-medium">{fb.authorName}</span>
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        {format(new Date(fb.timestamp), 'MMM d, yyyy h:mm a')}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-sm text-muted-foreground">{fb.content}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-sm text-muted-foreground mb-4">No feedback yet.</p>
+                                                )}
+
+                                                {viewingSpeech.ownerId !== user?.id && (
+                                                    <div className="space-y-2">
+                                                        <Textarea
+                                                            placeholder="Write your feedback here..."
+                                                            className="h-32 text-base resize-none"
+                                                            value={feedbackText}
+                                                            onChange={(e) => setFeedbackText(e.target.value)}
+                                                        />
+                                                        <Button
+                                                            onClick={handleAddFeedback}
+                                                            disabled={isSubmittingFeedback || !feedbackText.trim()}
+                                                            className="w-full"
+                                                        >
+                                                            {isSubmittingFeedback ? (
+                                                                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</>
+                                                            ) : (
+                                                                <><Send className="mr-2 h-4 w-4" /> Submit Feedback</>
+                                                            )}
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+                                    )}
                                     </>
                                 )}
                             </div>

@@ -110,21 +110,6 @@ service cloud.firestore {
       );
     }
 
-    /**
-     * @description Manages access to saved speeches.
-     * @path /savedSpeeches/{speechId}
-     * Team members can manage their own speeches. Shared speeches are readable within team.
-     */
-    match /savedSpeeches/{speechId} {
-      allow get: if isSignedIn() && (
-        isSuperAdmin() ||
-        (isSameTeam(resource.data.teamId) && (resource.data.ownerId == request.auth.uid || request.auth.uid in resource.data.get('sharedWith', [])))
-      );
-      allow list: if isSignedIn(); // Allow listing, application will filter by teamId
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.teamId == getUserTeamId();
-      allow update: if isSignedIn() && (isSuperAdmin() || (isSameTeam(resource.data.teamId) && (resource.data.ownerId == request.auth.uid || isCoach())));
-      allow delete: if isSignedIn() && (isSuperAdmin() || (isSameTeam(resource.data.teamId) && (resource.data.ownerId == request.auth.uid || isCoach())));
-    }
 
     /**
      * @description Manages access to written speeches.
@@ -329,11 +314,15 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
 
       // Users can update their own speeches, coaches can update speeches from their team
+      // Users with shared access can ONLY update the feedback field
       allow update: if isSignedIn() && (
         isSuperAdmin() ||
         isSuperAdminEmail() ||
         isOwner(resource.data.ownerId) ||
-        (isCoach() && isSameTeam(resource.data.teamId))
+        (isCoach() && isSameTeam(resource.data.teamId)) ||
+        // Allow users with shared access to add feedback only
+        (request.auth.uid in resource.data.sharedWith &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['feedback']))
       );
 
       // Users can delete their own speeches, coaches can delete speeches from their team

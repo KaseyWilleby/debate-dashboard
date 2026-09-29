@@ -423,6 +423,7 @@ export interface Assignment {
   allowResubmission: boolean; // Can students resubmit?
   submissionsOpen: boolean; // Manually control if submissions are open
   classPeriods?: string[]; // Optional: specific class periods this is for (empty = all periods)
+  feedbackRequired?: number; // Number of peer videos students must give feedback on
 }
 
 export interface Submission {
