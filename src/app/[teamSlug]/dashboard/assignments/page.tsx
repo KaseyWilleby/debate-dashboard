@@ -18,6 +18,7 @@ import { Plus, Calendar, Edit, Trash2, CheckCircle, XCircle, Loader2, ClipboardL
 import { useToast } from "@/hooks/use-toast";
 import type { Assignment, Submission } from "@/lib/types";
 import { format } from "date-fns";
+import { MultiSelect } from "@/components/ui/multi-select";
 
 export default function AssignmentsPage() {
   const { user } = useAuth();
@@ -38,6 +39,7 @@ export default function AssignmentsPage() {
   const [allowResubmission, setAllowResubmission] = React.useState(true);
   const [submissionsOpen, setSubmissionsOpen] = React.useState(true);
   const [classPeriods, setClassPeriods] = React.useState<string[]>([]);
+  const [feedbackRequired, setFeedbackRequired] = React.useState<number | undefined>(undefined);
 
   const isCoachOrAdmin = user?.role === 'coach' || user?.role === 'superadmin';
 
@@ -71,6 +73,7 @@ export default function AssignmentsPage() {
     setAllowResubmission(true);
     setSubmissionsOpen(true);
     setClassPeriods([]);
+    setFeedbackRequired(undefined);
     setEditingAssignment(null);
   };
 
@@ -87,7 +90,7 @@ export default function AssignmentsPage() {
 
     setIsSubmitting(true);
     try {
-      const assignmentData: Omit<Assignment, 'id'> = {
+      const assignmentData: Partial<Assignment> = {
         title,
         description,
         teamId: user.teamId,
@@ -96,8 +99,15 @@ export default function AssignmentsPage() {
         dueDate: new Date(dueDate).toISOString(),
         allowResubmission,
         submissionsOpen,
-        classPeriods: classPeriods.length > 0 ? classPeriods : undefined,
       };
+
+      // Only include optional fields if they have values
+      if (classPeriods.length > 0) {
+        assignmentData.classPeriods = classPeriods;
+      }
+      if (feedbackRequired !== undefined && feedbackRequired > 0) {
+        assignmentData.feedbackRequired = feedbackRequired;
+      }
 
       if (editingAssignment) {
         await updateDoc(doc(firestore, 'assignments', editingAssignment.id), assignmentData);
@@ -129,6 +139,7 @@ export default function AssignmentsPage() {
     setAllowResubmission(assignment.allowResubmission);
     setSubmissionsOpen(assignment.submissionsOpen);
     setClassPeriods(assignment.classPeriods || []);
+    setFeedbackRequired(assignment.feedbackRequired);
     setIsCreateDialogOpen(true);
   };
 
@@ -234,6 +245,49 @@ export default function AssignmentsPage() {
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="classPeriods">Class Periods (Optional)</Label>
+                <MultiSelect
+                  options={[
+                    { label: "1st Period", value: "1st Period" },
+                    { label: "2nd Period", value: "2nd Period" },
+                    { label: "3rd Period", value: "3rd Period" },
+                    { label: "4th Period", value: "4th Period" },
+                    { label: "5th Period", value: "5th Period" },
+                    { label: "6th Period", value: "6th Period" },
+                    { label: "7th Period", value: "7th Period" },
+                    { label: "8th Period", value: "8th Period" },
+                    { label: "A Block", value: "A Block" },
+                    { label: "B Block", value: "B Block" },
+                    { label: "C Block", value: "C Block" },
+                    { label: "D Block", value: "D Block" },
+                  ]}
+                  value={classPeriods}
+                  onValueChange={setClassPeriods}
+                  placeholder="Select class periods (leave empty for all)"
+                  maxCount={5}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Leave empty to assign to all students. Select specific periods to limit visibility.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="feedbackRequired">Peer Feedback Required (Optional)</Label>
+                <Input
+                  id="feedbackRequired"
+                  type="number"
+                  min="0"
+                  placeholder="e.g., 3"
+                  value={feedbackRequired ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFeedbackRequired(val === "" ? undefined : parseInt(val, 10));
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Number of peer videos students must provide feedback on as part of this assignment.
+                </p>
               </div>
               <div className="flex items-center space-x-2">
                 <Switch
