@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { useFirebase, useDocument, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirebase, useDoc, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, doc, query, where, updateDoc } from "firebase/firestore";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ export default function AssignmentDetailPage() {
     return doc(firestore, 'assignments', assignmentId);
   }, [firestore, assignmentId]);
 
-  const { data: assignment, isLoading: isLoadingAssignment } = useDocument<Assignment>(assignmentDoc);
+  const { data: assignment, isLoading: isLoadingAssignment } = useDoc<Assignment>(assignmentDoc);
 
   // Fetch submissions for this assignment
   const submissionsQuery = useMemoFirebase(() => {
