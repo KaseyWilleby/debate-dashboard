@@ -45,7 +45,7 @@ import { getRoleBasedColor } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, addDoc, deleteDoc, doc, query, where } from "firebase/firestore";
 
 
 const WRITTEN_SPEECHES_STORAGE_KEY = 'work-session-written-speeches';
@@ -186,7 +186,17 @@ export default function PerformanceEventsPage() {
     return collection(firestore, 'users');
   }, [firestore, user]);
   const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
-  
+
+  // Fetch saved recordings from Firestore
+  const savedRecordingsQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.id) return null;
+    return query(
+      collection(firestore, 'savedSpeeches'),
+      where('ownerId', '==', user.id)
+    );
+  }, [firestore, user?.id]);
+  const { data: savedRecordings, isLoading: areRecordingsLoading } = useCollection<SavedSpeech>(savedRecordingsQuery);
+
 
   // Script writing state
   const [isWritingDialogOpen, setIsWritingDialogOpen] = React.useState(false);
@@ -243,23 +253,13 @@ export default function PerformanceEventsPage() {
     } catch (e) { return []; }
   });
 
-  const [savedRecordings, setSavedRecordings] = React.useState<SavedSpeech[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const stored = localStorage.getItem(SAVED_SPEECHES_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
 
   // Teleprompter states
   const [isTeleprompterActive, setIsTeleprompterActive] = React.useState(false);
   const [scrollSpeed, setScrollSpeed] = React.useState(5);
   const teleprompterRef = React.useRef<HTMLDivElement>(null);
-  
-  const isLoading = isAuthLoading || areUsersLoading;
+
+  const isLoading = isAuthLoading || areUsersLoading || areRecordingsLoading;
 
   React.useEffect(() => {
     let animationFrameId: number;
@@ -300,13 +300,6 @@ export default function PerformanceEventsPage() {
       }
     }
   }, [writtenSpeeches, toast]);
-  
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(SAVED_SPEECHES_STORAGE_KEY, JSON.stringify(savedRecordings));
-    }
-  }, [savedRecordings]);
-
 
   const visibleWrittenSpeeches = React.useMemo(() => {
     if (!user) return [];
@@ -580,7 +573,7 @@ export default function PerformanceEventsPage() {
   };
 
   const handleSaveSpeech = async () => {
-    if (recordedChunksRef.current.length === 0 || !selectedTopic || !user) {
+    if (recordedChunksRef.current.length === 0 || !selectedTopic || !user || !firestore) {
         toast({ variant: 'destructive', title: 'Cannot Save', description: 'No video or topic available to save.' });
         return;
     }
@@ -588,21 +581,29 @@ export default function PerformanceEventsPage() {
     setIsSaving(true);
     try {
         const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-        
-        const newSavedSpeech: SavedSpeech = {
-            id: `rec-${Date.now()}`,
+
+        // Convert blob to base64 data URL for cross-device access
+        const reader = new FileReader();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+
+        const newSavedSpeech: Omit<SavedSpeech, 'id'> = {
+            teamId: user.teamId || '',
             ownerId: user.id,
             topic: selectedTopic.text,
             notes: notes,
             prepTime: 0,
             speechTime: speechTimerDirection === 'down' ? initialSpeechTime - speechTime : speechTime,
             mode: activeTab as PracticeMode,
-            videoUrl: URL.createObjectURL(blob),
+            videoUrl: dataUrl,
             date: new Date().toISOString(),
             sharedWith: [],
         };
-        
-        setSavedRecordings(prev => [newSavedSpeech, ...prev]);
+
+        await addDoc(collection(firestore, 'savedSpeeches'), newSavedSpeech);
 
         toast({ title: 'Recording Saved!', description: 'Your practice session has been archived.' });
         setIsPracticeSessionOpen(false);
@@ -641,10 +642,17 @@ export default function PerformanceEventsPage() {
   }
   
   const handleDeleteSpeech = async (speech: SavedSpeech) => {
-    setSavedRecordings(prev => prev.filter(s => s.id !== speech.id));
-    toast({ title: 'Speech Deleted', variant: 'destructive'});
-    if (viewingSpeech && viewingSpeech.id === speech.id) {
+    if (!firestore) return;
+
+    try {
+      await deleteDoc(doc(firestore, 'savedSpeeches', speech.id));
+      toast({ title: 'Speech Deleted', variant: 'destructive' });
+      if (viewingSpeech && viewingSpeech.id === speech.id) {
         setIsPracticeSessionOpen(false);
+      }
+    } catch (error) {
+      console.error("Error deleting speech:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete speech.' });
     }
   };
 
@@ -730,13 +738,13 @@ export default function PerformanceEventsPage() {
   };
 
   const visibleRecordings = React.useMemo(() => {
-    if (!user) return [];
+    if (!user || !savedRecordings) return [];
     return savedRecordings.filter((s: SavedSpeech) => s.mode === activeTab && s.ownerId === user.id)
         .sort((a: SavedSpeech,b: SavedSpeech) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [user, activeTab, savedRecordings]);
 
   const sharedRecordings = React.useMemo(() => {
-    if (!user) return [];
+    if (!user || !savedRecordings) return [];
     return savedRecordings.filter((s: SavedSpeech) =>
       s.mode === activeTab &&
       s.ownerId !== user.id &&
