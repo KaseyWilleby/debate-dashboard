@@ -223,7 +223,7 @@ export default function DashboardPage() {
                         Go to a practice page to record a speech.
                     </p>
                      <Button asChild className="mt-4">
-                        <Link href={`/${teamSlug}/dashboard/extemp-practice`}>Go to Practice</Link>
+                        <Link href={`/${teamSlug}/dashboard/speech-events`}>Go to Practice</Link>
                     </Button>
                 </div>
             </CardContent>

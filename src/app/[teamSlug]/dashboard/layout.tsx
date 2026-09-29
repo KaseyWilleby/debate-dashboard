@@ -111,8 +111,8 @@ const PracticeNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoac
       </SidebarMenuButton>
     </SidebarMenuItem>
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/extemp-practice`)} tooltip="Speech Events">
-        <Link href={`/${teamSlug}/dashboard/extemp-practice`}><Mic /><span>Speech Events</span></Link>
+      <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/speech-events`)} tooltip="Speech Events">
+        <Link href={`/${teamSlug}/dashboard/speech-events`}><Mic /><span>Speech Events</span></Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
     <SidebarMenuItem>

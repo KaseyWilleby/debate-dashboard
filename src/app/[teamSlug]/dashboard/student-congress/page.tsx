@@ -746,6 +746,22 @@ export default function StudentCongressPage() {
         setSelectedDocket(docket || null);
     }
 
+    const handleDeleteDocket = (docketId: string) => {
+        const updatedDockets = congressDockets.filter(d => d.id !== docketId);
+        setCongressDockets(updatedDockets);
+        localStorage.setItem(CONGRESS_DOCKETS_STORAGE_KEY, JSON.stringify(updatedDockets));
+
+        // If the deleted docket was selected, clear the selection
+        if (selectedDocket?.id === docketId) {
+            setSelectedDocket(null);
+        }
+
+        toast({
+            title: "Docket Deleted",
+            description: "The docket has been removed successfully.",
+        });
+    }
+
     const Motion = ({ name, description, vote, isDebatable }: { name: string, description: string, vote: string, isDebatable: boolean }) => (
         <motion.li
             className="flex flex-col sm:flex-row justify-between sm:items-center p-3 border rounded-md bg-muted/50 cursor-pointer"
@@ -857,6 +873,41 @@ export default function StudentCongressPage() {
                                         ))}
                                     </SelectContent>
                                 </Select>
+
+                                {(user?.role === 'coach' || user?.role === 'superadmin') && congressDockets.length > 0 && (
+                                    <div className="border rounded-md p-3 bg-muted/30">
+                                        <p className="text-sm font-medium mb-2 text-muted-foreground">Manage Dockets</p>
+                                        <div className="space-y-2">
+                                            {congressDockets.map(docket => (
+                                                <div key={docket.id} className="flex items-center justify-between bg-background rounded-md p-2 border">
+                                                    <span className="text-sm">{docket.name}</span>
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive">
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Delete Docket</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    Are you sure you want to delete "{docket.name}"? This action cannot be undone.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteDocket(docket.id)} className="bg-destructive hover:bg-destructive/90">
+                                                                    Delete
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {selectedDocket && (
                                     <div className="grid grid-cols-1 gap-4">
                                         {selectedDocket.items.map(item => renderBillCard(item))}

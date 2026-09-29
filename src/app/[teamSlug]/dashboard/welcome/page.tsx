@@ -23,7 +23,7 @@ export default function WelcomePage() {
     if (hub === 'scheduler') {
       router.push(`/${teamSlug}/dashboard`);
     } else if (hub === 'practice') {
-      router.push(`/${teamSlug}/dashboard/extemp-practice`);
+      router.push(`/${teamSlug}/dashboard/speech-events`);
     } else if (hub === 'learning') {
       router.push(`/${teamSlug}/dashboard/learning-hub`);
     }
