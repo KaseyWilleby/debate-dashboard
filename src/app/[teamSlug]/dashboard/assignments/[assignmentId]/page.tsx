@@ -19,6 +19,15 @@ import { useToast } from "@/hooks/use-toast";
 import type { Assignment, Submission, SavedSpeech } from "@/lib/types";
 import { format } from "date-fns";
 
+// Helper function to format UTC dates without timezone shifting
+const formatUTCDate = (isoString: string): string => {
+  const date = new Date(isoString);
+  const year = date.getUTCFullYear();
+  const month = date.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+  const day = date.getUTCDate();
+  return `${month} ${day}, ${year}`;
+};
+
 export default function AssignmentDetailPage() {
   const { user } = useAuth();
   const { firestore } = useFirebase();
@@ -173,7 +182,7 @@ export default function AssignmentDetailPage() {
               )}
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
-                Due: {format(new Date(assignment.dueDate), 'MMM d, yyyy')}
+                Due: {formatUTCDate(assignment.dueDate)}
                 {isPastDue && <Badge variant="destructive">Past Due</Badge>}
               </div>
             </div>

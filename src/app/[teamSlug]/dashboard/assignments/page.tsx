@@ -20,6 +20,15 @@ import type { Assignment, Submission } from "@/lib/types";
 import { format } from "date-fns";
 import { MultiSelect } from "@/components/ui/multi-select";
 
+// Helper function to format UTC dates without timezone shifting
+const formatUTCDate = (isoString: string): string => {
+  const date = new Date(isoString);
+  const year = date.getUTCFullYear();
+  const month = date.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+  const day = date.getUTCDate();
+  return `${month} ${day}, ${year}`;
+};
+
 export default function AssignmentsPage() {
   const { user } = useAuth();
   const { firestore } = useFirebase();
@@ -90,13 +99,16 @@ export default function AssignmentsPage() {
 
     setIsSubmitting(true);
     try {
+      // Create date at noon UTC to avoid timezone shifting issues
+      const dueDateObj = new Date(dueDate + 'T12:00:00.000Z');
+
       const assignmentData: Partial<Assignment> = {
         title,
         description,
         teamId: user.teamId,
         createdBy: user.id,
         createdAt: new Date().toISOString(),
-        dueDate: new Date(dueDate).toISOString(),
+        dueDate: dueDateObj.toISOString(),
         allowResubmission,
         submissionsOpen,
       };
@@ -135,7 +147,12 @@ export default function AssignmentsPage() {
     setEditingAssignment(assignment);
     setTitle(assignment.title);
     setDescription(assignment.description);
-    setDueDate(new Date(assignment.dueDate).toISOString().split('T')[0]);
+    // Extract just the date portion to avoid timezone issues
+    const dateObj = new Date(assignment.dueDate);
+    const year = dateObj.getUTCFullYear();
+    const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getUTCDate()).padStart(2, '0');
+    setDueDate(`${year}-${month}-${day}`);
     setAllowResubmission(assignment.allowResubmission);
     setSubmissionsOpen(assignment.submissionsOpen);
     setClassPeriods(assignment.classPeriods || []);
@@ -365,7 +382,7 @@ export default function AssignmentsPage() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
-                          {format(new Date(assignment.dueDate), 'MMM d, yyyy')}
+                          {formatUTCDate(assignment.dueDate)}
                           {isPastDue && <Badge variant="destructive">Past Due</Badge>}
                         </div>
                       </TableCell>
