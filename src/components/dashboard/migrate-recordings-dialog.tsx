@@ -64,7 +64,7 @@ export function MigrateRecordingsDialog({ open, onOpenChange }: MigrateRecording
           continue;
         }
 
-        // Prepare recording data for Firestore
+        // Prepare recording data for Firestore (only if video is accessible)
         const recordingData: Omit<SavedSpeech, 'id'> = {
           teamId: user.teamId || '',
           ownerId: recording.ownerId || user.id,
@@ -94,21 +94,30 @@ export function MigrateRecordingsDialog({ open, onOpenChange }: MigrateRecording
     setMigrationComplete(true);
     setIsMigrating(false);
 
-    if (successCount > 0) {
-      // Clear localStorage after successful migration
-      localStorage.removeItem(SAVED_SPEECHES_STORAGE_KEY);
+    // Always clear localStorage after migration attempt to avoid repeated prompts
+    localStorage.removeItem(SAVED_SPEECHES_STORAGE_KEY);
 
+    if (successCount > 0) {
       toast({
         title: "Migration Complete",
         description: `Successfully migrated ${successCount} recording${successCount !== 1 ? 's' : ''} to cloud storage.`,
       });
-    } else {
+    } else if (errorCount > 0) {
       toast({
-        title: "Migration Failed",
-        description: "No recordings could be migrated. Old recordings may have expired video data.",
+        title: "Unable to Migrate Videos",
+        description: "The video data has expired and cannot be recovered. Local storage has been cleared.",
         variant: "destructive",
       });
     }
+  };
+
+  const handleClearExpired = () => {
+    localStorage.removeItem(SAVED_SPEECHES_STORAGE_KEY);
+    toast({
+      title: "Storage Cleared",
+      description: "Expired local recordings have been removed.",
+    });
+    onOpenChange(false);
   };
 
   return (
@@ -141,14 +150,20 @@ export function MigrateRecordingsDialog({ open, onOpenChange }: MigrateRecording
                 </AlertDescription>
               </Alert>
 
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Important Note</AlertTitle>
-                <AlertDescription>
-                  Recordings with temporary blob URLs (created before this update) may not have accessible video data.
-                  Only recordings with valid data URLs will be migrated successfully.
-                </AlertDescription>
-              </Alert>
+              {localRecordings.some(rec => rec.videoUrl.startsWith('blob:')) && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Video Data Cannot Be Recovered</AlertTitle>
+                  <AlertDescription>
+                    <p className="mb-2">
+                      Your recordings use temporary blob URLs that expire when you log out. The actual video data is no longer accessible and cannot be recovered.
+                    </p>
+                    <p className="font-medium">
+                      All new recordings are now saved to cloud storage and will be accessible from any device!
+                    </p>
+                  </AlertDescription>
+                </Alert>
+              )}
 
               <div className="border rounded-md p-4 max-h-60 overflow-y-auto">
                 <p className="text-sm font-medium mb-2">Recordings to migrate:</p>
@@ -181,15 +196,28 @@ export function MigrateRecordingsDialog({ open, onOpenChange }: MigrateRecording
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {migrationComplete ? 'Close' : 'Cancel'}
-          </Button>
-          {!migrationComplete && localRecordings.length > 0 && (
-            <Button onClick={handleMigrate} disabled={isMigrating}>
-              {isMigrating && <Loader2 className="mr-2 animate-spin h-4 w-4" />}
-              Migrate Recordings
-            </Button>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          {!migrationComplete && localRecordings.length > 0 && localRecordings.every(rec => rec.videoUrl.startsWith('blob:')) ? (
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleClearExpired}>
+                Clear Expired Data
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                {migrationComplete ? 'Close' : 'Cancel'}
+              </Button>
+              {!migrationComplete && localRecordings.length > 0 && (
+                <Button onClick={handleMigrate} disabled={isMigrating}>
+                  {isMigrating && <Loader2 className="mr-2 animate-spin h-4 w-4" />}
+                  Migrate Recordings
+                </Button>
+              )}
+            </>
           )}
         </DialogFooter>
       </DialogContent>
