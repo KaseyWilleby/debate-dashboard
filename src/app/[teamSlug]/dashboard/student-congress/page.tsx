@@ -97,6 +97,16 @@ export default function StudentCongressPage() {
     }, [firestore, user?.teamId]);
     const { data: congressDockets, isLoading: areDocketsLoading } = useCollection<CongressDocket>(congressDocketsQuery);
 
+    // Fetch saved recordings from Firestore
+    const savedRecordingsQuery = useMemoFirebase(() => {
+        if (!firestore || !user?.id) return null;
+        return query(
+            collection(firestore, 'savedSpeeches'),
+            where('ownerId', '==', user.id)
+        );
+    }, [firestore, user?.id]);
+    const { data: savedSpeeches, isLoading: areRecordingsLoading } = useCollection<SavedSpeech>(savedRecordingsQuery);
+
     const [selectedDocket, setSelectedDocket] = React.useState<CongressDocket | null>(null);
     const [billForDetail, setBillForDetail] = React.useState<CongressBill | null>(null);
     const [billForSpeechWriting, setBillForSpeechWriting] = React.useState<CongressBill | null>(null);
@@ -245,21 +255,6 @@ export default function StudentCongressPage() {
             setSpeechStance('affirmative');
         }
     }, [activeSpeech]);
-
-
-    const [savedSpeeches, setSavedSpeeches] = React.useState<SavedSpeech[]>(() => {
-        if (typeof window === 'undefined') return [];
-        try {
-            const stored = localStorage.getItem(SAVED_SPEECHES_STORAGE_KEY);
-            return stored ? JSON.parse(stored) : [];
-        } catch (e) { return []; }
-    });
-
-    React.useEffect(() => {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem(SAVED_SPEECHES_STORAGE_KEY, JSON.stringify(savedSpeeches));
-        }
-    }, [savedSpeeches]);
 
     const [viewingSpeech, setViewingSpeech] = React.useState<SavedSpeech | null>(null);
 
@@ -567,29 +562,40 @@ export default function StudentCongressPage() {
     };
 
     const handleSaveRecordedSpeech = async () => {
-        if (recordedChunksRef.current.length === 0 || !selectedTopic || !user ) {
+        if (recordedChunksRef.current.length === 0 || !selectedTopic || !user || !firestore) {
             toast({ variant: 'destructive', title: 'Cannot Save', description: 'No video or topic available to save.' });
             return;
         }
-        
+
         setIsSaving(true);
         try {
             const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-            
-            const newSavedSpeech: SavedSpeech = {
-                id: `rec-${Date.now()}`,
+
+            // Convert blob to base64 data URL for cross-device access
+            const reader = new FileReader();
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+
+            const newSavedSpeech: Omit<SavedSpeech, 'id'> = {
+                teamId: user.teamId || '',
                 ownerId: user.id,
                 topic: selectedTopic.text,
                 notes: currentSpeechContent,
+                prepTime: 0,
                 speechTime: speechTimerDirection === 'down' ? initialSpeechTime - speechTime : speechTime,
                 mode: 'congress',
-                videoUrl: URL.createObjectURL(blob),
+                videoUrl: dataUrl,
                 date: new Date().toISOString(),
                 sharedWith: [],
                 stance: currentSpeechStance,
                 billId: selectedTopic.id,
             };
-            setSavedSpeeches(prev => [...prev, newSavedSpeech]);
+
+            await addDoc(collection(firestore, 'savedSpeeches'), newSavedSpeech);
+
             toast({ title: 'Recording Saved!', description: 'Your practice session has been archived.' });
             resetPractice();
         } catch (error) {
@@ -624,10 +630,17 @@ export default function StudentCongressPage() {
     
     const handleDeleteSpeech = async (speechId: string, type: 'written' | 'recorded') => {
         if (type === 'recorded') {
-            setSavedSpeeches(prev => prev.filter(s => s.id !== speechId));
-            toast({ title: 'Recording Deleted', variant: 'destructive'});
-             if (viewingSpeech && viewingSpeech.id === speechId) {
-                resetPractice();
+            if (!firestore) return;
+
+            try {
+                await deleteDoc(doc(firestore, 'savedSpeeches', speechId));
+                toast({ title: 'Recording Deleted', variant: 'destructive' });
+                if (viewingSpeech && viewingSpeech.id === speechId) {
+                    resetPractice();
+                }
+            } catch (error) {
+                console.error("Error deleting speech:", error);
+                toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete speech.' });
             }
         } else {
             handleDeleteWrittenSpeech(speechId);
@@ -659,12 +672,13 @@ export default function StudentCongressPage() {
     };
 
     const handleConfirmShare = async () => {
-        if (!speechToShare || !allUsers) return;
-    
+        if (!speechToShare || !allUsers || !firestore) return;
+
         try {
             if ('videoUrl' in speechToShare) { // It's a SavedSpeech (recorded)
-                const updatedSpeech = { ...speechToShare, sharedWith: usersToShareWith };
-                setSavedSpeeches(prev => prev.map(s => s.id === speechToShare.id ? updatedSpeech : s));
+                await updateDoc(doc(firestore, 'savedSpeeches', speechToShare.id), {
+                    sharedWith: usersToShareWith
+                });
                 if (viewingSpeech?.id === speechToShare.id) {
                     setViewingSpeech(prev => prev ? {...prev, sharedWith: usersToShareWith} : null);
                 }
@@ -672,7 +686,7 @@ export default function StudentCongressPage() {
                 const updatedSpeech: WrittenSpeech = { ...speechToShare, sharedWith: usersToShareWith };
                 setWrittenSpeeches(prev => prev.map(s => s.id === updatedSpeech.id ? updatedSpeech : s));
             }
-            
+
             toast({ title: 'Sharing Updated' });
         } catch (error) {
             console.error("Error updating sharing settings:", error);
@@ -843,7 +857,7 @@ export default function StudentCongressPage() {
         }
     };
 
-    const isLoading = isAuthLoading || areUsersLoading || areDocketsLoading;
+    const isLoading = isAuthLoading || areUsersLoading || areDocketsLoading || areRecordingsLoading;
 
     if (isLoading) {
         return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin" /></div>;
