@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useFirebase } from "@/firebase";
 import { collection, addDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth } from "@/contexts/auth-context";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,20 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { SavedSpeech } from "@/lib/types";
+
+// Helper function to convert data URL to blob
+const dataURLtoBlob = (dataURL: string): Blob => {
+  const parts = dataURL.split(',');
+  const mimeMatch = parts[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'video/webm';
+  const bstr = atob(parts[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
+};
 
 const SAVED_SPEECHES_STORAGE_KEY = 'work-session-saved-speeches';
 
@@ -20,7 +35,7 @@ interface MigrateRecordingsDialogProps {
 
 export function MigrateRecordingsDialog({ open, onOpenChange }: MigrateRecordingsDialogProps) {
   const { user } = useAuth();
-  const { firestore } = useFirebase();
+  const { firestore, storage } = useFirebase();
   const { toast } = useToast();
 
   const [isMigrating, setIsMigrating] = React.useState(false);
@@ -46,7 +61,7 @@ export function MigrateRecordingsDialog({ open, onOpenChange }: MigrateRecording
   }, [open]);
 
   const handleMigrate = async () => {
-    if (!firestore || !user || localRecordings.length === 0) return;
+    if (!firestore || !storage || !user || localRecordings.length === 0) return;
 
     setIsMigrating(true);
     let successCount = 0;
@@ -54,8 +69,9 @@ export function MigrateRecordingsDialog({ open, onOpenChange }: MigrateRecording
 
     for (const recording of localRecordings) {
       try {
-        // Check if videoUrl is a blob URL (these are no longer valid)
+        // Check if videoUrl is a blob URL (these are truly expired and cannot be recovered)
         const isBlobUrl = recording.videoUrl.startsWith('blob:');
+        const isDataUrl = recording.videoUrl.startsWith('data:');
 
         if (isBlobUrl) {
           // Skip blob URLs as they're no longer accessible
@@ -64,7 +80,35 @@ export function MigrateRecordingsDialog({ open, onOpenChange }: MigrateRecording
           continue;
         }
 
-        // Prepare recording data for Firestore (only if video is accessible)
+        let videoUrl = recording.videoUrl;
+        let storagePath = recording.storagePath;
+
+        // If it's a data URL, convert to blob and upload to Storage
+        if (isDataUrl) {
+          try {
+            console.log(`Migrating data URL for "${recording.topic}" to cloud storage...`);
+
+            // Convert data URL to blob
+            const blob = dataURLtoBlob(recording.videoUrl);
+
+            // Upload to Firebase Storage
+            const timestamp = Date.now();
+            const fileName = `recordings/${user.id}/migrated-${timestamp}.webm`;
+            const storageRef = ref(storage, fileName);
+
+            await uploadBytes(storageRef, blob);
+            videoUrl = await getDownloadURL(storageRef);
+            storagePath = fileName;
+
+            console.log(`Successfully uploaded "${recording.topic}" to cloud storage`);
+          } catch (uploadError) {
+            console.error(`Error uploading video for "${recording.topic}":`, uploadError);
+            errorCount++;
+            continue;
+          }
+        }
+
+        // Prepare recording data for Firestore
         const recordingData: Omit<SavedSpeech, 'id'> = {
           teamId: user.teamId || '',
           ownerId: recording.ownerId || user.id,
@@ -73,12 +117,12 @@ export function MigrateRecordingsDialog({ open, onOpenChange }: MigrateRecording
           prepTime: recording.prepTime || 0,
           speechTime: recording.speechTime,
           mode: recording.mode,
-          videoUrl: recording.videoUrl,
+          videoUrl: videoUrl,
+          storagePath: storagePath,
           date: recording.date || new Date().toISOString(),
           sharedWith: recording.sharedWith || [],
           stance: recording.stance,
           billId: recording.billId,
-          storagePath: recording.storagePath,
         };
 
         await addDoc(collection(firestore, 'savedSpeeches'), recordingData);
@@ -153,14 +197,20 @@ export function MigrateRecordingsDialog({ open, onOpenChange }: MigrateRecording
               {localRecordings.some(rec => rec.videoUrl.startsWith('blob:')) && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Video Data Cannot Be Recovered</AlertTitle>
+                  <AlertTitle>Some Videos Cannot Be Recovered</AlertTitle>
                   <AlertDescription>
                     <p className="mb-2">
-                      Your recordings use temporary blob URLs that expire when you log out. The actual video data is no longer accessible and cannot be recovered.
+                      Recordings with blob URLs have expired and cannot be recovered. Recordings with data URLs will be migrated to cloud storage.
                     </p>
-                    <p className="font-medium">
-                      All new recordings are now saved to cloud storage and will be accessible from any device!
-                    </p>
+                  </AlertDescription>
+                </Alert>
+              )}
+              {localRecordings.some(rec => rec.videoUrl.startsWith('data:')) && (
+                <Alert>
+                  <Upload className="h-4 w-4" />
+                  <AlertTitle>Uploading Videos to Cloud Storage</AlertTitle>
+                  <AlertDescription>
+                    Your videos will be uploaded to Firebase Storage and will be accessible from any device forever!
                   </AlertDescription>
                 </Alert>
               )}
@@ -168,15 +218,22 @@ export function MigrateRecordingsDialog({ open, onOpenChange }: MigrateRecording
               <div className="border rounded-md p-4 max-h-60 overflow-y-auto">
                 <p className="text-sm font-medium mb-2">Recordings to migrate:</p>
                 <ul className="text-sm space-y-1">
-                  {localRecordings.map((rec, i) => (
-                    <li key={i} className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
-                      <span className="truncate">{rec.topic || 'Untitled'} - {rec.mode}</span>
-                      {rec.videoUrl.startsWith('blob:') && (
-                        <span className="text-xs text-destructive">(expired video)</span>
-                      )}
-                    </li>
-                  ))}
+                  {localRecordings.map((rec, i) => {
+                    const isBlob = rec.videoUrl.startsWith('blob:');
+                    const isData = rec.videoUrl.startsWith('data:');
+                    return (
+                      <li key={i} className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isBlob ? 'bg-destructive' : 'bg-green-600'}`} />
+                        <span className="truncate">{rec.topic || 'Untitled'} - {rec.mode}</span>
+                        {isBlob && (
+                          <span className="text-xs text-destructive">(expired - cannot recover)</span>
+                        )}
+                        {isData && (
+                          <span className="text-xs text-green-600">(will upload to cloud)</span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             </>
