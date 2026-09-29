@@ -267,18 +267,19 @@ export default function AssignmentsPage() {
                 <Label htmlFor="classPeriods">Class Periods (Optional)</Label>
                 <MultiSelect
                   options={[
-                    { label: "1st Period", value: "1st Period" },
-                    { label: "2nd Period", value: "2nd Period" },
-                    { label: "3rd Period", value: "3rd Period" },
-                    { label: "4th Period", value: "4th Period" },
-                    { label: "5th Period", value: "5th Period" },
-                    { label: "6th Period", value: "6th Period" },
-                    { label: "7th Period", value: "7th Period" },
-                    { label: "8th Period", value: "8th Period" },
-                    { label: "A Block", value: "A Block" },
-                    { label: "B Block", value: "B Block" },
-                    { label: "C Block", value: "C Block" },
-                    { label: "D Block", value: "D Block" },
+                    { label: "1st Period", value: "1" },
+                    { label: "2nd Period", value: "2" },
+                    { label: "3rd Period", value: "3" },
+                    { label: "4th Period", value: "4" },
+                    { label: "5th Period", value: "5" },
+                    { label: "6th Period", value: "6" },
+                    { label: "7th Period", value: "7" },
+                    { label: "8th Period", value: "8" },
+                    { label: "A Block", value: "A" },
+                    { label: "B Block", value: "B" },
+                    { label: "C Block", value: "C" },
+                    { label: "D Block", value: "D" },
+                    { label: "Club", value: "Club" },
                   ]}
                   value={classPeriods}
                   onValueChange={setClassPeriods}
