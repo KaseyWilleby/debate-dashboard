@@ -61,7 +61,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { WriteSpeechDialog } from "@/components/dashboard/write-speech-dialog";
 import { SubmitRecordingDialog } from "@/components/dashboard/submit-recording-dialog";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, addDoc, deleteDoc, doc, query, where } from "firebase/firestore";
 
 type Topic = { id: string; text: string };
 type TimerDirection = "up" | "down";
@@ -161,6 +161,16 @@ export default function ExtempPracticePage() {
     }, [firestore, user]);
     const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
 
+    // Fetch saved recordings from Firestore
+    const savedRecordingsQuery = useMemoFirebase(() => {
+        if (!firestore || !user?.id) return null;
+        return query(
+            collection(firestore, 'savedSpeeches'),
+            where('ownerId', '==', user.id)
+        );
+    }, [firestore, user?.id]);
+    const { data: savedRecordings, isLoading: areRecordingsLoading } = useCollection<SavedSpeech>(savedRecordingsQuery);
+
     const [mode, setMode] = React.useState<PracticeMode>("extemp");
     const [isLoadingTopics, setIsLoadingTopics] = React.useState(false);
     const [topicsByMode, setTopicsByMode] = React.useState<Record<PracticeMode, Topic[]>>({
@@ -249,23 +259,13 @@ export default function ExtempPracticePage() {
             return stored ? JSON.parse(stored) : [];
         } catch (e) { return []; }
     });
-    
-    const [savedRecordings, setSavedRecordings] = React.useState<SavedSpeech[]>(() => {
-      if (typeof window === 'undefined') return [];
-      try {
-        const stored = localStorage.getItem(SAVED_SPEECHES_STORAGE_KEY);
-        return stored ? JSON.parse(stored) : [];
-      } catch (e) {
-        return [];
-      }
-    });
 
     // Teleprompter states
     const [isTeleprompterActive, setIsTeleprompterActive] = React.useState(false);
     const [scrollSpeed, setScrollSpeed] = React.useState(5);
     const teleprompterRef = React.useRef<HTMLDivElement>(null);
-    
-    const isLoading = isAuthLoading || areUsersLoading;
+
+    const isLoading = isAuthLoading || areUsersLoading || areRecordingsLoading;
 
     React.useEffect(() => {
         let animationFrameId: number;
@@ -306,12 +306,6 @@ export default function ExtempPracticePage() {
             }
         }
     }, [writtenSpeeches, toast]);
-    
-    React.useEffect(() => {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(SAVED_SPEECHES_STORAGE_KEY, JSON.stringify(savedRecordings));
-      }
-    }, [savedRecordings]);
 
     React.useEffect(() => {
       if (typeof window !== 'undefined') {
@@ -323,26 +317,26 @@ export default function ExtempPracticePage() {
     const [viewingSpeech, setViewingSpeech] = React.useState<SavedSpeech | null>(null);
 
     const visibleRecordings = React.useMemo(() => {
-      if (!user) return [];
+      if (!user || !savedRecordings) return [];
       return savedRecordings.filter((s: SavedSpeech) => s.mode === mode && s.ownerId === user.id)
           .sort((a: SavedSpeech,b: SavedSpeech) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [user, mode, savedRecordings]);
 
     const sharedRecordings = React.useMemo(() => {
-      if (!user) return [];
+      if (!user || !savedRecordings) return [];
       return savedRecordings.filter((s: SavedSpeech) =>
         s.mode === mode &&
         s.ownerId !== user.id &&
         s.sharedWith?.includes(user.id)
       ).sort((a: SavedSpeech,b: SavedSpeech) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [user, mode, savedRecordings]);
-    
+
     const visibleWrittenSpeeches = React.useMemo(() => {
         if (!user) return [];
         return writtenSpeeches.filter(s => s.mode === mode)
             .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [writtenSpeeches, user, mode]);
-    
+
     const associatedRecordings = React.useMemo(() => {
         if (!speechToEdit || !savedRecordings) return [];
         return savedRecordings.filter(s => s.topic === speechToEdit.title && s.mode === speechToEdit.mode)
@@ -807,29 +801,37 @@ export default function ExtempPracticePage() {
     };
 
     const handleSaveSpeech = async () => {
-        if (recordedChunksRef.current.length === 0 || !selectedTopic || !user ) {
+        if (recordedChunksRef.current.length === 0 || !selectedTopic || !user || !firestore) {
             toast({ variant: 'destructive', title: 'Cannot Save', description: 'No video or topic available to save.' });
             return;
         }
-        
+
         setIsSaving(true);
         try {
             const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-            
-            const newSavedSpeech: SavedSpeech = {
-                id: `rec-${Date.now()}`,
+
+            // Convert blob to base64 data URL for cross-device access
+            const reader = new FileReader();
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+
+            const newSavedSpeech: Omit<SavedSpeech, 'id'> = {
+                teamId: user.teamId || '',
                 ownerId: user.id,
                 topic: selectedTopic.text,
                 notes,
                 prepTime: prepTime,
                 speechTime: speechTimerDirection === 'down' ? initialSpeechTime - speechTime : speechTime,
                 mode,
-                videoUrl: URL.createObjectURL(blob),
+                videoUrl: dataUrl,
                 date: new Date().toISOString(),
                 sharedWith: [],
             };
 
-            setSavedRecordings(prev => [...prev, newSavedSpeech]);
+            await addDoc(collection(firestore, 'savedSpeeches'), newSavedSpeech);
 
             toast({ title: 'Recording Saved!', description: 'Your practice session has been archived.' });
             setIsPracticeSessionOpen(false);
@@ -867,10 +869,17 @@ export default function ExtempPracticePage() {
     }
     
     const handleDeleteSpeech = async (speech: SavedSpeech) => {
-        setSavedRecordings(prev => prev.filter(s => s.id !== speech.id));
-        toast({ title: 'Speech Deleted', variant: 'destructive'});
-        if (viewingSpeech && viewingSpeech.id === speech.id) {
-            setIsPracticeSessionOpen(false);
+        if (!firestore) return;
+
+        try {
+            await deleteDoc(doc(firestore, 'savedSpeeches', speech.id));
+            toast({ title: 'Speech Deleted', variant: 'destructive' });
+            if (viewingSpeech && viewingSpeech.id === speech.id) {
+                setIsPracticeSessionOpen(false);
+            }
+        } catch (error) {
+            console.error("Error deleting speech:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete speech.' });
         }
     };
 

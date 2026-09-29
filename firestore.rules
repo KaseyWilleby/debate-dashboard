@@ -314,6 +314,37 @@ service cloud.firestore {
       );
     }
 
+    // Saved Speeches collection - student practice speech recordings
+    match /savedSpeeches/{speechId} {
+      // Users can read their own speeches and speeches shared with them
+      allow get: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        isOwner(resource.data.ownerId) ||
+        (request.auth.uid in resource.data.sharedWith)
+      );
+      allow list: if isSignedIn();
+
+      // Users can create their own speeches
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+
+      // Users can update their own speeches, coaches can update speeches from their team
+      allow update: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        isOwner(resource.data.ownerId) ||
+        (isCoach() && isSameTeam(resource.data.teamId))
+      );
+
+      // Users can delete their own speeches, coaches can delete speeches from their team
+      allow delete: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        isOwner(resource.data.ownerId) ||
+        (isCoach() && isSameTeam(resource.data.teamId))
+      );
+    }
+
     // ---- Helper functions ----
 
     /**
