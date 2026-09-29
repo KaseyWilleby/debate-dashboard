@@ -63,6 +63,7 @@ import { SubmitRecordingDialog } from "@/components/dashboard/submit-recording-d
 import { MigrateRecordingsDialog } from "@/components/dashboard/migrate-recordings-dialog";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, deleteDoc, doc, query, where } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 type Topic = { id: string; text: string };
 type TimerDirection = "up" | "down";
@@ -154,7 +155,7 @@ const SavedScripts = ({ eventType, writtenSpeeches, setSpeechToEdit, setIsWritin
 export default function ExtempPracticePage() {
     const { toast } = useToast();
     const { user, isLoading: isAuthLoading } = useAuth();
-    const { firestore } = useFirebase();
+    const { firestore, storage } = useFirebase();
 
     const usersQuery = useMemoFirebase(() => {
         if (!firestore || !user) return null;
@@ -805,7 +806,7 @@ export default function ExtempPracticePage() {
     };
 
     const handleSaveSpeech = async () => {
-        if (recordedChunksRef.current.length === 0 || !selectedTopic || !user || !firestore) {
+        if (recordedChunksRef.current.length === 0 || !selectedTopic || !user || !firestore || !storage) {
             toast({ variant: 'destructive', title: 'Cannot Save', description: 'No video or topic available to save.' });
             return;
         }
@@ -814,13 +815,13 @@ export default function ExtempPracticePage() {
         try {
             const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
 
-            // Convert blob to base64 data URL for cross-device access
-            const reader = new FileReader();
-            const dataUrl = await new Promise<string>((resolve, reject) => {
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
+            // Upload to Firebase Storage instead of base64 encoding
+            const timestamp = Date.now();
+            const fileName = `recordings/${user.id}/${timestamp}.webm`;
+            const storageRef = ref(storage, fileName);
+
+            await uploadBytes(storageRef, blob);
+            const videoUrl = await getDownloadURL(storageRef);
 
             const newSavedSpeech: Omit<SavedSpeech, 'id'> = {
                 teamId: user.teamId || '',
@@ -830,7 +831,8 @@ export default function ExtempPracticePage() {
                 prepTime: prepTime,
                 speechTime: speechTimerDirection === 'down' ? initialSpeechTime - speechTime : speechTime,
                 mode,
-                videoUrl: dataUrl,
+                videoUrl: videoUrl,
+                storagePath: fileName,
                 date: new Date().toISOString(),
                 sharedWith: [],
             };

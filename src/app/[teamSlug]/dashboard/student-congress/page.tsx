@@ -61,6 +61,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, updateDoc, deleteDoc, doc, query, where } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Input } from "@/components/ui/input";
 import { extractBillsFromPdf } from "@/ai/flows/extract-bills-from-pdf-flow";
 import { SubmitRecordingDialog } from "@/components/dashboard/submit-recording-dialog";
@@ -79,7 +80,7 @@ const SAVED_SPEECHES_STORAGE_KEY = 'work-session-saved-speeches';
 export default function StudentCongressPage() {
     const { toast } = useToast();
     const { user, isLoading: isAuthLoading } = useAuth();
-    const { firestore } = useFirebase();
+    const { firestore, storage } = useFirebase();
     
     const usersCollectionRef = useMemoFirebase(() => {
         if (!firestore || !user) return null;
@@ -562,7 +563,7 @@ export default function StudentCongressPage() {
     };
 
     const handleSaveRecordedSpeech = async () => {
-        if (recordedChunksRef.current.length === 0 || !selectedTopic || !user || !firestore) {
+        if (recordedChunksRef.current.length === 0 || !selectedTopic || !user || !firestore || !storage) {
             toast({ variant: 'destructive', title: 'Cannot Save', description: 'No video or topic available to save.' });
             return;
         }
@@ -571,13 +572,13 @@ export default function StudentCongressPage() {
         try {
             const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
 
-            // Convert blob to base64 data URL for cross-device access
-            const reader = new FileReader();
-            const dataUrl = await new Promise<string>((resolve, reject) => {
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
+            // Upload to Firebase Storage instead of base64 encoding
+            const timestamp = Date.now();
+            const fileName = `recordings/${user.id}/${timestamp}.webm`;
+            const storageRef = ref(storage, fileName);
+
+            await uploadBytes(storageRef, blob);
+            const videoUrl = await getDownloadURL(storageRef);
 
             const newSavedSpeech: Omit<SavedSpeech, 'id'> = {
                 teamId: user.teamId || '',
@@ -587,7 +588,8 @@ export default function StudentCongressPage() {
                 prepTime: 0,
                 speechTime: speechTimerDirection === 'down' ? initialSpeechTime - speechTime : speechTime,
                 mode: 'congress',
-                videoUrl: dataUrl,
+                videoUrl: videoUrl,
+                storagePath: fileName,
                 date: new Date().toISOString(),
                 sharedWith: [],
                 stance: currentSpeechStance,

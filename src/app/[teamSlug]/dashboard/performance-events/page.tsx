@@ -46,6 +46,7 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, deleteDoc, doc, query, where } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 
 const WRITTEN_SPEECHES_STORAGE_KEY = 'work-session-written-speeches';
@@ -177,7 +178,7 @@ const SavedScripts = ({
 
 export default function PerformanceEventsPage() {
   const { user, isLoading: isAuthLoading } = useAuth();
-  const { firestore } = useFirebase();
+  const { firestore, storage } = useFirebase();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = React.useState<PerformanceEventType>('humorous');
 
@@ -573,7 +574,7 @@ export default function PerformanceEventsPage() {
   };
 
   const handleSaveSpeech = async () => {
-    if (recordedChunksRef.current.length === 0 || !selectedTopic || !user || !firestore) {
+    if (recordedChunksRef.current.length === 0 || !selectedTopic || !user || !firestore || !storage) {
         toast({ variant: 'destructive', title: 'Cannot Save', description: 'No video or topic available to save.' });
         return;
     }
@@ -582,13 +583,13 @@ export default function PerformanceEventsPage() {
     try {
         const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
 
-        // Convert blob to base64 data URL for cross-device access
-        const reader = new FileReader();
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
+        // Upload to Firebase Storage instead of base64 encoding
+        const timestamp = Date.now();
+        const fileName = `recordings/${user.id}/${timestamp}.webm`;
+        const storageRef = ref(storage, fileName);
+
+        await uploadBytes(storageRef, blob);
+        const videoUrl = await getDownloadURL(storageRef);
 
         const newSavedSpeech: Omit<SavedSpeech, 'id'> = {
             teamId: user.teamId || '',
@@ -598,7 +599,8 @@ export default function PerformanceEventsPage() {
             prepTime: 0,
             speechTime: speechTimerDirection === 'down' ? initialSpeechTime - speechTime : speechTime,
             mode: activeTab as PracticeMode,
-            videoUrl: dataUrl,
+            videoUrl: videoUrl,
+            storagePath: fileName,
             date: new Date().toISOString(),
             sharedWith: [],
         };
