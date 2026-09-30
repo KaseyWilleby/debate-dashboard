@@ -1,19 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as admin from 'firebase-admin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 
 // Force this route to use Node.js runtime instead of Edge
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if Firebase Admin is initialized
-    if (!admin.apps.length) {
-      return NextResponse.json(
-        { error: 'Firebase Admin SDK not configured. Please add credentials to .env file.' },
-        { status: 500 }
-      );
-    }
-
     const body = await request.json();
     const { email, studentId, name, pin, newPassword } = body;
 
@@ -33,8 +25,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get Firebase Admin services
+    const db = getAdminDb();
+
     // Search for user in Firestore by email
-    const usersSnapshot = await admin.firestore()
+    const usersSnapshot = await db
       .collection('users')
       .where('email', '==', email)
       .limit(1)
@@ -84,7 +79,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Reset password using Firebase Admin
-    await admin.auth().updateUser(userDoc.id, {
+    const auth = getAdminAuth();
+    await auth.updateUser(userDoc.id, {
       password: newPassword,
     });
 
