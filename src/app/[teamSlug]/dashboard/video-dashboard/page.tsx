@@ -10,11 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Loader2, Video, FilterX, Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
-import type { SavedSpeech, User, PracticeMode } from '@/lib/types';
+import type { SavedSpeech, User, PracticeMode, Assignment, Submission } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
 import { cn, getRoleBasedColor, formatTime } from '@/lib/utils';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -39,60 +39,118 @@ export default function VideoDashboardPage() {
   const { firestore } = useFirebase();
   const [viewingSpeech, setViewingSpeech] = React.useState<SavedSpeech | null>(null);
 
+  // Fetch all users from team
   const usersQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, 'users');
+    if (!firestore || !user || !user.teamId) return null;
+    return query(collection(firestore, 'users'), where('teamId', '==', user.teamId));
   }, [firestore, user]);
   const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
 
-  const [savedRecordings, setSavedRecordings] = React.useState<SavedSpeech[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const stored = localStorage.getItem(SAVED_SPEECHES_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  // Fetch all recordings from team
+  const recordingsQuery = useMemoFirebase(() => {
+    if (!firestore || !user || !user.teamId) return null;
+    return query(collection(firestore, 'savedSpeeches'), where('teamId', '==', user.teamId));
+  }, [firestore, user]);
+  const { data: savedRecordings, isLoading: areRecordingsLoading } = useCollection<SavedSpeech>(recordingsQuery);
 
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(SAVED_SPEECHES_STORAGE_KEY, JSON.stringify(savedRecordings));
-    }
-  }, [savedRecordings]);
+  // Fetch all assignments from team
+  const assignmentsQuery = useMemoFirebase(() => {
+    if (!firestore || !user || !user.teamId) return null;
+    return query(collection(firestore, 'assignments'), where('teamId', '==', user.teamId));
+  }, [firestore, user]);
+  const { data: assignments } = useCollection<Assignment>(assignmentsQuery);
+
+  // Fetch all submissions from team
+  const submissionsQuery = useMemoFirebase(() => {
+    if (!firestore || !user || !user.teamId) return null;
+    return collection(firestore, 'submissions');
+  }, [firestore, user]);
+  const { data: allSubmissions } = useCollection<Submission>(submissionsQuery);
 
   const [filters, setFilters] = React.useState<{
     event: string;
     userId: string;
+    classPeriod: string;
+    assignment: string;
     date: Date | undefined;
   }>({
     event: 'all',
     userId: 'all',
+    classPeriod: 'all',
+    assignment: 'all',
     date: undefined,
   });
 
+  // Get unique class periods from users
+  const classPeriods = React.useMemo(() => {
+    if (!allUsers) return [];
+    const periods = new Set(allUsers.map(u => u.classPeriod).filter(Boolean));
+    return Array.from(periods).sort();
+  }, [allUsers]);
+
+  // Create a map of recording ID to submission status
+  const recordingSubmissionMap = React.useMemo(() => {
+    if (!allSubmissions) return new Map();
+    const map = new Map<string, Submission[]>();
+    allSubmissions.forEach(sub => {
+      const existing = map.get(sub.recordingId) || [];
+      map.set(sub.recordingId, [...existing, sub]);
+    });
+    return map;
+  }, [allSubmissions]);
+
   const filteredRecordings = React.useMemo(() => {
+    if (!savedRecordings) return [];
+
     return savedRecordings
       .filter((recording) => {
+        // Event type filter
         const eventMatch = filters.event === 'all' || recording.mode === filters.event;
+
+        // User filter
         const userMatch = filters.userId === 'all' || recording.ownerId === filters.userId;
+
+        // Date filter
         const dateMatch =
           !filters.date ||
           new Date(recording.date).toDateString() === filters.date.toDateString();
-        return eventMatch && userMatch && dateMatch;
+
+        // Class period filter
+        let classPeriodMatch = true;
+        if (filters.classPeriod !== 'all' && allUsers) {
+          const owner = allUsers.find(u => u.id === recording.ownerId);
+          classPeriodMatch = owner?.classPeriod === filters.classPeriod;
+        }
+
+        // Assignment filter
+        let assignmentMatch = true;
+        if (filters.assignment !== 'all') {
+          const submissions = recordingSubmissionMap.get(recording.id) || [];
+
+          if (filters.assignment === 'submitted') {
+            assignmentMatch = submissions.length > 0;
+          } else if (filters.assignment === 'unsubmitted') {
+            assignmentMatch = submissions.length === 0;
+          } else {
+            // Specific assignment ID
+            assignmentMatch = submissions.some(sub => sub.assignmentId === filters.assignment);
+          }
+        }
+
+        return eventMatch && userMatch && dateMatch && classPeriodMatch && assignmentMatch;
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [savedRecordings, filters]);
+  }, [savedRecordings, filters, allUsers, recordingSubmissionMap]);
 
   const handleReset = () => {
-    setFilters({ event: 'all', userId: 'all', date: undefined });
+    setFilters({ event: 'all', userId: 'all', classPeriod: 'all', assignment: 'all', date: undefined });
   };
 
   const handleViewSpeech = (speech: SavedSpeech) => {
     setViewingSpeech(speech);
   };
 
-  const isLoading = isAuthLoading || areUsersLoading;
+  const isLoading = isAuthLoading || areUsersLoading || areRecordingsLoading;
 
   if (isLoading) {
     return (
@@ -122,10 +180,13 @@ export default function VideoDashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle className="font-headline text-lg">Filter Recordings</CardTitle>
+          <CardDescription>
+            Filter by event type, student, class period, assignment status, or date
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Select
                 value={filters.event}
                 onValueChange={(value) =>
@@ -152,15 +213,60 @@ export default function VideoDashboardPage() {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Filter by user..." />
+                  <SelectValue placeholder="Filter by student..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Users</SelectItem>
-                  {allUsers?.map((u) => (
+                  <SelectItem value="all">All Students</SelectItem>
+                  {allUsers?.filter(u => u.role !== 'coach' && u.role !== 'superadmin').map((u) => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.name}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={filters.classPeriod}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({ ...prev, classPeriod: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by class period..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Periods</SelectItem>
+                  {classPeriods.map((period) => (
+                    <SelectItem key={period} value={period!}>
+                      {period === 'Club' ? 'Club' : `${period}${period === '1' ? 'st' : period === '2' ? 'nd' : period === '3' ? 'rd' : 'th'} Period`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={filters.assignment}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({ ...prev, assignment: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by assignment..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Recordings</SelectItem>
+                  <SelectItem value="submitted">Submitted to Any Assignment</SelectItem>
+                  <SelectItem value="unsubmitted">Not Submitted</SelectItem>
+                  {assignments && assignments.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Specific Assignments</div>
+                      {assignments.map((assignment) => (
+                        <SelectItem key={assignment.id} value={assignment.id}>
+                          {assignment.title}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
                 </SelectContent>
               </Select>
 
@@ -206,9 +312,9 @@ export default function VideoDashboardPage() {
         <CardHeader>
           <CardTitle>All Recordings ({filteredRecordings.length})</CardTitle>
           <CardDescription>
-            {filters.event !== 'all' || filters.userId !== 'all' || filters.date
+            {filters.event !== 'all' || filters.userId !== 'all' || filters.classPeriod !== 'all' || filters.assignment !== 'all' || filters.date
               ? 'Filtered recordings'
-              : 'All practice recordings from all users'}
+              : 'All practice recordings from your team'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -216,6 +322,7 @@ export default function VideoDashboardPage() {
             <Accordion type="single" collapsible className="w-full">
               {filteredRecordings.map((speech) => {
                 const owner = allUsers.find((u) => u.id === speech.ownerId);
+                const submissions = recordingSubmissionMap.get(speech.id) || [];
                 return (
                   <AccordionItem value={speech.id} key={speech.id}>
                     <AccordionTrigger className="text-sm text-left">
@@ -240,11 +347,21 @@ export default function VideoDashboardPage() {
                               <span className="text-xs text-muted-foreground">
                                 {owner.name}
                               </span>
+                              {owner.classPeriod && (
+                                <Badge variant="outline" className="text-xs ml-1">
+                                  {owner.classPeriod === 'Club' ? 'Club' : `Period ${owner.classPeriod}`}
+                                </Badge>
+                              )}
                             </div>
                           )}
                           <p className="text-xs text-muted-foreground">
                             {format(new Date(speech.date), 'PPP')}
                           </p>
+                          {submissions.length > 0 && (
+                            <Badge variant="default" className="text-xs bg-green-600">
+                              Submitted ({submissions.length})
+                            </Badge>
+                          )}
                           {speech.sharedWith && speech.sharedWith.length > 0 && (
                             <Badge variant="outline" className="text-xs">
                               Shared with {speech.sharedWith.length}
@@ -278,9 +395,9 @@ export default function VideoDashboardPage() {
             </Accordion>
           ) : (
             <div className="text-center text-sm text-muted-foreground py-4">
-              {filters.event !== 'all' || filters.userId !== 'all' || filters.date
+              {filters.event !== 'all' || filters.userId !== 'all' || filters.classPeriod !== 'all' || filters.assignment !== 'all' || filters.date
                 ? 'No recordings match your filters.'
-                : 'No recordings available.'}
+                : 'No recordings available from your team yet.'}
             </div>
           )}
         </CardContent>
