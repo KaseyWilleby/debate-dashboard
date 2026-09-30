@@ -4,6 +4,11 @@ import * as React from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Settings, Clock, Users } from "lucide-react";
+import { WorkspaceManager } from "@/components/appointments/workspace-manager";
+import { AppointmentWindowManager } from "@/components/appointments/appointment-window-manager";
+import { OfficerAvailabilityManager } from "@/components/appointments/officer-availability-manager";
+import { AppointmentBooking } from "@/components/appointments/appointment-booking";
+import { MyAppointments } from "@/components/appointments/my-appointments";
 
 export default function AppointmentsPage() {
   const { user } = useAuth();
@@ -45,29 +50,24 @@ export default function AppointmentsPage() {
         </TabsList>
 
         <TabsContent value="book" className="mt-6">
-          <div className="text-center p-12 border border-dashed rounded-lg">
-            <p className="text-muted-foreground">Book appointment interface coming soon</p>
-          </div>
+          <AppointmentBooking />
         </TabsContent>
 
         <TabsContent value="my-appointments" className="mt-6">
-          <div className="text-center p-12 border border-dashed rounded-lg">
-            <p className="text-muted-foreground">My appointments interface coming soon</p>
-          </div>
+          <MyAppointments />
         </TabsContent>
 
         {isOfficer && (
           <TabsContent value="availability" className="mt-6">
-            <div className="text-center p-12 border border-dashed rounded-lg">
-              <p className="text-muted-foreground">Officer availability interface coming soon</p>
-            </div>
+            <OfficerAvailabilityManager />
           </TabsContent>
         )}
 
         {isCoach && (
           <TabsContent value="manage" className="mt-6">
-            <div className="text-center p-12 border border-dashed rounded-lg">
-              <p className="text-muted-foreground">Management interface coming soon</p>
+            <div className="space-y-6">
+              <WorkspaceManager />
+              <AppointmentWindowManager />
             </div>
           </TabsContent>
         )}
