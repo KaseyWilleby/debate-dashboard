@@ -32,7 +32,7 @@ export interface Team {
   deletedBy?: string; // User ID who deleted it
 }
 
-export type UserRole = 'superadmin' | 'coach' | 'varsity' | 'novice';
+export type UserRole = 'superadmin' | 'coach' | 'officer' | 'varsity' | 'novice';
 
 export type InvoiceStatus = 'pending' | 'paid' | 'overdue' | 'cancelled';
 
@@ -69,6 +69,12 @@ export interface User {
   tabroomEmail?: string; // Tabroom.com login email
   tabroomPassword?: string; // Tabroom.com password (should be encrypted in production)
   tabroomChapterId?: string; // Tabroom chapter ID for accessing results (e.g., 26837 for Cy-Woods)
+  // Officer permissions (for officers only, controlled by coach)
+  officerPermissions?: {
+    canScheduleAppointments?: boolean;
+    canCreateWorkSessions?: boolean;
+    canEditPoints?: boolean;
+  };
   deleted?: boolean; // Soft delete flag
   deletedAt?: string; // When the user was deleted
   deletedBy?: string; // User ID who deleted this user
@@ -440,4 +446,83 @@ export interface Submission {
   gradedBy?: string; // Coach user ID who graded
   gradedAt?: string; // ISO date when graded
   classPeriod?: string; // Student's class period at time of submission
+}
+
+// Appointment System Types
+export interface Workspace {
+  id: string;
+  teamId: string; // Which team this workspace belongs to
+  name: string; // e.g., "Room A", "Library", "Coach's Office"
+  description?: string;
+  capacity?: number; // Maximum number of people
+  isActive: boolean; // Can be booked
+  createdBy: string; // Coach user ID
+  createdAt: string; // ISO date
+}
+
+export interface AppointmentWindow {
+  id: string;
+  teamId: string; // Which team this window belongs to
+  title: string; // e.g., "Monday Office Hours"
+  description?: string;
+  dayOfWeek: number; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  startTime: string; // Format: "HH:mm" (e.g., "15:30" for 3:30 PM)
+  endTime: string; // Format: "HH:mm"
+  duration: number; // Appointment slot duration in minutes (e.g., 30, 45, 60)
+  workspaceId?: string; // Optional: restrict to specific workspace
+  isActive: boolean; // Can appointments be made in this window
+  createdBy: string; // Coach user ID
+  createdAt: string; // ISO date
+  validFrom?: string; // Optional: start date for this window (ISO date)
+  validUntil?: string; // Optional: end date for this window (ISO date)
+}
+
+export type AppointmentType = 'coach' | 'officer' | 'peer';
+export type AppointmentStatus = 'available' | 'booked' | 'completed' | 'cancelled';
+
+export interface Appointment {
+  id: string;
+  teamId: string; // Which team this appointment belongs to
+  appointmentWindowId: string; // Reference to AppointmentWindow
+  workspaceId?: string; // Which workspace (if specified)
+  workspaceName?: string; // Workspace name for display
+  date: string; // ISO date (date portion only, e.g., "2026-09-30")
+  startTime: string; // Format: "HH:mm"
+  endTime: string; // Format: "HH:mm"
+  type: AppointmentType; // coach, officer, or peer
+  status: AppointmentStatus;
+
+  // Provider (who's offering the appointment)
+  providerId: string; // User ID of coach/officer providing the appointment
+  providerName: string; // Name for display
+
+  // Attendee (who books the appointment)
+  attendeeId?: string | null; // User ID of student booking (null if available)
+  attendeeName?: string | null; // Name for display
+
+  notes?: string; // Notes from attendee when booking
+  providerNotes?: string; // Notes from provider
+
+  createdBy: string; // User ID who created this slot
+  createdAt: string; // ISO date
+  bookedAt?: string; // ISO date when it was booked
+  completedAt?: string; // ISO date when marked complete
+  cancelledAt?: string; // ISO date when cancelled
+  cancelledBy?: string; // User ID who cancelled
+  cancellationReason?: string;
+}
+
+// For officers to set their recurring availability
+export interface OfficerAvailability {
+  id: string;
+  teamId: string;
+  officerId: string; // User ID of the officer
+  officerName: string; // Name for display
+  appointmentWindowId: string; // Which window they're available for
+  workspaceId?: string; // Preferred workspace (optional)
+  isActive: boolean; // Whether they're currently available in this window
+  maxAppointmentsPerDay?: number; // Limit appointments per day
+  notes?: string; // e.g., "Available for speech coaching only"
+  createdAt: string; // ISO date
+  updatedAt: string; // ISO date
 }
