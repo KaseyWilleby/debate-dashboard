@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { useFirebase, useDoc, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, doc, query, where, updateDoc } from "firebase/firestore";
+import { collection, doc, query, where, updateDoc, getDoc } from "firebase/firestore";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Calendar, CheckCircle, XCircle, Loader2, Edit, Eye } from "lucide-react";
+import { ArrowLeft, Calendar, CheckCircle, XCircle, Loader2, Edit, Eye, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Assignment, Submission, SavedSpeech } from "@/lib/types";
 import { format } from "date-fns";
@@ -39,6 +39,9 @@ export default function AssignmentDetailPage() {
 
   const [filterPeriod, setFilterPeriod] = React.useState<string>("all");
   const [gradingSubmission, setGradingSubmission] = React.useState<Submission | null>(null);
+  const [currentSubmissionIndex, setCurrentSubmissionIndex] = React.useState<number>(0);
+  const [currentRecording, setCurrentRecording] = React.useState<SavedSpeech | null>(null);
+  const [isLoadingRecording, setIsLoadingRecording] = React.useState(false);
   const [gradeValue, setGradeValue] = React.useState("");
   const [feedbackValue, setFeedbackValue] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -78,10 +81,71 @@ export default function AssignmentDetailPage() {
     return Array.from(periods).sort();
   }, [allSubmissions]);
 
-  const handleGrade = (submission: Submission) => {
+  const handleGrade = async (submission: Submission, index: number) => {
     setGradingSubmission(submission);
+    setCurrentSubmissionIndex(index);
     setGradeValue(submission.grade?.toString() || "");
     setFeedbackValue(submission.feedback || "");
+
+    // Fetch the recording
+    await fetchRecording(submission.recordingId);
+  };
+
+  const fetchRecording = async (recordingId: string) => {
+    if (!firestore) return;
+
+    setIsLoadingRecording(true);
+    try {
+      const recordingDoc = await getDoc(doc(firestore, 'savedSpeeches', recordingId));
+      if (recordingDoc.exists()) {
+        setCurrentRecording({ id: recordingDoc.id, ...recordingDoc.data() } as SavedSpeech);
+      } else {
+        setCurrentRecording(null);
+        toast({
+          title: "Recording Not Found",
+          description: "The submitted recording could not be found.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching recording:", error);
+      setCurrentRecording(null);
+      toast({
+        title: "Error",
+        description: "Failed to load the recording.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingRecording(false);
+    }
+  };
+
+  const handleNextSubmission = async () => {
+    if (!filteredSubmissions || currentSubmissionIndex >= filteredSubmissions.length - 1) return;
+
+    const nextIndex = currentSubmissionIndex + 1;
+    const nextSubmission = filteredSubmissions[nextIndex];
+
+    setCurrentSubmissionIndex(nextIndex);
+    setGradingSubmission(nextSubmission);
+    setGradeValue(nextSubmission.grade?.toString() || "");
+    setFeedbackValue(nextSubmission.feedback || "");
+
+    await fetchRecording(nextSubmission.recordingId);
+  };
+
+  const handlePreviousSubmission = async () => {
+    if (currentSubmissionIndex <= 0) return;
+
+    const prevIndex = currentSubmissionIndex - 1;
+    const prevSubmission = filteredSubmissions![prevIndex];
+
+    setCurrentSubmissionIndex(prevIndex);
+    setGradingSubmission(prevSubmission);
+    setGradeValue(prevSubmission.grade?.toString() || "");
+    setFeedbackValue(prevSubmission.feedback || "");
+
+    await fetchRecording(prevSubmission.recordingId);
   };
 
   const handleSaveGrade = async () => {
@@ -257,7 +321,7 @@ export default function AssignmentDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredSubmissions.map((submission) => (
+                {filteredSubmissions.map((submission, index) => (
                   <TableRow key={submission.id}>
                     <TableCell className="font-medium">{submission.studentName}</TableCell>
                     <TableCell>{submission.recordingTitle}</TableCell>
@@ -285,10 +349,10 @@ export default function AssignmentDetailPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleGrade(submission)}
+                          onClick={() => handleGrade(submission, index)}
                         >
-                          <Edit className="h-4 w-4 mr-1" />
-                          {submission.grade ? "Edit Grade" : "Grade"}
+                          <Play className="h-4 w-4 mr-1" />
+                          View & Grade
                         </Button>
                       </div>
                     </TableCell>
@@ -301,51 +365,136 @@ export default function AssignmentDetailPage() {
       </Card>
 
       {/* Grading Dialog */}
-      <Dialog open={!!gradingSubmission} onOpenChange={(open) => !open && setGradingSubmission(null)}>
-        <DialogContent>
+      <Dialog open={!!gradingSubmission} onOpenChange={(open) => {
+        if (!open) {
+          setGradingSubmission(null);
+          setCurrentRecording(null);
+          setCurrentSubmissionIndex(0);
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Grade Submission</DialogTitle>
-            <DialogDescription>
-              Grading {gradingSubmission?.studentName}'s submission
-            </DialogDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle>Grade Submission</DialogTitle>
+                <DialogDescription>
+                  {gradingSubmission?.studentName} - {gradingSubmission?.recordingTitle}
+                </DialogDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {filteredSubmissions && filteredSubmissions.length > 0
+                    ? `${currentSubmissionIndex + 1} of ${filteredSubmissions.length}`
+                    : ''}
+                </span>
+                <div className="flex gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePreviousSubmission}
+                    disabled={currentSubmissionIndex === 0 || isLoadingRecording}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleNextSubmission}
+                    disabled={!filteredSubmissions || currentSubmissionIndex >= filteredSubmissions.length - 1 || isLoadingRecording}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {/* Video Player */}
             <div className="space-y-2">
               <Label>Recording</Label>
-              <p className="text-sm text-muted-foreground">{gradingSubmission?.recordingTitle}</p>
+              {isLoadingRecording ? (
+                <div className="flex items-center justify-center h-64 bg-muted rounded-lg">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : currentRecording?.videoUrl ? (
+                <div className="rounded-lg overflow-hidden bg-black">
+                  <video
+                    controls
+                    className="w-full"
+                    src={currentRecording.videoUrl}
+                    style={{ maxHeight: '400px' }}
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-64 bg-muted rounded-lg">
+                  <p className="text-muted-foreground">Recording not available</p>
+                </div>
+              )}
             </div>
+
+            {/* Recording Info */}
+            {currentRecording && (
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Topic</Label>
+                  <p className="text-sm">{currentRecording.topic || 'Untitled'}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Mode</Label>
+                  <p className="text-sm capitalize">{currentRecording.mode}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Speech Time</Label>
+                  <p className="text-sm">{currentRecording.speechTime} min</p>
+                </div>
+                {currentRecording.prepTime && currentRecording.prepTime > 0 && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Prep Time</Label>
+                    <p className="text-sm">{currentRecording.prepTime} sec</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Student Notes */}
             {gradingSubmission?.notes && (
               <div className="space-y-2">
                 <Label>Student Notes</Label>
-                <p className="text-sm text-muted-foreground">{gradingSubmission.notes}</p>
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="text-sm">{gradingSubmission.notes}</p>
+                </div>
               </div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="grade">Grade</Label>
-              <Input
-                id="grade"
-                placeholder="e.g., A+, 95, Pass"
-                value={gradeValue}
-                onChange={(e) => setGradeValue(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="feedback">Feedback (Optional)</Label>
-              <Textarea
-                id="feedback"
-                placeholder="Provide feedback for the student..."
-                value={feedbackValue}
-                onChange={(e) => setFeedbackValue(e.target.value)}
-                rows={4}
-              />
+
+            {/* Grading Section */}
+            <div className="pt-4 border-t space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="grade">Grade *</Label>
+                <Input
+                  id="grade"
+                  placeholder="e.g., A+, 95, Pass"
+                  value={gradeValue}
+                  onChange={(e) => setGradeValue(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="feedback">Feedback (Optional)</Label>
+                <Textarea
+                  id="feedback"
+                  placeholder="Provide feedback for the student..."
+                  value={feedbackValue}
+                  onChange={(e) => setFeedbackValue(e.target.value)}
+                  rows={4}
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setGradingSubmission(null)}>
-              Cancel
+              Close
             </Button>
-            <Button onClick={handleSaveGrade} disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 animate-spin" /> : null}
+            <Button onClick={handleSaveGrade} disabled={isSubmitting || !gradeValue.trim()}>
+              {isSubmitting ? <Loader2 className="mr-2 animate-spin h-4 w-4" /> : null}
               Save Grade
             </Button>
           </DialogFooter>

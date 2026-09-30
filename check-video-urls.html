@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Check Video URL Types</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover { background: #0056b3; }
+        .video-item {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        .expired { border-left-color: #dc3545; background: #fff5f5; }
+        .recoverable { border-left-color: #28a745; background: #f0fff4; }
+        .url-type {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .blob-url { background: #dc3545; color: white; }
+        .data-url { background: #28a745; color: white; }
+        .url-preview {
+            font-family: monospace;
+            font-size: 11px;
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            word-break: break-all;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        .test-video {
+            margin-top: 15px;
+            max-width: 100%;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Check Your Video URL Types</h1>
+        <p>This will show you EXACTLY what type of URLs your 2 local recordings have.</p>
+
+        <button onclick="checkVideos()">Check My 2 Local Videos</button>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function checkVideos() {
+            const resultsDiv = document.getElementById('results');
+            const STORAGE_KEY = 'work-session-saved-speeches';
+
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+
+                if (!stored) {
+                    resultsDiv.innerHTML = '<div class="video-item"><h3>❌ No local storage data found</h3></div>';
+                    return;
+                }
+
+                const recordings = JSON.parse(stored);
+
+                if (!recordings || recordings.length === 0) {
+                    resultsDiv.innerHTML = '<div class="video-item"><h3>❌ No recordings in local storage</h3></div>';
+                    return;
+                }
+
+                let html = `<h2>Found ${recordings.length} Recording(s)</h2>`;
+
+                recordings.forEach((rec, index) => {
+                    const videoUrl = rec.videoUrl || '';
+                    const isBlob = videoUrl.startsWith('blob:');
+                    const isData = videoUrl.startsWith('data:');
+
+                    const urlType = isBlob ? 'BLOB URL (Expired - Cannot Recover)' :
+                                   isData ? 'DATA URL (Can Upload to Cloud!)' :
+                                   'UNKNOWN TYPE';
+
+                    const typeClass = isBlob ? 'blob-url' : isData ? 'data-url' : 'blob-url';
+                    const itemClass = isBlob ? 'expired' : isData ? 'recoverable' : 'expired';
+
+                    const urlPreview = videoUrl.substring(0, 150) + (videoUrl.length > 150 ? '...' : '');
+                    const urlLength = videoUrl.length;
+                    const sizeInMB = (urlLength / 1024 / 1024).toFixed(2);
+
+                    html += `
+                        <div class="video-item ${itemClass}">
+                            <h3>📹 Recording ${index + 1}: "${rec.topic || 'Untitled'}"</h3>
+                            <p><strong>Mode:</strong> ${rec.mode}</p>
+                            <p><strong>Date:</strong> ${new Date(rec.date).toLocaleString()}</p>
+
+                            <div class="url-type ${typeClass}">
+                                ${urlType}
+                            </div>
+
+                            <p style="margin-top: 15px;"><strong>URL starts with:</strong></p>
+                            <div class="url-preview">${urlPreview}</div>
+
+                            <p style="margin-top: 10px;">
+                                <strong>Total size:</strong> ${urlLength.toLocaleString()} characters
+                                ${isData ? `(~${sizeInMB} MB of video data)` : '(just a reference, no video data)'}
+                            </p>
+
+                            ${isData ? `
+                                <div style="margin-top: 20px; padding: 15px; background: #d4edda; border-radius: 4px;">
+                                    <strong>✅ GOOD NEWS!</strong> This video contains ${sizeInMB} MB of actual video data
+                                    and CAN be uploaded to cloud storage!
+                                </div>
+                                <p style="margin-top: 10px;"><strong>Test if playable:</strong></p>
+                                <video class="test-video" controls src="${videoUrl}"></video>
+                            ` : `
+                                <div style="margin-top: 20px; padding: 15px; background: #f8d7da; border-radius: 4px;">
+                                    <strong>❌ BAD NEWS:</strong> This is just a temporary reference (blob URL).
+                                    The actual video data is gone and cannot be recovered.
+                                </div>
+                            `}
+                        </div>
+                    `;
+                });
+
+                html += `
+                    <div style="margin-top: 30px; padding: 20px; background: #e7f3ff; border-radius: 8px;">
+                        <h3>📋 Summary:</h3>
+                        <ul>
+                            <li><strong>Blob URLs:</strong> Cannot be recovered (video data is gone)</li>
+                            <li><strong>Data URLs:</strong> CAN be uploaded to cloud (video data is present)</li>
+                        </ul>
+                    </div>
+                `;
+
+                resultsDiv.innerHTML = html;
+
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="video-item expired">
+                        <h3>❌ Error</h3>
+                        <p>Failed to read localStorage: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
