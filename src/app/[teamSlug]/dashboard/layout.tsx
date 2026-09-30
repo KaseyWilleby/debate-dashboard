@@ -17,7 +17,7 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { BookOpenCheck, Calendar, Gavel, BookOpen, Briefcase, BookCopy, ClipboardList, Trophy, Users, Mic, Flag, Drama, BrainCircuit, LayoutDashboard, Globe, FileText, Video, BarChart3, Download, TestTube2, X, Settings, ClipboardCheck } from "lucide-react";
+import { BookOpenCheck, Calendar, Gavel, BookOpen, Briefcase, BookCopy, ClipboardList, Trophy, Users, Mic, Flag, Drama, BrainCircuit, LayoutDashboard, Globe, FileText, Video, BarChart3, Download, TestTube2, X, Settings, ClipboardCheck, Award, CalendarDays } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/contexts/auth-context";
@@ -26,9 +26,9 @@ import { useFirebase } from "@/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { Team } from "@/lib/types";
 
-type Hub = 'scheduler' | 'practice' | 'learning';
+type Hub = 'team' | 'tournament' | 'practice' | 'learning';
 
-const SchedulerNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoach: boolean; teamSlug: string }) => {
+const TeamNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoach: boolean; teamSlug: string }) => {
     return (
         <>
             <SidebarMenuItem>
@@ -41,42 +41,13 @@ const SchedulerNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoa
                   <Link href={`/${teamSlug}/dashboard/my-sessions`}><Briefcase /><span>My Sessions</span></Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
-
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/session-manager`)} tooltip="Session Manager">
                 <Link href={`/${teamSlug}/dashboard/session-manager`}><BookCopy /><span>Session Manager</span></Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-
-            {isCoach && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/tournament-scheduler`)} tooltip="Tournament Manager">
-                  <Link href={`/${teamSlug}/dashboard/tournament-scheduler`}><Calendar /><span>Tournament Manager</span></Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
-
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/tournament-history`)} tooltip="Tournament History">
-                <Link href={`/${teamSlug}/dashboard/tournament-history`}><Trophy /><span>Tournament History</span></Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-
-            {!isCoach && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/my-results`)} tooltip="My Results">
-                  <Link href={`/${teamSlug}/dashboard/my-results`}><Trophy /><span>My Results</span></Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
-
             {isCoach && (
               <>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/tournament-results-import`)} tooltip="Import Results">
-                    <Link href={`/${teamSlug}/dashboard/tournament-results-import`}><Download /><span>Import Results</span></Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/assignments`)} tooltip="Assignments">
                     <Link href={`/${teamSlug}/dashboard/assignments`}><ClipboardCheck /><span>Assignments</span></Link>
@@ -93,6 +64,56 @@ const SchedulerNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoa
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </>
+            )}
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/appointments`)} tooltip="Appointments">
+                <Link href={`/${teamSlug}/dashboard/appointments`}><CalendarDays /><span>Appointments</span></Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            {isCoach && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/video-dashboard`)} tooltip="Video Dashboard">
+                  <Link href={`/${teamSlug}/dashboard/video-dashboard`}><Video /><span>Video Dashboard</span></Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+        </>
+    );
+};
+
+const TournamentNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoach: boolean; teamSlug: string }) => {
+    return (
+        <>
+            <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === `/${teamSlug}/dashboard/tournament-history`} tooltip="Tournament Hub">
+                  <Link href={`/${teamSlug}/dashboard/tournament-history`}><Award /><span>Tournament Hub</span></Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+            {isCoach && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/tournament-scheduler`)} tooltip="Tournament Manager">
+                  <Link href={`/${teamSlug}/dashboard/tournament-scheduler`}><Calendar /><span>Tournament Manager</span></Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/tournament-history`)} tooltip="Tournament History">
+                <Link href={`/${teamSlug}/dashboard/tournament-history`}><Trophy /><span>Tournament History</span></Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            {!isCoach && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/my-results`)} tooltip="My Results">
+                  <Link href={`/${teamSlug}/dashboard/my-results`}><Trophy /><span>My Results</span></Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+            {isCoach && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/tournament-results-import`)} tooltip="Import Results">
+                  <Link href={`/${teamSlug}/dashboard/tournament-results-import`}><Download /><span>Import Results</span></Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             )}
         </>
     );
@@ -130,13 +151,6 @@ const PracticeNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoac
         <Link href={`/${teamSlug}/dashboard/debate-events`}><Gavel /><span>Debate Events</span></Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
-    {isCoach && (
-      <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/video-dashboard`)} tooltip="Video Dashboard">
-          <Link href={`/${teamSlug}/dashboard/video-dashboard`}><Video /><span>Video Dashboard</span></Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    )}
   </>
 );
 
@@ -191,7 +205,7 @@ export default function DashboardLayout({
   const teamSlug = params?.teamSlug as string;
   const { user, isLoading } = useAuth();
   const { firestore } = useFirebase();
-  const [activeHub, setActiveHub] = React.useState<Hub>('scheduler');
+  const [activeHub, setActiveHub] = React.useState<Hub>('team');
   const [isMounted, setIsMounted] = React.useState(false);
   const [teamData, setTeamData] = useState<Team | null>(null);
 
@@ -237,8 +251,10 @@ export default function DashboardLayout({
         localStorage.setItem('activeHub', hub);
 
         // Navigate to the first page of the selected hub
-        if (hub === 'scheduler') {
+        if (hub === 'team') {
           router.push(`/${teamSlug}/dashboard`);
+        } else if (hub === 'tournament') {
+          router.push(`/${teamSlug}/dashboard/tournament-history`);
         } else if (hub === 'practice') {
           router.push(`/${teamSlug}/dashboard/practice-dashboard`);
         } else if (hub === 'learning') {
@@ -267,11 +283,14 @@ export default function DashboardLayout({
             </Button>
              <div className="p-2">
                 <div className="text-center text-sm font-medium text-muted-foreground mb-2 capitalize">
-                    {activeHub === 'scheduler' ? 'Team Hub' : activeHub === 'practice' ? 'Practice Hub' : 'Learning Hub'}
+                    {activeHub === 'team' ? 'Team Hub' : activeHub === 'tournament' ? 'Tournament Hub' : activeHub === 'practice' ? 'Practice Hub' : 'Learning Hub'}
                 </div>
-                <ToggleGroup type="single" value={activeHub} onValueChange={handleHubChange} className="w-full grid grid-cols-3">
-                    <ToggleGroupItem value="scheduler" aria-label="Team Hub" className="flex-1">
+                <ToggleGroup type="single" value={activeHub} onValueChange={handleHubChange} className="w-full grid grid-cols-4">
+                    <ToggleGroupItem value="team" aria-label="Team Hub" className="flex-1">
                         <Users className="h-4 w-4" />
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="tournament" aria-label="Tournament Hub" className="flex-1">
+                        <Award className="h-4 w-4" />
                     </ToggleGroupItem>
                     <ToggleGroupItem value="practice" aria-label="Practice Hub" className="flex-1">
                         <Gavel className="h-4 w-4" />
@@ -284,7 +303,8 @@ export default function DashboardLayout({
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
-              {activeHub === 'scheduler' && <SchedulerNav pathname={pathname} isCoach={user?.role === 'coach' || user?.role === 'superadmin'} teamSlug={teamSlug} />}
+              {activeHub === 'team' && <TeamNav pathname={pathname} isCoach={user?.role === 'coach' || user?.role === 'superadmin'} teamSlug={teamSlug} />}
+              {activeHub === 'tournament' && <TournamentNav pathname={pathname} isCoach={user?.role === 'coach' || user?.role === 'superadmin'} teamSlug={teamSlug} />}
               {activeHub === 'practice' && <PracticeNav pathname={pathname} isCoach={user?.role === 'coach' || user?.role === 'superadmin'} teamSlug={teamSlug} />}
               {activeHub === 'learning' && <LearningNav pathname={pathname} teamSlug={teamSlug} />}
             </SidebarMenu>
