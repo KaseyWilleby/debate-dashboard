@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Settings, Clock, Users } from "lucide-react";
+import { Calendar, Settings, Clock, Users, Loader2 } from "lucide-react";
 import { WorkspaceManager } from "@/components/appointments/workspace-manager";
 import { AppointmentWindowManager } from "@/components/appointments/appointment-window-manager";
 import { OfficerAvailabilityManager } from "@/components/appointments/officer-availability-manager";
@@ -11,10 +11,18 @@ import { AppointmentBooking } from "@/components/appointments/appointment-bookin
 import { MyAppointments } from "@/components/appointments/my-appointments";
 
 export default function AppointmentsPage() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
   const isCoach = user?.role === 'coach' || user?.role === 'superadmin';
   const isOfficer = user?.role === 'officer';
+
+  if (isLoading || !user) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
