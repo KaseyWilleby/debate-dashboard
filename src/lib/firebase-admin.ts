@@ -19,15 +19,24 @@ const initializeAdmin = () => {
       return;
     }
 
-    // Initialize
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID!,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')!,
-      }),
-    });
-    console.log('Firebase Admin initialized successfully');
+    // Initialize with credentials if available, otherwise use Application Default Credentials
+    if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+      // Local development with explicit credentials
+      initializeApp({
+        credential: cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        }),
+      });
+      console.log('Firebase Admin initialized with service account credentials');
+    } else {
+      // Production (Firebase App Hosting) - uses Application Default Credentials
+      initializeApp({
+        projectId: process.env.FIREBASE_PROJECT_ID || 'debate-dashboard',
+      });
+      console.log('Firebase Admin initialized with Application Default Credentials');
+    }
     initialized = true;
   } catch (error) {
     console.error('Firebase admin initialization error:', error);
