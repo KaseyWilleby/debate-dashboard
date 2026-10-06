@@ -340,7 +340,23 @@ service cloud.firestore {
      * Coaches can create and manage workspaces. All team members can view them.
      */
     match /workspaces/{workspaceId} {
-      allow read, write: if true; // TEMPORARY DEBUG
+      allow get: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && request.resource.data.teamId == getUserTeamId() && request.resource.data.createdBy == request.auth.uid)
+      );
+      allow update: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(resource.data.teamId))
+      );
+      allow delete: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(resource.data.teamId))
+      );
     }
 
     /**
@@ -349,7 +365,23 @@ service cloud.firestore {
      * Coaches create windows. All team members can view them.
      */
     match /appointmentWindows/{windowId} {
-      allow read, write: if true; // TEMPORARY DEBUG
+      allow get: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && request.resource.data.teamId == getUserTeamId() && request.resource.data.createdBy == request.auth.uid)
+      );
+      allow update: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(resource.data.teamId))
+      );
+      allow delete: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(resource.data.teamId))
+      );
     }
 
     /**
@@ -358,7 +390,30 @@ service cloud.firestore {
      * Coaches and officers can create appointments. Students can book/view their own.
      */
     match /appointments/{appointmentId} {
-      allow read, write: if true; // TEMPORARY DEBUG
+      allow get: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && request.resource.data.teamId == getUserTeamId()) ||
+        (isOfficer() && request.resource.data.teamId == getUserTeamId() && request.resource.data.providerId == request.auth.uid)
+      );
+      allow update: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(resource.data.teamId)) ||
+        (isOfficer() && isSameTeam(resource.data.teamId) && resource.data.providerId == request.auth.uid) ||
+        (isSameTeam(resource.data.teamId) &&
+         resource.data.status == 'available' &&
+         request.resource.data.attendeeId == request.auth.uid &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'attendeeId', 'attendeeName', 'notes', 'bookedAt']))
+      );
+      allow delete: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(resource.data.teamId)) ||
+        (isOfficer() && isSameTeam(resource.data.teamId) && resource.data.providerId == request.auth.uid)
+      );
     }
 
     /**
@@ -367,7 +422,25 @@ service cloud.firestore {
      * Officers manage their own availability. Coaches can view/manage all.
      */
     match /officerAvailability/{availabilityId} {
-      allow read, write: if true; // TEMPORARY DEBUG
+      allow get: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isOfficer() && request.resource.data.teamId == getUserTeamId() && request.resource.data.officerId == request.auth.uid)
+      );
+      allow update: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(resource.data.teamId)) ||
+        (isOfficer() && isSameTeam(resource.data.teamId) && resource.data.officerId == request.auth.uid)
+      );
+      allow delete: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(resource.data.teamId)) ||
+        (isOfficer() && isSameTeam(resource.data.teamId) && resource.data.officerId == request.auth.uid)
+      );
     }
 
     // ---- Helper functions ----
