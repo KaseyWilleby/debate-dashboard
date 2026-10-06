@@ -36,6 +36,8 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
+  console.log('[Firebase] Initialized with project:', firebaseApp.options.projectId);
+  console.log('[Firebase] Full config:', firebaseApp.options);
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
