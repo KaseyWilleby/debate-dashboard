@@ -82,10 +82,15 @@ export function AppointmentBooking() {
 
   const appointmentsQuery = useMemoFirebase(() => {
     if (!firestore || !user || !user.teamId) return null;
-    // TEMPORARY: Try without where clauses to test permissions
-    console.log('[Appointments] Creating query for user:', user.uid, user.teamId);
-    return collection(firestore, 'appointments');
-  }, [firestore, user]);
+    const startStr = currentWeekStart.toISOString().split('T')[0];
+    const endStr = weekEnd.toISOString().split('T')[0];
+    return query(
+      collection(firestore, 'appointments'),
+      where('teamId', '==', user.teamId),
+      where('date', '>=', startStr),
+      where('date', '<=', endStr)
+    );
+  }, [firestore, user, currentWeekStart]);
 
   const { data: appointments, isLoading } = useCollection<Appointment>(appointmentsQuery);
 
