@@ -340,7 +340,8 @@ service cloud.firestore {
      * Coaches can create and manage workspaces. All team members can view them.
      */
     match /workspaces/{workspaceId} {
-      allow read: if isSignedIn() && isSameTeam(resource.data.teamId);
+      allow get: if isSignedIn() && isSameTeam(resource.data.teamId);
+      allow list: if isSignedIn();
       allow create: if isSignedIn() && (
         isSuperAdmin() ||
         isSuperAdminEmail() ||
@@ -364,7 +365,8 @@ service cloud.firestore {
      * Coaches create windows. All team members can view them.
      */
     match /appointmentWindows/{windowId} {
-      allow read: if isSignedIn() && isSameTeam(resource.data.teamId);
+      allow get: if isSignedIn() && isSameTeam(resource.data.teamId);
+      allow list: if isSignedIn();
       allow create: if isSignedIn() && (
         isSuperAdmin() ||
         isSuperAdminEmail() ||
@@ -388,7 +390,8 @@ service cloud.firestore {
      * Coaches and officers can create appointments. Students can book/view their own.
      */
     match /appointments/{appointmentId} {
-      allow read: if isSignedIn() && isSameTeam(resource.data.teamId);
+      allow get: if isSignedIn() && isSameTeam(resource.data.teamId);
+      allow list: if isSignedIn();
       allow create: if isSignedIn() && (
         isSuperAdmin() ||
         isSuperAdminEmail() ||
@@ -421,7 +424,8 @@ service cloud.firestore {
      * Officers manage their own availability. Coaches can view/manage all.
      */
     match /officerAvailability/{availabilityId} {
-      allow read: if isSignedIn() && isSameTeam(resource.data.teamId);
+      allow get: if isSignedIn() && isSameTeam(resource.data.teamId);
+      allow list: if isSignedIn();
       allow create: if isSignedIn() && (
         isSuperAdmin() ||
         isSuperAdminEmail() ||
