@@ -3,45 +3,34 @@
 import * as React from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, addDoc, updateDoc, deleteDoc, doc, query, where } from "firebase/firestore";
+import { collection, addDoc, deleteDoc, doc, query, where } from "firebase/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Plus, Edit, Trash2, Loader2, CalendarClock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { OfficerAvailability, AppointmentWindow } from "@/lib/types";
 
-const DAYS_OF_WEEK = [
-  { value: 0, label: "Sunday" },
-  { value: 1, label: "Monday" },
-  { value: 2, label: "Tuesday" },
-  { value: 3, label: "Wednesday" },
-  { value: 4, label: "Thursday" },
-  { value: 5, label: "Friday" },
-  { value: 6, label: "Saturday" },
-];
+const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+interface WindowSlot {
+  date: string; // YYYY-MM-DD
+  window: AppointmentWindow;
+  availability?: OfficerAvailability;
+}
 
 export function OfficerAvailabilityManager() {
   const { user } = useAuth();
   const { firestore } = useFirebase();
   const { toast } = useToast();
 
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [editingAvailability, setEditingAvailability] = React.useState<OfficerAvailability | null>(null);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-
-  // Form state
-  const [appointmentWindowId, setAppointmentWindowId] = React.useState<string>("");
-  const [maxAppointmentsPerDay, setMaxAppointmentsPerDay] = React.useState<number | "">(4);
-  const [notes, setNotes] = React.useState("");
-  const [isActive, setIsActive] = React.useState(true);
+  const [isProcessing, setIsProcessing] = React.useState<Set<string>>(new Set());
+  const [currentWeekStart, setCurrentWeekStart] = React.useState<Date>(() => {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day;
+    return new Date(today.setDate(diff));
+  });
 
   // Check if user can set availability (coaches and varsity members)
   const canSetAvailability = user?.role === 'coach' || user?.role === 'varsity' || user?.role === 'officer';
@@ -70,158 +59,132 @@ export function OfficerAvailabilityManager() {
 
   const { data: windows, isLoading: isLoadingWindows } = useCollection<AppointmentWindow>(windowsQuery);
 
+  // Generate window slots for the current 4 weeks
+  const windowSlots = React.useMemo(() => {
+    if (!windows || !user) return [];
 
-  const resetForm = () => {
-    setAppointmentWindowId("");
-    setMaxAppointmentsPerDay(4);
-    setNotes("");
-    setIsActive(true);
-    setEditingAvailability(null);
-  };
+    const slots: WindowSlot[] = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  const handleCreate = () => {
-    resetForm();
-    setIsDialogOpen(true);
-  };
+    // Generate dates for next 28 days (4 weeks)
+    for (let i = 0; i < 28; i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() + i);
+      const dayOfWeek = date.getDay();
+      const dateStr = date.toISOString().split('T')[0];
 
-  const handleEdit = (availability: OfficerAvailability) => {
-    setEditingAvailability(availability);
-    setAppointmentWindowId(availability.appointmentWindowId);
-    setMaxAppointmentsPerDay(availability.maxAppointmentsPerDay || 4);
-    setNotes(availability.notes || "");
-    setIsActive(availability.isActive);
-    setIsDialogOpen(true);
-  };
+      // Find windows for this day
+      const dayWindows = windows.filter(w => w.dayOfWeek === dayOfWeek);
 
-  const handleSubmit = async () => {
-    if (!firestore || !user || !appointmentWindowId) {
-      toast({
-        title: "Error",
-        description: "Please select an appointment window",
-        variant: "destructive",
+      dayWindows.forEach(window => {
+        // Check if window is valid for this date
+        if (window.validFrom && dateStr < window.validFrom) return;
+        if (window.validUntil && dateStr > window.validUntil) return;
+
+        // Find existing availability
+        const availability = availabilityRecords?.find(
+          a => a.appointmentWindowId === window.id
+        );
+
+        slots.push({
+          date: dateStr,
+          window,
+          availability,
+        });
       });
-      return;
     }
 
-    // Check if already have availability for this window (when creating)
-    if (!editingAvailability && availabilityRecords?.some(a => a.appointmentWindowId === appointmentWindowId)) {
-      toast({
-        title: "Error",
-        description: "You already have availability set for this window",
-        variant: "destructive",
-      });
-      return;
-    }
+    return slots;
+  }, [windows, availabilityRecords, user]);
 
-    setIsSubmitting(true);
+  // Group slots by date
+  const slotsByDate = React.useMemo(() => {
+    const grouped = new Map<string, WindowSlot[]>();
+    windowSlots.forEach(slot => {
+      const existing = grouped.get(slot.date) || [];
+      existing.push(slot);
+      grouped.set(slot.date, existing);
+    });
+    return grouped;
+  }, [windowSlots]);
+
+  const handleToggleAvailability = async (slot: WindowSlot) => {
+    if (!firestore || !user) return;
+
+    const slotKey = `${slot.date}-${slot.window.id}`;
+    if (isProcessing.has(slotKey)) return;
+
+    setIsProcessing(prev => new Set(prev).add(slotKey));
+
     try {
-      const availabilityData: any = {
-        appointmentWindowId,
-        isActive,
-        updatedAt: new Date().toISOString(),
-      };
-
-      // Only add optional fields if they have values
-      if (typeof maxAppointmentsPerDay === 'number') availabilityData.maxAppointmentsPerDay = maxAppointmentsPerDay;
-      if (notes.trim()) availabilityData.notes = notes.trim();
-
-      if (editingAvailability) {
-        // Update existing availability
-        await updateDoc(doc(firestore, 'officerAvailability', editingAvailability.id), availabilityData);
-
+      if (slot.availability) {
+        // Remove availability
+        await deleteDoc(doc(firestore, 'officerAvailability', slot.availability.id));
         toast({
-          title: "Availability Updated",
-          description: "Your availability has been updated.",
+          title: "Availability Removed",
+          description: `You are no longer available for ${slot.window.title}`,
         });
       } else {
-        // Create new availability
+        // Add availability
         await addDoc(collection(firestore, 'officerAvailability'), {
-          ...availabilityData,
           teamId: user.teamId,
           officerId: user.id,
           officerName: user.name || user.email,
+          appointmentWindowId: slot.window.id,
+          isActive: true,
           createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         });
-
         toast({
           title: "Availability Added",
-          description: "Your availability has been added.",
+          description: `You are now available for ${slot.window.title}`,
         });
       }
-
-      setIsDialogOpen(false);
-      resetForm();
-    } catch (error) {
-      console.error("Error saving officer availability:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save availability. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDelete = async (availability: OfficerAvailability) => {
-    if (!firestore) return;
-
-    const window = windows?.find(w => w.id === availability.appointmentWindowId);
-    if (!confirm(`Are you sure you want to remove your availability for "${window?.title}"? This cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      await deleteDoc(doc(firestore, 'officerAvailability', availability.id));
-
-      toast({
-        title: "Availability Removed",
-        description: "Your availability has been removed.",
-      });
-    } catch (error) {
-      console.error("Error deleting availability:", error);
-      toast({
-        title: "Error",
-        description: "Failed to remove availability. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleToggleActive = async (availability: OfficerAvailability) => {
-    if (!firestore) return;
-
-    try {
-      await updateDoc(doc(firestore, 'officerAvailability', availability.id), {
-        isActive: !availability.isActive,
-        updatedAt: new Date().toISOString(),
-      });
-
-      toast({
-        title: availability.isActive ? "Availability Deactivated" : "Availability Activated",
-        description: `Your availability is now ${!availability.isActive ? 'active' : 'inactive'}.`,
-      });
     } catch (error) {
       console.error("Error toggling availability:", error);
       toast({
         title: "Error",
-        description: "Failed to update availability status.",
+        description: "Failed to update availability. Please try again.",
         variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(slotKey);
+        return newSet;
       });
     }
   };
 
-  const getWindowInfo = (windowId: string) => {
-    return windows?.find(w => w.id === windowId);
+  const handlePreviousWeek = () => {
+    const newStart = new Date(currentWeekStart);
+    newStart.setDate(newStart.getDate() - 7);
+    setCurrentWeekStart(newStart);
   };
 
-  // Get available windows (excluding those already set)
-  const availableWindows = React.useMemo(() => {
-    if (!windows) return [];
-    if (editingAvailability) return windows; // When editing, show current window
-    const usedWindowIds = new Set(availabilityRecords?.map(a => a.appointmentWindowId) || []);
-    return windows.filter(w => !usedWindowIds.has(w.id));
-  }, [windows, availabilityRecords, editingAvailability]);
+  const handleNextWeek = () => {
+    const newStart = new Date(currentWeekStart);
+    newStart.setDate(newStart.getDate() + 7);
+    setCurrentWeekStart(newStart);
+  };
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const formatTime = (time: string) => {
+    const [hour, min] = time.split(':');
+    const h = parseInt(hour);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const displayHour = h % 12 || 12;
+    return `${displayHour}:${min} ${ampm}`;
+  };
 
   if (isLoadingAvailability || isLoadingWindows) {
     return (
@@ -232,194 +195,95 @@ export function OfficerAvailabilityManager() {
   }
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>My Availability</CardTitle>
-              <CardDescription>
-                Set your availability for appointment windows
-              </CardDescription>
-            </div>
-            <Button onClick={handleCreate} disabled={availableWindows.length === 0}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Availability
-            </Button>
+    <Card>
+      <CardHeader>
+        <CardTitle>My Availability</CardTitle>
+        <CardDescription>
+          Check off the appointment windows when you're available
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!windows || windows.length === 0 ? (
+          <div className="text-center p-12 border border-dashed rounded-lg">
+            <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground mb-2">No appointment windows available</p>
+            <p className="text-sm text-muted-foreground">Ask your coach to create appointment windows first</p>
           </div>
-        </CardHeader>
-        <CardContent>
-          {!windows || windows.length === 0 ? (
-            <div className="text-center p-12 border border-dashed rounded-lg">
-              <CalendarClock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">No appointment windows available</p>
-              <p className="text-sm text-muted-foreground">Ask your coach to create appointment windows first</p>
-            </div>
-          ) : !availabilityRecords || availabilityRecords.length === 0 ? (
-            <div className="text-center p-12 border border-dashed rounded-lg">
-              <CalendarClock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">No availability set yet</p>
-              <Button onClick={handleCreate} variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Set First Availability
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Window</TableHead>
-                  <TableHead>Day & Time</TableHead>
-                  <TableHead>Max/Day</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {availabilityRecords.map((availability) => {
-                  const window = getWindowInfo(availability.appointmentWindowId);
-
-                  return (
-                    <TableRow key={availability.id}>
-                      <TableCell className="font-medium">
-                        {window?.title || "Unknown Window"}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {window && (
-                          <>
-                            {DAYS_OF_WEEK.find(d => d.value === window.dayOfWeek)?.label}
-                            <br />
-                            <span className="text-muted-foreground">
-                              {window.startTime} - {window.endTime}
-                            </span>
-                          </>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {availability.maxAppointmentsPerDay || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={availability.isActive ? "default" : "secondary"}>
-                          {availability.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Switch
-                            checked={availability.isActive}
-                            onCheckedChange={() => handleToggleActive(availability)}
-                          />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(availability)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(availability)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Create/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={(open) => {
-        setIsDialogOpen(open);
-        if (!open) resetForm();
-      }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingAvailability ? "Edit Availability" : "Add Availability"}
-            </DialogTitle>
-            <DialogDescription>
-              {editingAvailability
-                ? "Update your availability details below."
-                : "Set your availability for an appointment window."}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="window">Appointment Window *</Label>
-              <Select
-                value={appointmentWindowId}
-                onValueChange={setAppointmentWindowId}
-                disabled={!!editingAvailability}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a window" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(editingAvailability ? windows : availableWindows)?.map((window) => (
-                    <SelectItem key={window.id} value={window.id}>
-                      {window.title} - {DAYS_OF_WEEK.find(d => d.value === window.dayOfWeek)?.label} {window.startTime}-{window.endTime}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {editingAvailability && (
-                <p className="text-xs text-muted-foreground">
-                  Window cannot be changed when editing
+        ) : windowSlots.length === 0 ? (
+          <div className="text-center p-12 border border-dashed rounded-lg">
+            <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground mb-2">No upcoming appointment windows</p>
+            <p className="text-sm text-muted-foreground">Check back later or contact your coach</p>
+          </div>
+        ) : (
+          <>
+            {/* Summary Stats */}
+            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+              <div>
+                <p className="text-sm text-muted-foreground">Available Sessions</p>
+                <p className="text-2xl font-bold">
+                  {windowSlots.filter(s => s.availability).length}
                 </p>
-              )}
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Windows</p>
+                <p className="text-2xl font-bold">{windowSlots.length}</p>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="maxAppointments">Max Appointments Per Day (optional)</Label>
-              <Input
-                id="maxAppointments"
-                type="number"
-                min="1"
-                max="20"
-                placeholder="e.g., 4"
-                value={maxAppointmentsPerDay}
-                onChange={(e) => setMaxAppointmentsPerDay(e.target.value ? parseInt(e.target.value) : "")}
-              />
-              <p className="text-xs text-muted-foreground">
-                Limit how many appointments you can have in one day
-              </p>
+
+            {/* Calendar View */}
+            <div className="space-y-6">
+              {Array.from(slotsByDate.entries())
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([date, daySlots]) => (
+                  <div key={date} className="space-y-3">
+                    <h3 className="font-semibold text-lg sticky top-0 bg-background py-2">
+                      {formatDate(date)}
+                    </h3>
+                    <div className="space-y-2">
+                      {daySlots
+                        .sort((a, b) => a.window.startTime.localeCompare(b.window.startTime))
+                        .map((slot) => {
+                          const slotKey = `${slot.date}-${slot.window.id}`;
+                          const isChecked = !!slot.availability;
+                          const isProcessingSlot = isProcessing.has(slotKey);
+
+                          return (
+                            <div
+                              key={slotKey}
+                              className="flex items-center gap-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                            >
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={() => handleToggleAvailability(slot)}
+                                disabled={isProcessingSlot}
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium">{slot.window.title}</p>
+                                  {isProcessingSlot && (
+                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {formatTime(slot.window.startTime)} - {formatTime(slot.window.endTime)} ({slot.window.duration} min)
+                                </p>
+                                {slot.window.description && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {slot.window.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                ))}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes (optional)</Label>
-              <Textarea
-                id="notes"
-                placeholder="e.g., Can help with policy debate preparation, LD cases..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-              />
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="active"
-                checked={isActive}
-                onCheckedChange={setIsActive}
-              />
-              <Label htmlFor="active">Active (available for booking)</Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting || !appointmentWindowId}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editingAvailability ? "Update" : "Add"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
