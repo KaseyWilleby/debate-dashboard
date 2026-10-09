@@ -459,53 +459,65 @@ export function AppointmentBooking() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
               {Array.from(slotsByProvider.entries()).map(([providerId, providerSlots]) => {
                 const providerName = providers.find(p => p.id === providerId)?.name || 'Unknown';
 
                 return (
-                  <div key={providerId} className="space-y-3">
-                    <div className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2 border-b">
-                      <h4 className="font-semibold flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        {providerName}
+                  <div key={providerId} className="flex flex-col min-w-0 max-w-[200px]">
+                    <div className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2 border-b mb-3">
+                      <h4 className="font-semibold text-sm flex items-center gap-1.5 truncate">
+                        <User className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span className="truncate">{providerName}</span>
                       </h4>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-[10px] text-muted-foreground">
                         {providerSlots.length} slot{providerSlots.length !== 1 ? 's' : ''}
                       </p>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       {providerSlots.map((slot, idx) => {
                         const isBooked = slot.existingAppointment && slot.existingAppointment.status !== 'available';
                         const isMyAppointment = slot.existingAppointment?.attendeeId === user?.id;
                         const slotDate = new Date(slot.date + 'T00:00:00');
                         const dayName = DAYS_OF_WEEK[slotDate.getDay()];
 
+                        // Check if this is a new day (different from previous slot)
+                        const prevSlot = idx > 0 ? providerSlots[idx - 1] : null;
+                        const isNewDay = !prevSlot || prevSlot.date !== slot.date;
+
                         return (
-                          <Button
-                            key={`${slot.date}-${slot.startTime}-${slot.providerId}-${idx}`}
-                            variant={isBooked ? "secondary" : "outline"}
-                            className="h-auto w-full p-2 flex flex-col items-start gap-1.5 text-left"
-                            onClick={() => !isBooked && handleSlotClick(slot)}
-                            disabled={isBooked && !isMyAppointment}
-                          >
-                            <div className="flex items-center justify-between w-full">
-                              <span className="text-xs font-medium text-muted-foreground">
-                                {dayName.substring(0, 3)} {formatShortDate(slot.date)}
-                              </span>
+                          <React.Fragment key={`${slot.date}-${slot.startTime}-${slot.providerId}-${idx}`}>
+                            {isNewDay && idx > 0 && (
+                              <div className="border-t my-2 pt-1">
+                                <p className="text-[10px] font-medium text-muted-foreground px-1">
+                                  {dayName} {formatShortDate(slot.date)}
+                                </p>
+                              </div>
+                            )}
+                            {isNewDay && idx === 0 && (
+                              <p className="text-[10px] font-medium text-muted-foreground px-1 mb-1">
+                                {dayName} {formatShortDate(slot.date)}
+                              </p>
+                            )}
+                            <Button
+                              variant={isBooked ? "secondary" : "outline"}
+                              className="h-auto w-full p-1.5 flex items-center justify-between text-left"
+                              onClick={() => !isBooked && handleSlotClick(slot)}
+                              disabled={isBooked && !isMyAppointment}
+                            >
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3 flex-shrink-0" />
+                                <span className="text-xs font-medium">
+                                  {formatTime(slot.startTime)}
+                                </span>
+                              </div>
                               {isBooked && (
-                                <Badge variant={isMyAppointment ? "default" : "secondary"} className="text-[10px] px-1 py-0">
+                                <Badge variant={isMyAppointment ? "default" : "secondary"} className="text-[9px] px-1 py-0 h-4">
                                   {isMyAppointment ? "Yours" : "Booked"}
                                 </Badge>
                               )}
-                            </div>
-                            <div className="flex items-center gap-1.5 w-full">
-                              <Clock className="h-3 w-3 flex-shrink-0" />
-                              <span className="text-sm font-medium">
-                                {formatTime(slot.startTime)}
-                              </span>
-                            </div>
-                          </Button>
+                            </Button>
+                          </React.Fragment>
                         );
                       })}
                     </div>
