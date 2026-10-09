@@ -204,24 +204,32 @@ export function AppointmentBooking() {
     });
   }, [generatedSlots, filterProvider]);
 
-  // Group slots by date
-  const slotsByDate = React.useMemo(() => {
+  // Group slots by provider
+  const slotsByProvider = React.useMemo(() => {
     const grouped = new Map<string, GeneratedSlot[]>();
     filteredSlots.forEach(slot => {
-      const existing = grouped.get(slot.date) || [];
+      const existing = grouped.get(slot.providerId) || [];
       existing.push(slot);
-      grouped.set(slot.date, existing);
+      grouped.set(slot.providerId, existing);
+    });
+    // Sort each provider's slots by date and time
+    grouped.forEach((slots, providerId) => {
+      slots.sort((a, b) => {
+        const dateCompare = a.date.localeCompare(b.date);
+        if (dateCompare !== 0) return dateCompare;
+        return a.startTime.localeCompare(b.startTime);
+      });
     });
     return grouped;
   }, [filteredSlots]);
 
-  // Get unique providers
+  // Get unique providers with their names
   const providers = React.useMemo(() => {
     const uniqueIds = new Set(generatedSlots.map(s => s.providerId));
     return Array.from(uniqueIds).map(id => {
       const slot = generatedSlots.find(s => s.providerId === id);
       return { id, name: slot?.providerName || 'Unknown' };
-    });
+    }).sort((a, b) => a.name.localeCompare(b.name));
   }, [generatedSlots]);
 
   const handlePreviousWeek = () => {
@@ -370,6 +378,13 @@ export function AppointmentBooking() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  const formatShortDate = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const day = date.getDate();
+    return `${month} ${day}`;
+  };
+
   const formatTime = (time: string) => {
     const [hour, min] = time.split(':');
     const h = parseInt(hour);
@@ -432,7 +447,7 @@ export function AppointmentBooking() {
             </Button>
           </div>
 
-          {/* Slots Display */}
+          {/* Slots Display - Grouped by Provider */}
           {filteredSlots.length === 0 ? (
             <div className="text-center p-12 border border-dashed rounded-lg">
               <CalendarIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -444,47 +459,51 @@ export function AppointmentBooking() {
               </p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {Array.from({ length: 7 }).map((_, i) => {
-                const date = new Date(currentWeekStart);
-                date.setDate(date.getDate() + i);
-                const dateStr = date.toISOString().split('T')[0];
-                const daySlots = slotsByDate.get(dateStr) || [];
-
-                if (daySlots.length === 0) return null;
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {Array.from(slotsByProvider.entries()).map(([providerId, providerSlots]) => {
+                const providerName = providers.find(p => p.id === providerId)?.name || 'Unknown';
 
                 return (
-                  <div key={dateStr} className="space-y-2">
-                    <h4 className="font-semibold text-sm">
-                      {DAYS_OF_WEEK[date.getDay()]} - {formatDate(dateStr)}
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {daySlots.sort((a, b) => a.startTime.localeCompare(b.startTime)).map((slot, idx) => {
+                  <div key={providerId} className="space-y-3">
+                    <div className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2 border-b">
+                      <h4 className="font-semibold flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        {providerName}
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        {providerSlots.length} slot{providerSlots.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      {providerSlots.map((slot, idx) => {
                         const isBooked = slot.existingAppointment && slot.existingAppointment.status !== 'available';
                         const isMyAppointment = slot.existingAppointment?.attendeeId === user?.id;
+                        const slotDate = new Date(slot.date + 'T00:00:00');
+                        const dayName = DAYS_OF_WEEK[slotDate.getDay()];
 
                         return (
                           <Button
                             key={`${slot.date}-${slot.startTime}-${slot.providerId}-${idx}`}
                             variant={isBooked ? "secondary" : "outline"}
-                            className="h-auto p-3 flex flex-col items-start gap-2 relative"
+                            className="h-auto w-full p-2 flex flex-col items-start gap-1.5 text-left"
                             onClick={() => !isBooked && handleSlotClick(slot)}
                             disabled={isBooked && !isMyAppointment}
                           >
-                            <div className="flex items-center gap-2 w-full">
-                              <Clock className="h-4 w-4" />
-                              <span className="font-medium">
-                                {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
+                            <div className="flex items-center justify-between w-full">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                {dayName.substring(0, 3)} {formatShortDate(slot.date)}
                               </span>
                               {isBooked && (
-                                <Badge variant={isMyAppointment ? "default" : "secondary"} className="ml-auto">
-                                  {isMyAppointment ? "Your Appt" : "Booked"}
+                                <Badge variant={isMyAppointment ? "default" : "secondary"} className="text-[10px] px-1 py-0">
+                                  {isMyAppointment ? "Yours" : "Booked"}
                                 </Badge>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground w-full">
-                              <User className="h-3 w-3" />
-                              <span>{slot.providerName}</span>
+                            <div className="flex items-center gap-1.5 w-full">
+                              <Clock className="h-3 w-3 flex-shrink-0" />
+                              <span className="text-sm font-medium">
+                                {formatTime(slot.startTime)}
+                              </span>
                             </div>
                           </Button>
                         );
