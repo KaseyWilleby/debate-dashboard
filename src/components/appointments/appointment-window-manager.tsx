@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Edit, Trash2, Loader2, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { AppointmentWindow, Workspace } from "@/lib/types";
@@ -42,7 +43,7 @@ export function AppointmentWindowManager() {
   // Form state
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
-  const [dayOfWeek, setDayOfWeek] = React.useState<number>(1);
+  const [selectedDays, setSelectedDays] = React.useState<number[]>([1]); // Changed to array for multi-select
   const [startTime, setStartTime] = React.useState("15:00");
   const [endTime, setEndTime] = React.useState("17:00");
   const [duration, setDuration] = React.useState(30);
@@ -70,7 +71,7 @@ export function AppointmentWindowManager() {
   const resetForm = () => {
     setTitle("");
     setDescription("");
-    setDayOfWeek(1);
+    setSelectedDays([1]);
     setStartTime("15:00");
     setEndTime("17:00");
     setDuration(30);
@@ -90,7 +91,7 @@ export function AppointmentWindowManager() {
     setEditingWindow(window);
     setTitle(window.title);
     setDescription(window.description || "");
-    setDayOfWeek(window.dayOfWeek);
+    setSelectedDays([window.dayOfWeek]); // Single day when editing
     setStartTime(window.startTime);
     setEndTime(window.endTime);
     setDuration(window.duration);
@@ -101,11 +102,30 @@ export function AppointmentWindowManager() {
     setIsDialogOpen(true);
   };
 
+  const toggleDay = (day: number) => {
+    setSelectedDays(prev => {
+      if (prev.includes(day)) {
+        return prev.filter(d => d !== day);
+      } else {
+        return [...prev, day].sort();
+      }
+    });
+  };
+
   const handleSubmit = async () => {
     if (!firestore || !user || !title.trim()) {
       toast({
         title: "Error",
         description: "Title is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedDays.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one day",
         variant: "destructive",
       });
       return;
@@ -123,21 +143,21 @@ export function AppointmentWindowManager() {
 
     setIsSubmitting(true);
     try {
-      const windowData: Partial<AppointmentWindow> = {
-        title: title.trim(),
-        description: description.trim() || undefined,
-        dayOfWeek,
-        startTime,
-        endTime,
-        duration,
-        workspaceId: workspaceId === "none" ? undefined : workspaceId,
-        isActive,
-        validFrom: validFrom || undefined,
-        validUntil: validUntil || undefined,
-      };
-
       if (editingWindow) {
-        // Update existing window
+        // Update existing window (single day only when editing)
+        const windowData: Partial<AppointmentWindow> = {
+          title: title.trim(),
+          description: description.trim() || undefined,
+          dayOfWeek: selectedDays[0],
+          startTime,
+          endTime,
+          duration,
+          workspaceId: workspaceId === "none" ? undefined : workspaceId,
+          isActive,
+          validFrom: validFrom || undefined,
+          validUntil: validUntil || undefined,
+        };
+
         await updateDoc(doc(firestore, 'appointmentWindows', editingWindow.id), windowData);
 
         toast({
@@ -145,17 +165,35 @@ export function AppointmentWindowManager() {
           description: `"${title}" has been updated.`,
         });
       } else {
-        // Create new window
-        await addDoc(collection(firestore, 'appointmentWindows'), {
-          ...windowData,
-          teamId: user.teamId,
-          createdBy: user.id,
-          createdAt: new Date().toISOString(),
+        // Create new windows (one for each selected day)
+        const promises = selectedDays.map(day => {
+          const windowData = {
+            title: title.trim(),
+            description: description.trim() || undefined,
+            dayOfWeek: day,
+            startTime,
+            endTime,
+            duration,
+            workspaceId: workspaceId === "none" ? undefined : workspaceId,
+            isActive,
+            validFrom: validFrom || undefined,
+            validUntil: validUntil || undefined,
+            teamId: user.teamId,
+            createdBy: user.id,
+            createdAt: new Date().toISOString(),
+          };
+          return addDoc(collection(firestore, 'appointmentWindows'), windowData);
         });
 
+        await Promise.all(promises);
+
+        const dayNames = selectedDays
+          .map(d => DAYS_OF_WEEK.find(day => day.value === d)?.label)
+          .join(', ');
+
         toast({
-          title: "Window Created",
-          description: `"${title}" has been created.`,
+          title: "Windows Created",
+          description: `"${title}" has been created for ${dayNames}.`,
         });
       }
 
@@ -348,24 +386,34 @@ export function AppointmentWindowManager() {
                 rows={2}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="dayOfWeek">Day of Week *</Label>
-                <Select value={dayOfWeek.toString()} onValueChange={(v) => setDayOfWeek(parseInt(v))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DAYS_OF_WEEK.map((day) => (
-                      <SelectItem key={day.value} value={day.value.toString()}>
+            <div className="space-y-2">
+              <Label>Days of Week *</Label>
+              {editingWindow ? (
+                <p className="text-sm text-muted-foreground">
+                  {DAYS_OF_WEEK.find(d => d.value === selectedDays[0])?.label} (Change day by creating a new window)
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 p-4 border rounded-lg">
+                  {DAYS_OF_WEEK.map((day) => (
+                    <div key={day.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`day-${day.value}`}
+                        checked={selectedDays.includes(day.value)}
+                        onCheckedChange={() => toggleDay(day.value)}
+                      />
+                      <Label
+                        htmlFor={`day-${day.value}`}
+                        className="text-sm font-normal cursor-pointer"
+                      >
                         {day.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="duration">Slot Duration *</Label>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="duration">Slot Duration *</Label>
                 <Select value={duration.toString()} onValueChange={(v) => setDuration(parseInt(v))}>
                   <SelectTrigger>
                     <SelectValue />
@@ -378,7 +426,6 @@ export function AppointmentWindowManager() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
