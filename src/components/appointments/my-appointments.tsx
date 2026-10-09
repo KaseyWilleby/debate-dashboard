@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, updateDoc, doc, query, where, or } from "firebase/firestore";
+import { collection, updateDoc, doc, query, where, or, and } from "firebase/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,10 +25,12 @@ export function MyAppointments() {
     if (!firestore || !user || !user.teamId) return null;
     return query(
       collection(firestore, 'appointments'),
-      where('teamId', '==', user.teamId),
-      or(
-        where('attendeeId', '==', user.id),
-        where('providerId', '==', user.id)
+      and(
+        where('teamId', '==', user.teamId),
+        or(
+          where('attendeeId', '==', user.id),
+          where('providerId', '==', user.id)
+        )
       )
     );
   }, [firestore, user]);
