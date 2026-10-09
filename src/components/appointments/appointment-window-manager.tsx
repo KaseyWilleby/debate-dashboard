@@ -46,7 +46,7 @@ export function AppointmentWindowManager() {
   const [startTime, setStartTime] = React.useState("15:00");
   const [endTime, setEndTime] = React.useState("17:00");
   const [duration, setDuration] = React.useState(30);
-  const [workspaceId, setWorkspaceId] = React.useState<string>("");
+  const [workspaceId, setWorkspaceId] = React.useState<string>("none");
   const [isActive, setIsActive] = React.useState(true);
   const [validFrom, setValidFrom] = React.useState("");
   const [validUntil, setValidUntil] = React.useState("");
@@ -74,7 +74,7 @@ export function AppointmentWindowManager() {
     setStartTime("15:00");
     setEndTime("17:00");
     setDuration(30);
-    setWorkspaceId("");
+    setWorkspaceId("none");
     setIsActive(true);
     setValidFrom("");
     setValidUntil("");
@@ -94,7 +94,7 @@ export function AppointmentWindowManager() {
     setStartTime(window.startTime);
     setEndTime(window.endTime);
     setDuration(window.duration);
-    setWorkspaceId(window.workspaceId || "");
+    setWorkspaceId(window.workspaceId || "none");
     setIsActive(window.isActive);
     setValidFrom(window.validFrom || "");
     setValidUntil(window.validUntil || "");
@@ -130,7 +130,7 @@ export function AppointmentWindowManager() {
         startTime,
         endTime,
         duration,
-        workspaceId: workspaceId || undefined,
+        workspaceId: workspaceId === "none" ? undefined : workspaceId,
         isActive,
         validFrom: validFrom || undefined,
         validUntil: validUntil || undefined,
@@ -407,7 +407,7 @@ export function AppointmentWindowManager() {
                   <SelectValue placeholder="Any workspace" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Any workspace</SelectItem>
+                  <SelectItem value="none">Any workspace</SelectItem>
                   {workspaces?.filter(w => w.isActive).map((workspace) => (
                     <SelectItem key={workspace.id} value={workspace.id}>
                       {workspace.name}

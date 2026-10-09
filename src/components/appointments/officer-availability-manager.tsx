@@ -39,7 +39,7 @@ export function OfficerAvailabilityManager() {
 
   // Form state
   const [appointmentWindowId, setAppointmentWindowId] = React.useState<string>("");
-  const [workspaceId, setWorkspaceId] = React.useState<string>("");
+  const [workspaceId, setWorkspaceId] = React.useState<string>("none");
   const [maxAppointmentsPerDay, setMaxAppointmentsPerDay] = React.useState<number | "">(4);
   const [notes, setNotes] = React.useState("");
   const [isActive, setIsActive] = React.useState(true);
@@ -82,7 +82,7 @@ export function OfficerAvailabilityManager() {
 
   const resetForm = () => {
     setAppointmentWindowId("");
-    setWorkspaceId("");
+    setWorkspaceId("none");
     setMaxAppointmentsPerDay(4);
     setNotes("");
     setIsActive(true);
@@ -97,7 +97,7 @@ export function OfficerAvailabilityManager() {
   const handleEdit = (availability: OfficerAvailability) => {
     setEditingAvailability(availability);
     setAppointmentWindowId(availability.appointmentWindowId);
-    setWorkspaceId(availability.workspaceId || "");
+    setWorkspaceId(availability.workspaceId || "none");
     setMaxAppointmentsPerDay(availability.maxAppointmentsPerDay || 4);
     setNotes(availability.notes || "");
     setIsActive(availability.isActive);
@@ -128,7 +128,7 @@ export function OfficerAvailabilityManager() {
     try {
       const availabilityData: Partial<OfficerAvailability> = {
         appointmentWindowId,
-        workspaceId: workspaceId || undefined,
+        workspaceId: workspaceId === "none" ? undefined : workspaceId,
         maxAppointmentsPerDay: typeof maxAppointmentsPerDay === 'number' ? maxAppointmentsPerDay : undefined,
         notes: notes.trim() || undefined,
         isActive,
@@ -402,7 +402,7 @@ export function OfficerAvailabilityManager() {
                   <SelectValue placeholder="Any workspace" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Any workspace</SelectItem>
+                  <SelectItem value="none">Any workspace</SelectItem>
                   {workspaces?.map((workspace) => (
                     <SelectItem key={workspace.id} value={workspace.id}>
                       {workspace.name}
