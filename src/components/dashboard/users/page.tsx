@@ -68,25 +68,40 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
   // Quick edit toggle state
   const [isQuickEditEnabled, setIsQuickEditEnabled] = useState(false);
 
-  // Filter users based on current user's role
+  // Filter state
+  const [filterRole, setFilterRole] = useState<string>("all");
+  const [filterClassPeriod, setFilterClassPeriod] = useState<string>("all");
+
+  // Filter users based on current user's role and applied filters
   const visibleUsers = useMemo(() => {
     if (!user) return [];
 
+    let filtered = [];
+
     // Superadmins see all users
     if (user.role === 'superadmin') {
-      return allUsers || [];
+      filtered = allUsers || [];
     }
-
     // Coaches only see users from their own team
     // IMPORTANT: Filter out superadmins for security - coaches should never see or modify superadmin accounts
-    if (user.role === 'coach' && user.teamId) {
-      return (allUsers || []).filter(u =>
+    else if (user.role === 'coach' && user.teamId) {
+      filtered = (allUsers || []).filter(u =>
         u.teamId === user.teamId && u.role !== 'superadmin'
       );
     }
 
-    return [];
-  }, [allUsers, user]);
+    // Apply role filter
+    if (filterRole !== "all") {
+      filtered = filtered.filter(u => u.role === filterRole);
+    }
+
+    // Apply class period filter
+    if (filterClassPeriod !== "all") {
+      filtered = filtered.filter(u => u.classPeriod === filterClassPeriod);
+    }
+
+    return filtered;
+  }, [allUsers, user, filterRole, filterClassPeriod]);
 
   // Delete confirmation state
   const [showDeleteChoiceDialog, setShowDeleteChoiceDialog] = useState(false);
@@ -406,22 +421,66 @@ export default function UsersPageContent({ allUsers }: { allUsers: User[]}) {
 
       <Card>
         <CardHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle>All Users</CardTitle>
-              <CardDescription>
-                A list of all users in the system.
-              </CardDescription>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <CardTitle>All Users</CardTitle>
+                <CardDescription>
+                  A list of all users in the system.
+                </CardDescription>
+              </div>
+              <Toggle
+                pressed={isQuickEditEnabled}
+                onPressedChange={setIsQuickEditEnabled}
+                aria-label="Toggle quick edit mode"
+                className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Quick Edit
+              </Toggle>
             </div>
-            <Toggle
-              pressed={isQuickEditEnabled}
-              onPressedChange={setIsQuickEditEnabled}
-              aria-label="Toggle quick edit mode"
-              className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Quick Edit
-            </Toggle>
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-4">
+              <div className="flex-1 min-w-[200px]">
+                <Label>Filter by Role</Label>
+                <Select value={filterRole} onValueChange={setFilterRole}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="coach">Coach</SelectItem>
+                    <SelectItem value="officer">Officer</SelectItem>
+                    <SelectItem value="varsity">Varsity</SelectItem>
+                    <SelectItem value="novice">Novice</SelectItem>
+                    {user?.role === 'superadmin' && (
+                      <SelectItem value="superadmin">Superadmin</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <Label>Filter by Class Period</Label>
+                <Select value={filterClassPeriod} onValueChange={setFilterClassPeriod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Periods</SelectItem>
+                    <SelectItem value="1">1st Period</SelectItem>
+                    <SelectItem value="2">2nd Period</SelectItem>
+                    <SelectItem value="3">3rd Period</SelectItem>
+                    <SelectItem value="4">4th Period</SelectItem>
+                    <SelectItem value="5">5th Period</SelectItem>
+                    <SelectItem value="6">6th Period</SelectItem>
+                    <SelectItem value="7">7th Period</SelectItem>
+                    <SelectItem value="8">8th Period</SelectItem>
+                    <SelectItem value="Club">Club</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
