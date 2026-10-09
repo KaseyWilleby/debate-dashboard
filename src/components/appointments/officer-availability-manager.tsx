@@ -59,17 +59,15 @@ export function OfficerAvailabilityManager() {
 
   const { data: windows, isLoading: isLoadingWindows } = useCollection<AppointmentWindow>(windowsQuery);
 
-  // Generate window slots for the current 4 weeks
+  // Generate window slots for the current week
   const windowSlots = React.useMemo(() => {
     if (!windows || !user) return [];
 
     const slots: WindowSlot[] = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
-    // Generate dates for next 28 days (4 weeks)
-    for (let i = 0; i < 28; i++) {
-      const date = new Date(today);
+    // Generate dates for current week (7 days starting from currentWeekStart)
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(currentWeekStart);
       date.setDate(date.getDate() + i);
       const dayOfWeek = date.getDay();
       const dateStr = date.toISOString().split('T')[0];
@@ -96,7 +94,7 @@ export function OfficerAvailabilityManager() {
     }
 
     return slots;
-  }, [windows, availabilityRecords, user]);
+  }, [windows, availabilityRecords, user, currentWeekStart]);
 
   // Group slots by date
   const slotsByDate = React.useMemo(() => {
@@ -178,6 +176,14 @@ export function OfficerAvailabilityManager() {
     });
   };
 
+  const formatWeekRange = () => {
+    const weekEnd = new Date(currentWeekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const start = currentWeekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const end = weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${start} - ${end}`;
+  };
+
   const formatTime = (time: string) => {
     const [hour, min] = time.split(':');
     const h = parseInt(hour);
@@ -209,78 +215,97 @@ export function OfficerAvailabilityManager() {
             <p className="text-muted-foreground mb-2">No appointment windows available</p>
             <p className="text-sm text-muted-foreground">Ask your coach to create appointment windows first</p>
           </div>
-        ) : windowSlots.length === 0 ? (
-          <div className="text-center p-12 border border-dashed rounded-lg">
-            <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground mb-2">No upcoming appointment windows</p>
-            <p className="text-sm text-muted-foreground">Check back later or contact your coach</p>
-          </div>
         ) : (
           <>
-            {/* Summary Stats */}
-            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-              <div>
-                <p className="text-sm text-muted-foreground">Available Sessions</p>
-                <p className="text-2xl font-bold">
-                  {windowSlots.filter(s => s.availability).length}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Windows</p>
-                <p className="text-2xl font-bold">{windowSlots.length}</p>
-              </div>
+            {/* Week Navigation */}
+            <div className="flex items-center justify-between border-b pb-4">
+              <Button variant="outline" size="sm" onClick={handlePreviousWeek}>
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous Week
+              </Button>
+              <h3 className="font-semibold">
+                {formatWeekRange()}
+              </h3>
+              <Button variant="outline" size="sm" onClick={handleNextWeek}>
+                Next Week
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
             </div>
 
-            {/* Calendar View */}
-            <div className="space-y-6">
-              {Array.from(slotsByDate.entries())
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([date, daySlots]) => (
-                  <div key={date} className="space-y-3">
-                    <h3 className="font-semibold text-lg sticky top-0 bg-background py-2">
-                      {formatDate(date)}
-                    </h3>
-                    <div className="space-y-2">
-                      {daySlots
-                        .sort((a, b) => a.window.startTime.localeCompare(b.window.startTime))
-                        .map((slot) => {
-                          const slotKey = `${slot.date}-${slot.window.id}`;
-                          const isChecked = !!slot.availability;
-                          const isProcessingSlot = isProcessing.has(slotKey);
-
-                          return (
-                            <div
-                              key={slotKey}
-                              className="flex items-center gap-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                            >
-                              <Checkbox
-                                checked={isChecked}
-                                onCheckedChange={() => handleToggleAvailability(slot)}
-                                disabled={isProcessingSlot}
-                              />
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium">{slot.window.title}</p>
-                                  {isProcessingSlot && (
-                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                  )}
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                  {formatTime(slot.window.startTime)} - {formatTime(slot.window.endTime)} ({slot.window.duration} min)
-                                </p>
-                                {slot.window.description && (
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {slot.window.description}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                    </div>
+            {windowSlots.length === 0 ? (
+              <div className="text-center p-12 border border-dashed rounded-lg">
+                <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground mb-2">No appointment windows this week</p>
+                <p className="text-sm text-muted-foreground">Try a different week or contact your coach</p>
+              </div>
+            ) : (
+              <>
+                {/* Summary Stats */}
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Available Sessions</p>
+                    <p className="text-2xl font-bold">
+                      {windowSlots.filter(s => s.availability).length}
+                    </p>
                   </div>
-                ))}
-            </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Windows</p>
+                    <p className="text-2xl font-bold">{windowSlots.length}</p>
+                  </div>
+                </div>
+
+                {/* Calendar View */}
+                <div className="space-y-6">
+                  {Array.from(slotsByDate.entries())
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([date, daySlots]) => (
+                      <div key={date} className="space-y-3">
+                        <h3 className="font-semibold text-lg sticky top-0 bg-background py-2">
+                          {formatDate(date)}
+                        </h3>
+                        <div className="space-y-2">
+                          {daySlots
+                            .sort((a, b) => a.window.startTime.localeCompare(b.window.startTime))
+                            .map((slot) => {
+                              const slotKey = `${slot.date}-${slot.window.id}`;
+                              const isChecked = !!slot.availability;
+                              const isProcessingSlot = isProcessing.has(slotKey);
+
+                              return (
+                                <div
+                                  key={slotKey}
+                                  className="flex items-center gap-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                                >
+                                  <Checkbox
+                                    checked={isChecked}
+                                    onCheckedChange={() => handleToggleAvailability(slot)}
+                                    disabled={isProcessingSlot}
+                                  />
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium">{slot.window.title}</p>
+                                      {isProcessingSlot && (
+                                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">
+                                      {formatTime(slot.window.startTime)} - {formatTime(slot.window.endTime)} ({slot.window.duration} min)
+                                    </p>
+                                    {slot.window.description && (
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        {slot.window.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </>
+            )}
           </>
         )}
       </CardContent>
