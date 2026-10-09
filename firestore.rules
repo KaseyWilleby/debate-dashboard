@@ -387,7 +387,7 @@ service cloud.firestore {
     /**
      * @description Manages access to appointments.
      * @path /appointments/{appointmentId}
-     * Coaches and officers can create appointments. Students can book/view their own.
+     * Coaches, varsity members, and officers can create appointments. Students can book/view their own.
      */
     match /appointments/{appointmentId} {
       allow get: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
@@ -396,30 +396,31 @@ service cloud.firestore {
         isSuperAdmin() ||
         isSuperAdminEmail() ||
         (isCoach() && request.resource.data.teamId == getUserTeamId()) ||
-        (isOfficer() && request.resource.data.teamId == getUserTeamId() && request.resource.data.providerId == request.auth.uid)
+        (canSetAvailability() && request.resource.data.teamId == getUserTeamId() && request.resource.data.providerId == request.auth.uid) ||
+        (request.resource.data.teamId == getUserTeamId() && request.resource.data.attendeeId == request.auth.uid)
       );
       allow update: if isSignedIn() && (
         isSuperAdmin() ||
         isSuperAdminEmail() ||
         (isCoach() && isSameTeam(resource.data.teamId)) ||
-        (isOfficer() && isSameTeam(resource.data.teamId) && resource.data.providerId == request.auth.uid) ||
+        (canSetAvailability() && isSameTeam(resource.data.teamId) && resource.data.providerId == request.auth.uid) ||
         (isSameTeam(resource.data.teamId) &&
          resource.data.status == 'available' &&
          request.resource.data.attendeeId == request.auth.uid &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'attendeeId', 'attendeeName', 'notes', 'bookedAt']))
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'attendeeId', 'attendeeName', 'notes', 'bookedAt', 'workspaceId']))
       );
       allow delete: if isSignedIn() && (
         isSuperAdmin() ||
         isSuperAdminEmail() ||
         (isCoach() && isSameTeam(resource.data.teamId)) ||
-        (isOfficer() && isSameTeam(resource.data.teamId) && resource.data.providerId == request.auth.uid)
+        (canSetAvailability() && isSameTeam(resource.data.teamId) && resource.data.providerId == request.auth.uid)
       );
     }
 
     /**
      * @description Manages access to officer availability.
      * @path /officerAvailability/{availabilityId}
-     * Officers manage their own availability. Coaches can view/manage all.
+     * Coaches, varsity members, and officers manage their own availability. Coaches can view/manage all.
      */
     match /officerAvailability/{availabilityId} {
       allow get: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
@@ -427,19 +428,19 @@ service cloud.firestore {
       allow create: if isSignedIn() && (
         isSuperAdmin() ||
         isSuperAdminEmail() ||
-        (isOfficer() && request.resource.data.teamId == getUserTeamId() && request.resource.data.officerId == request.auth.uid)
+        (canSetAvailability() && request.resource.data.teamId == getUserTeamId() && request.resource.data.officerId == request.auth.uid)
       );
       allow update: if isSignedIn() && (
         isSuperAdmin() ||
         isSuperAdminEmail() ||
         (isCoach() && isSameTeam(resource.data.teamId)) ||
-        (isOfficer() && isSameTeam(resource.data.teamId) && resource.data.officerId == request.auth.uid)
+        (canSetAvailability() && isSameTeam(resource.data.teamId) && resource.data.officerId == request.auth.uid)
       );
       allow delete: if isSignedIn() && (
         isSuperAdmin() ||
         isSuperAdminEmail() ||
         (isCoach() && isSameTeam(resource.data.teamId)) ||
-        (isOfficer() && isSameTeam(resource.data.teamId) && resource.data.officerId == request.auth.uid)
+        (canSetAvailability() && isSameTeam(resource.data.teamId) && resource.data.officerId == request.auth.uid)
       );
     }
 
@@ -524,6 +525,14 @@ service cloud.firestore {
     }
 
     /**
+     * @description Checks if the user is a varsity member by reading their user document.
+     * @return {boolean} True if the user is varsity, false otherwise.
+     */
+    function isVarsity() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'varsity';
+    }
+
+    /**
      * @description Checks if the user is an officer with specific permission.
      * @param {string} permission - The permission to check (e.g., 'canScheduleAppointments')
      * @return {boolean} True if the user is an officer with the permission, false otherwise.
@@ -538,6 +547,14 @@ service cloud.firestore {
      */
     function isCoachOrOfficer() {
       return isCoach() || isOfficer();
+    }
+
+    /**
+     * @description Checks if user can set availability (coach, varsity, or officer).
+     * @return {boolean} True if user can set availability, false otherwise.
+     */
+    function canSetAvailability() {
+      return isCoach() || isVarsity() || isOfficer();
     }
   }
 }
