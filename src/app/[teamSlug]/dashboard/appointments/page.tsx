@@ -14,7 +14,7 @@ export default function AppointmentsPage() {
   const { user, isLoading } = useAuth();
 
   const isCoach = user?.role === 'coach' || user?.role === 'superadmin';
-  const isOfficer = user?.role === 'officer';
+  const canSetAvailability = user?.role === 'coach' || user?.role === 'varsity' || user?.role === 'officer';
 
   if (isLoading || !user) {
     return (
@@ -29,12 +29,12 @@ export default function AppointmentsPage() {
       <div>
         <h1 className="text-3xl font-bold font-headline">Appointments</h1>
         <p className="text-muted-foreground">
-          Schedule and manage appointments with coaches and officers
+          Schedule and manage appointments with coaches and varsity members
         </p>
       </div>
 
       <Tabs defaultValue="book" className="w-full">
-        <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${isCoach ? 4 : isOfficer ? 3 : 2}, minmax(0, 1fr))` }}>
+        <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${isCoach ? 4 : canSetAvailability ? 3 : 2}, minmax(0, 1fr))` }}>
           <TabsTrigger value="book">
             <Calendar className="h-4 w-4 mr-2" />
             Book Appointment
@@ -43,7 +43,7 @@ export default function AppointmentsPage() {
             <Clock className="h-4 w-4 mr-2" />
             My Appointments
           </TabsTrigger>
-          {isOfficer && (
+          {canSetAvailability && (
             <TabsTrigger value="availability">
               <Users className="h-4 w-4 mr-2" />
               My Availability
@@ -65,7 +65,7 @@ export default function AppointmentsPage() {
           <MyAppointments />
         </TabsContent>
 
-        {isOfficer && (
+        {canSetAvailability && (
           <TabsContent value="availability" className="mt-6">
             <OfficerAvailabilityManager />
           </TabsContent>

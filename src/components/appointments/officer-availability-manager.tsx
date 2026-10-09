@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Edit, Trash2, Loader2, CalendarClock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { OfficerAvailability, AppointmentWindow, Workspace } from "@/lib/types";
+import type { OfficerAvailability, AppointmentWindow } from "@/lib/types";
 
 const DAYS_OF_WEEK = [
   { value: 0, label: "Sunday" },
@@ -39,20 +39,22 @@ export function OfficerAvailabilityManager() {
 
   // Form state
   const [appointmentWindowId, setAppointmentWindowId] = React.useState<string>("");
-  const [workspaceId, setWorkspaceId] = React.useState<string>("none");
   const [maxAppointmentsPerDay, setMaxAppointmentsPerDay] = React.useState<number | "">(4);
   const [notes, setNotes] = React.useState("");
   const [isActive, setIsActive] = React.useState(true);
 
-  // Fetch officer's availability records
+  // Check if user can set availability (coaches and varsity members)
+  const canSetAvailability = user?.role === 'coach' || user?.role === 'varsity' || user?.role === 'officer';
+
+  // Fetch member's availability records
   const availabilityQuery = useMemoFirebase(() => {
-    if (!firestore || !user || !user.teamId) return null;
+    if (!firestore || !user || !user.teamId || !canSetAvailability) return null;
     return query(
       collection(firestore, 'officerAvailability'),
       where('officerId', '==', user.id),
       where('teamId', '==', user.teamId)
     );
-  }, [firestore, user]);
+  }, [firestore, user, canSetAvailability]);
 
   const { data: availabilityRecords, isLoading: isLoadingAvailability } = useCollection<OfficerAvailability>(availabilityQuery);
 
@@ -68,21 +70,9 @@ export function OfficerAvailabilityManager() {
 
   const { data: windows, isLoading: isLoadingWindows } = useCollection<AppointmentWindow>(windowsQuery);
 
-  // Fetch workspaces
-  const workspacesQuery = useMemoFirebase(() => {
-    if (!firestore || !user || !user.teamId) return null;
-    return query(
-      collection(firestore, 'workspaces'),
-      where('teamId', '==', user.teamId),
-      where('isActive', '==', true)
-    );
-  }, [firestore, user]);
-
-  const { data: workspaces } = useCollection<Workspace>(workspacesQuery);
 
   const resetForm = () => {
     setAppointmentWindowId("");
-    setWorkspaceId("none");
     setMaxAppointmentsPerDay(4);
     setNotes("");
     setIsActive(true);
@@ -97,7 +87,6 @@ export function OfficerAvailabilityManager() {
   const handleEdit = (availability: OfficerAvailability) => {
     setEditingAvailability(availability);
     setAppointmentWindowId(availability.appointmentWindowId);
-    setWorkspaceId(availability.workspaceId || "none");
     setMaxAppointmentsPerDay(availability.maxAppointmentsPerDay || 4);
     setNotes(availability.notes || "");
     setIsActive(availability.isActive);
@@ -133,7 +122,6 @@ export function OfficerAvailabilityManager() {
       };
 
       // Only add optional fields if they have values
-      if (workspaceId !== "none") availabilityData.workspaceId = workspaceId;
       if (typeof maxAppointmentsPerDay === 'number') availabilityData.maxAppointmentsPerDay = maxAppointmentsPerDay;
       if (notes.trim()) availabilityData.notes = notes.trim();
 
@@ -227,11 +215,6 @@ export function OfficerAvailabilityManager() {
     return windows?.find(w => w.id === windowId);
   };
 
-  const getWorkspaceInfo = (workspaceId?: string) => {
-    if (!workspaceId) return null;
-    return workspaces?.find(w => w.id === workspaceId);
-  };
-
   // Get available windows (excluding those already set)
   const availableWindows = React.useMemo(() => {
     if (!windows) return [];
@@ -287,7 +270,6 @@ export function OfficerAvailabilityManager() {
                 <TableRow>
                   <TableHead>Window</TableHead>
                   <TableHead>Day & Time</TableHead>
-                  <TableHead>Workspace</TableHead>
                   <TableHead>Max/Day</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -296,7 +278,6 @@ export function OfficerAvailabilityManager() {
               <TableBody>
                 {availabilityRecords.map((availability) => {
                   const window = getWindowInfo(availability.appointmentWindowId);
-                  const workspace = getWorkspaceInfo(availability.workspaceId);
 
                   return (
                     <TableRow key={availability.id}>
@@ -313,9 +294,6 @@ export function OfficerAvailabilityManager() {
                             </span>
                           </>
                         )}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {workspace?.name || "Any"}
                       </TableCell>
                       <TableCell>
                         {availability.maxAppointmentsPerDay || "—"}
@@ -396,22 +374,6 @@ export function OfficerAvailabilityManager() {
                   Window cannot be changed when editing
                 </p>
               )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="workspace">Preferred Workspace (optional)</Label>
-              <Select value={workspaceId} onValueChange={setWorkspaceId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Any workspace" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Any workspace</SelectItem>
-                  {workspaces?.map((workspace) => (
-                    <SelectItem key={workspace.id} value={workspace.id}>
-                      {workspace.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="maxAppointments">Max Appointments Per Day (optional)</Label>

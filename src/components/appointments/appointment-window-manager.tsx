@@ -47,7 +47,6 @@ export function AppointmentWindowManager() {
   const [startTime, setStartTime] = React.useState("15:00");
   const [endTime, setEndTime] = React.useState("17:00");
   const [duration, setDuration] = React.useState(30);
-  const [workspaceId, setWorkspaceId] = React.useState<string>("none");
   const [isActive, setIsActive] = React.useState(true);
   const [validFrom, setValidFrom] = React.useState("");
   const [validUntil, setValidUntil] = React.useState("");
@@ -60,13 +59,6 @@ export function AppointmentWindowManager() {
 
   const { data: windows, isLoading } = useCollection<AppointmentWindow>(windowsQuery);
 
-  // Fetch workspaces for dropdown
-  const workspacesQuery = useMemoFirebase(() => {
-    if (!firestore || !user || !user.teamId) return null;
-    return query(collection(firestore, 'workspaces'), where('teamId', '==', user.teamId));
-  }, [firestore, user]);
-
-  const { data: workspaces } = useCollection<Workspace>(workspacesQuery);
 
   const resetForm = () => {
     setTitle("");
@@ -75,7 +67,6 @@ export function AppointmentWindowManager() {
     setStartTime("15:00");
     setEndTime("17:00");
     setDuration(30);
-    setWorkspaceId("none");
     setIsActive(true);
     setValidFrom("");
     setValidUntil("");
@@ -95,7 +86,6 @@ export function AppointmentWindowManager() {
     setStartTime(window.startTime);
     setEndTime(window.endTime);
     setDuration(window.duration);
-    setWorkspaceId(window.workspaceId || "none");
     setIsActive(window.isActive);
     setValidFrom(window.validFrom || "");
     setValidUntil(window.validUntil || "");
@@ -156,7 +146,6 @@ export function AppointmentWindowManager() {
 
         // Only add optional fields if they have values
         if (description.trim()) windowData.description = description.trim();
-        if (workspaceId !== "none") windowData.workspaceId = workspaceId;
         if (validFrom) windowData.validFrom = validFrom;
         if (validUntil) windowData.validUntil = validUntil;
 
@@ -183,7 +172,6 @@ export function AppointmentWindowManager() {
 
           // Only add optional fields if they have values
           if (description.trim()) windowData.description = description.trim();
-          if (workspaceId !== "none") windowData.workspaceId = workspaceId;
           if (validFrom) windowData.validFrom = validFrom;
           if (validUntil) windowData.validUntil = validUntil;
 
@@ -451,22 +439,6 @@ export function AppointmentWindowManager() {
                   onChange={(e) => setEndTime(e.target.value)}
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="workspace">Workspace (optional)</Label>
-              <Select value={workspaceId} onValueChange={setWorkspaceId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Any workspace" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Any workspace</SelectItem>
-                  {workspaces?.filter(w => w.isActive).map((workspace) => (
-                    <SelectItem key={workspace.id} value={workspace.id}>
-                      {workspace.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

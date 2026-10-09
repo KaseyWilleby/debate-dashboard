@@ -50,7 +50,6 @@ export function AppointmentBooking() {
 
   // Filters
   const [filterProvider, setFilterProvider] = React.useState<string>("all");
-  const [filterWorkspace, setFilterWorkspace] = React.useState<string>("all");
 
   // Fetch appointment windows
   const windowsQuery = useMemoFirebase(() => {
@@ -201,10 +200,9 @@ export function AppointmentBooking() {
   const filteredSlots = React.useMemo(() => {
     return generatedSlots.filter(slot => {
       if (filterProvider !== 'all' && slot.providerId !== filterProvider) return false;
-      if (filterWorkspace !== 'all' && slot.workspaceId !== filterWorkspace) return false;
       return true;
     });
-  }, [generatedSlots, filterProvider, filterWorkspace]);
+  }, [generatedSlots, filterProvider]);
 
   // Group slots by date
   const slotsByDate = React.useMemo(() => {
@@ -263,17 +261,60 @@ export function AppointmentBooking() {
     setIsBookingDialogOpen(true);
   };
 
+  const findAvailableWorkspace = async (date: string, startTime: string, endTime: string): Promise<string | undefined> => {
+    if (!firestore || !user || !workspaces || workspaces.length === 0) return undefined;
+
+    // Get all appointments for this date and time range
+    const conflictingAppointments = appointments?.filter(apt =>
+      apt.date === date &&
+      apt.status === 'booked' &&
+      // Check for time overlap
+      ((apt.startTime >= startTime && apt.startTime < endTime) ||
+       (apt.endTime > startTime && apt.endTime <= endTime) ||
+       (apt.startTime <= startTime && apt.endTime >= endTime))
+    ) || [];
+
+    // Get workspace IDs that are already booked
+    const bookedWorkspaceIds = new Set(
+      conflictingAppointments
+        .map(apt => apt.workspaceId)
+        .filter(id => id !== undefined) as string[]
+    );
+
+    // Find first available workspace
+    const availableWorkspace = workspaces.find(ws => !bookedWorkspaceIds.has(ws.id));
+    return availableWorkspace?.id;
+  };
+
   const handleBookAppointment = async () => {
     if (!firestore || !user || !selectedSlot) return;
 
     setIsSubmitting(true);
     try {
+      // Auto-assign an available workspace
+      const assignedWorkspaceId = await findAvailableWorkspace(
+        selectedSlot.date,
+        selectedSlot.startTime,
+        selectedSlot.endTime
+      );
+
+      if (!assignedWorkspaceId) {
+        toast({
+          title: "No Rooms Available",
+          description: "All rooms are booked for this time slot. Please try a different time.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       if (selectedSlot.existingAppointment && selectedSlot.existingAppointment.status === 'available') {
         // Update existing appointment
         await updateDoc(doc(firestore, 'appointments', selectedSlot.existingAppointment.id), {
           status: 'booked',
           attendeeId: user.id,
           attendeeName: user.name || user.email,
+          workspaceId: assignedWorkspaceId,
           notes: bookingNotes.trim() || undefined,
           bookedAt: new Date().toISOString(),
         });
@@ -282,7 +323,7 @@ export function AppointmentBooking() {
         await addDoc(collection(firestore, 'appointments'), {
           teamId: user.teamId,
           appointmentWindowId: selectedSlot.windowId,
-          workspaceId: selectedSlot.workspaceId,
+          workspaceId: assignedWorkspaceId,
           date: selectedSlot.date,
           startTime: selectedSlot.startTime,
           endTime: selectedSlot.endTime,
@@ -298,9 +339,10 @@ export function AppointmentBooking() {
         });
       }
 
+      const assignedRoom = workspaces?.find(w => w.id === assignedWorkspaceId);
       toast({
         title: "Appointment Booked",
-        description: `Your appointment with ${selectedSlot.providerName} has been booked.`,
+        description: `Your appointment with ${selectedSlot.providerName} has been booked in ${assignedRoom?.name || 'a room'}.`,
       });
 
       setIsBookingDialogOpen(false);
@@ -357,7 +399,7 @@ export function AppointmentBooking() {
           {/* Filters */}
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
-              <Label>Filter by Provider</Label>
+              <Label>Filter by Coach/Varsity Member</Label>
               <Select value={filterProvider} onValueChange={setFilterProvider}>
                 <SelectTrigger>
                   <SelectValue />
@@ -367,22 +409,6 @@ export function AppointmentBooking() {
                   {providers.map(p => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <Label>Filter by Workspace</Label>
-              <Select value={filterWorkspace} onValueChange={setFilterWorkspace}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Workspaces</SelectItem>
-                  {workspaces?.map(w => (
-                    <SelectItem key={w.id} value={w.id}>
-                      {w.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -413,7 +439,7 @@ export function AppointmentBooking() {
               <p className="text-muted-foreground mb-2">No available appointments</p>
               <p className="text-sm text-muted-foreground">
                 {generatedSlots.length === 0
-                  ? "Officers haven't set their availability yet"
+                  ? "Coaches and varsity members haven't set their availability yet"
                   : "Try adjusting your filters"}
               </p>
             </div>
@@ -460,12 +486,6 @@ export function AppointmentBooking() {
                               <User className="h-3 w-3" />
                               <span>{slot.providerName}</span>
                             </div>
-                            {slot.workspaceId && (
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground w-full">
-                                <MapPin className="h-3 w-3" />
-                                <span>{getWorkspaceName(slot.workspaceId)}</span>
-                              </div>
-                            )}
                           </Button>
                         );
                       })}
@@ -500,15 +520,14 @@ export function AppointmentBooking() {
                     {formatTime(selectedSlot.startTime)} - {formatTime(selectedSlot.endTime)}
                   </p>
                 </div>
-                <div>
+                <div className="col-span-2">
                   <Label className="text-muted-foreground">With</Label>
                   <p className="font-medium">{selectedSlot.providerName}</p>
                 </div>
-                <div>
-                  <Label className="text-muted-foreground">Location</Label>
-                  <p className="font-medium">{getWorkspaceName(selectedSlot.workspaceId)}</p>
-                </div>
               </div>
+              <p className="text-sm text-muted-foreground">
+                A room will be automatically assigned when you book this appointment.
+              </p>
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes (optional)</Label>
                 <Textarea
