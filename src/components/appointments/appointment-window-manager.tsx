@@ -145,18 +145,20 @@ export function AppointmentWindowManager() {
     try {
       if (editingWindow) {
         // Update existing window (single day only when editing)
-        const windowData: Partial<AppointmentWindow> = {
+        const windowData: any = {
           title: title.trim(),
-          description: description.trim() || undefined,
           dayOfWeek: selectedDays[0],
           startTime,
           endTime,
           duration,
-          workspaceId: workspaceId === "none" ? undefined : workspaceId,
           isActive,
-          validFrom: validFrom || undefined,
-          validUntil: validUntil || undefined,
         };
+
+        // Only add optional fields if they have values
+        if (description.trim()) windowData.description = description.trim();
+        if (workspaceId !== "none") windowData.workspaceId = workspaceId;
+        if (validFrom) windowData.validFrom = validFrom;
+        if (validUntil) windowData.validUntil = validUntil;
 
         await updateDoc(doc(firestore, 'appointmentWindows', editingWindow.id), windowData);
 
@@ -167,21 +169,24 @@ export function AppointmentWindowManager() {
       } else {
         // Create new windows (one for each selected day)
         const promises = selectedDays.map(day => {
-          const windowData = {
+          const windowData: any = {
             title: title.trim(),
-            description: description.trim() || undefined,
             dayOfWeek: day,
             startTime,
             endTime,
             duration,
-            workspaceId: workspaceId === "none" ? undefined : workspaceId,
             isActive,
-            validFrom: validFrom || undefined,
-            validUntil: validUntil || undefined,
             teamId: user.teamId,
             createdBy: user.id,
             createdAt: new Date().toISOString(),
           };
+
+          // Only add optional fields if they have values
+          if (description.trim()) windowData.description = description.trim();
+          if (workspaceId !== "none") windowData.workspaceId = workspaceId;
+          if (validFrom) windowData.validFrom = validFrom;
+          if (validUntil) windowData.validUntil = validUntil;
+
           return addDoc(collection(firestore, 'appointmentWindows'), windowData);
         });
 

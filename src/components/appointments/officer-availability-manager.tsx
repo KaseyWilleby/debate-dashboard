@@ -126,14 +126,16 @@ export function OfficerAvailabilityManager() {
 
     setIsSubmitting(true);
     try {
-      const availabilityData: Partial<OfficerAvailability> = {
+      const availabilityData: any = {
         appointmentWindowId,
-        workspaceId: workspaceId === "none" ? undefined : workspaceId,
-        maxAppointmentsPerDay: typeof maxAppointmentsPerDay === 'number' ? maxAppointmentsPerDay : undefined,
-        notes: notes.trim() || undefined,
         isActive,
         updatedAt: new Date().toISOString(),
       };
+
+      // Only add optional fields if they have values
+      if (workspaceId !== "none") availabilityData.workspaceId = workspaceId;
+      if (typeof maxAppointmentsPerDay === 'number') availabilityData.maxAppointmentsPerDay = maxAppointmentsPerDay;
+      if (notes.trim()) availabilityData.notes = notes.trim();
 
       if (editingAvailability) {
         // Update existing availability
