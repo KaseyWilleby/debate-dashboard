@@ -40,13 +40,14 @@ export function NotificationBell() {
 
   // Debug logging for notifications
   React.useEffect(() => {
-    console.log('[NotificationBell] Notifications updated:', {
+    console.log('[NotificationBell] LATEST CODE - Notifications updated:', {
       count: notifications?.length || 0,
       notifications: notifications?.map(n => ({ id: n.id, type: n.type, title: n.title }))
     });
-    // TEMP: Force rebuild - timestamp: 2026-10-10 09:15
     if (notifications && notifications.length === 0) {
-      console.warn('NEW CODE RUNNING: Found 0 notifications but user.id is:', user?.id);
+      console.warn('[NotificationBell] ZERO notifications for user:', user?.id);
+    } else {
+      console.log('[NotificationBell] Has notifications:', notifications?.length);
     }
   }, [notifications, user]);
 
