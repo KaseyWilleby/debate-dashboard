@@ -32,7 +32,7 @@ export function NotificationBell() {
 
   const notificationsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    console.log('[NotificationBell] Setting up query for user:', user.id);
+    console.log('[NotificationBell] REBUILD 2026-10-10 09:35 - Setting up query for user:', user.id);
     return collection(firestore, 'users', user.id, 'notifications');
   }, [firestore, user]);
 
