@@ -44,7 +44,11 @@ export function NotificationBell() {
       count: notifications?.length || 0,
       notifications: notifications?.map(n => ({ id: n.id, type: n.type, title: n.title }))
     });
-  }, [notifications]);
+    // TEMP: Alert to confirm new code is running
+    if (notifications && notifications.length === 0) {
+      console.warn('NEW CODE RUNNING: Found 0 notifications but user.id is:', user?.id);
+    }
+  }, [notifications, user]);
 
   // Fetch pending user approvals for coaches
   const isCoachOrAdmin = user?.role === 'coach' || user?.role === 'superadmin';
