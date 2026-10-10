@@ -151,7 +151,7 @@ export default function SessionDetailPage() {
       clientPartnerId: partnerId || null,
       status: 'booked'
     });
-    toast({ title: 'Session Booked!', description: 'The session has been added to your "My Sessions".' });
+    toast({ title: 'Session Booked!', description: 'The session has been added to your "Practice Rounds".' });
   };
 
   const handleCancelBooking = () => {
@@ -205,9 +205,9 @@ export default function SessionDetailPage() {
     <div className="flex flex-col gap-6">
       <div className="mb-4">
         <Button variant="outline" asChild>
-          <Link href={`/${teamSlug}/dashboard/my-sessions`}>
+          <Link href={`/${teamSlug}/dashboard/practice-rounds`}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to My Sessions
+            Back to Practice Rounds
           </Link>
         </Button>
       </div>
