@@ -373,7 +373,7 @@ export function AppointmentBooking() {
           type: 'booking',
           title: 'New Appointment Booked',
           message: `${user.name || user.email} booked a session with you on ${formattedDate} at ${formatTime(selectedSlot.startTime)} in ${assignedRoom?.name || 'a room'}`,
-          relatedUrl: `/${user.teamId}/dashboard/my-sessions`,
+          relatedUrl: `/${user.teamId}/dashboard/appointments`,
           timestamp: new Date().toISOString(),
           isRead: false,
         });
