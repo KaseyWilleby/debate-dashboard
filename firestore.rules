@@ -556,5 +556,15 @@ service cloud.firestore {
     function canSetAvailability() {
       return isCoach() || isVarsity() || isOfficer();
     }
+
+    /**
+     * @description Manages access to user notifications subcollection.
+     * @path /users/{userId}/notifications/{notificationId}
+     * Users can manage their own notifications. Anyone can create a notification for another user.
+     */
+    match /users/{userId}/notifications/{notificationId} {
+      allow read, delete: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn(); // Allow anyone to create notifications for others
+    }
   }
 }

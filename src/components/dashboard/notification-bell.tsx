@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, MessageSquare, XCircle, Loader2, UserCheck } from "lucide-react";
+import { Bell, MessageSquare, XCircle, Loader2, UserCheck, Calendar } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { Notification, User as AppUser } from "@/lib/types";
@@ -147,9 +147,14 @@ export function NotificationBell() {
               onClick={() => handleNotificationClick(notif)}
               className="flex items-start gap-3 p-2 cursor-pointer"
             >
-              <div className={cn("mt-1", notif.type === 'cancellation' ? 'text-destructive' : 'text-primary')}>
+              <div className={cn("mt-1",
+                notif.type === 'cancellation' ? 'text-destructive' :
+                notif.type === 'booking' ? 'text-green-600' :
+                'text-primary')}>
                 {notif.type === "cancellation" ? (
                   <XCircle size={16} />
+                ) : notif.type === "booking" ? (
+                  <Calendar size={16} />
                 ) : (
                   <MessageSquare size={16} />
                 )}

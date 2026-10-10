@@ -350,7 +350,7 @@ export interface DebateTopic {
 
 export interface Notification {
   id: string;
-  type: 'message' | 'cancellation';
+  type: 'message' | 'cancellation' | 'booking';
   title: string;
   message: string;
   relatedUrl: string;

@@ -347,7 +347,23 @@ export function AppointmentBooking() {
         });
       }
 
+      // Create notification for provider
       const assignedRoom = workspaces?.find(w => w.id === assignedWorkspaceId);
+      const formattedDate = new Date(selectedSlot.date + 'T00:00:00').toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
+      });
+
+      await addDoc(collection(firestore, 'users', selectedSlot.providerId, 'notifications'), {
+        type: 'booking',
+        title: 'New Appointment Booked',
+        message: `${user.name || user.email} booked a session with you on ${formattedDate} at ${formatTime(selectedSlot.startTime)} in ${assignedRoom?.name || 'a room'}`,
+        relatedUrl: `/${user.teamId}/dashboard/appointments`,
+        timestamp: new Date().toISOString(),
+        isRead: false,
+      });
+
       toast({
         title: "Appointment Booked",
         description: `Your appointment with ${selectedSlot.providerName} has been booked in ${assignedRoom?.name || 'a room'}.`,
