@@ -367,14 +367,21 @@ export function AppointmentBooking() {
         day: 'numeric'
       });
 
-      await addDoc(collection(firestore, 'users', selectedSlot.providerId, 'notifications'), {
-        type: 'booking',
-        title: 'New Appointment Booked',
-        message: `${user.name || user.email} booked a session with you on ${formattedDate} at ${formatTime(selectedSlot.startTime)} in ${assignedRoom?.name || 'a room'}`,
-        relatedUrl: `/${user.teamId}/dashboard/appointments`,
-        timestamp: new Date().toISOString(),
-        isRead: false,
-      });
+      try {
+        console.log('[Booking] Creating notification for provider:', selectedSlot.providerId);
+        await addDoc(collection(firestore, 'users', selectedSlot.providerId, 'notifications'), {
+          type: 'booking',
+          title: 'New Appointment Booked',
+          message: `${user.name || user.email} booked a session with you on ${formattedDate} at ${formatTime(selectedSlot.startTime)} in ${assignedRoom?.name || 'a room'}`,
+          relatedUrl: `/${user.teamId}/dashboard/appointments`,
+          timestamp: new Date().toISOString(),
+          isRead: false,
+        });
+        console.log('[Booking] Notification created successfully');
+      } catch (notifError) {
+        console.error('[Booking] Failed to create notification:', notifError);
+        // Don't fail the booking if notification fails
+      }
 
       toast({
         title: "Appointment Booked",
