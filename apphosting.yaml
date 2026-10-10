@@ -1,6 +1,11 @@
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
 
+buildConfig:
+  runtime: nodejs20
+  installCommand: npm ci
+  buildCommand: rm -rf .next && npm run build
+
 runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
