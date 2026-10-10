@@ -13,6 +13,7 @@ interface TeamLayoutProps {
 }
 
 export default function TeamLayout({ children }: TeamLayoutProps) {
+  // Force bundle rebuild - 2026-10-10
   const { user, isLoading: authLoading } = useAuth();
   const { firestore } = useFirebase();
   const router = useRouter();

@@ -29,6 +29,7 @@ import { Team } from "@/lib/types";
 type Hub = 'team' | 'tournament' | 'practice' | 'learning';
 
 const TeamNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoach: boolean; teamSlug: string }) => {
+    // Force bundle rebuild - 2026-10-10
     return (
         <>
             <SidebarMenuItem>
