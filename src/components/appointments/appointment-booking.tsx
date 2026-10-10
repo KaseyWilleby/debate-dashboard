@@ -318,17 +318,23 @@ export function AppointmentBooking() {
 
       if (selectedSlot.existingAppointment && selectedSlot.existingAppointment.status === 'available') {
         // Update existing appointment
-        await updateDoc(doc(firestore, 'appointments', selectedSlot.existingAppointment.id), {
+        const updateData: any = {
           status: 'booked',
           attendeeId: user.id,
           attendeeName: user.name || user.email,
           workspaceId: assignedWorkspaceId,
-          notes: bookingNotes.trim() || undefined,
           bookedAt: new Date().toISOString(),
-        });
+        };
+
+        // Only add notes field if it has a value
+        if (bookingNotes.trim()) {
+          updateData.notes = bookingNotes.trim();
+        }
+
+        await updateDoc(doc(firestore, 'appointments', selectedSlot.existingAppointment.id), updateData);
       } else {
         // Create new appointment
-        await addDoc(collection(firestore, 'appointments'), {
+        const appointmentData: any = {
           teamId: user.teamId,
           appointmentWindowId: selectedSlot.windowId,
           workspaceId: assignedWorkspaceId,
@@ -341,10 +347,16 @@ export function AppointmentBooking() {
           providerName: selectedSlot.providerName,
           attendeeId: user.id,
           attendeeName: user.name || user.email,
-          notes: bookingNotes.trim() || undefined,
           createdAt: new Date().toISOString(),
           bookedAt: new Date().toISOString(),
-        });
+        };
+
+        // Only add notes field if it has a value
+        if (bookingNotes.trim()) {
+          appointmentData.notes = bookingNotes.trim();
+        }
+
+        await addDoc(collection(firestore, 'appointments'), appointmentData);
       }
 
       // Create notification for provider
