@@ -64,6 +64,13 @@ export function NotificationBell() {
 
   // Debug logging
   React.useEffect(() => {
+    console.log('[NotificationBell] Current User:', {
+      userId: user?.id,
+      email: user?.email,
+      name: user?.name,
+      role: user?.role,
+      teamId: user?.teamId,
+    });
     console.log('[NotificationBell] Debug:', {
       isCoachOrAdmin,
       allPendingUsersCount: allPendingUsers?.length,
