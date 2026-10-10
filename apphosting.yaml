@@ -3,7 +3,7 @@
 
 buildConfig:
   runtime: nodejs20
-  installCommand: npm ci
+  installCommand: npm ci --cache /tmp/empty-cache
   buildCommand: rm -rf .next && npm run build
 
 runConfig:
