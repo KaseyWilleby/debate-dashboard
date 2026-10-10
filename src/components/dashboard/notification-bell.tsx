@@ -32,10 +32,19 @@ export function NotificationBell() {
 
   const notificationsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
+    console.log('[NotificationBell] Setting up query for user:', user.id);
     return collection(firestore, 'users', user.id, 'notifications');
   }, [firestore, user]);
 
   const { data: notifications, isLoading } = useCollection<Notification>(notificationsQuery);
+
+  // Debug logging for notifications
+  React.useEffect(() => {
+    console.log('[NotificationBell] Notifications updated:', {
+      count: notifications?.length || 0,
+      notifications: notifications?.map(n => ({ id: n.id, type: n.type, title: n.title }))
+    });
+  }, [notifications]);
 
   // Fetch pending user approvals for coaches
   const isCoachOrAdmin = user?.role === 'coach' || user?.role === 'superadmin';
