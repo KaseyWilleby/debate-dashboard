@@ -1074,6 +1074,10 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
     const [open, setOpen] = React.useState(false);
     const [isScraping, setIsScraping] = React.useState(false);
     const [scrapedTournaments, setScrapedTournaments] = React.useState<ScrapedTournament[]>([]);
+    const [searchQuery, setSearchQuery] = React.useState('');
+    const [schoolYearFilter, setSchoolYearFilter] = React.useState<string>('all');
+    const [monthFilter, setMonthFilter] = React.useState<string>('all');
+    const [circuitFilter, setCircuitFilter] = React.useState<string>('all');
     const { toast } = useToast();
 
     const fetchAndFilterTournaments = React.useCallback(async () => {
@@ -1083,7 +1087,7 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
             const existingUrls = new Set(existingTournaments.map(t => t.webpageUrl));
             const availableTournaments = results.filter(t => !existingUrls.has(t.url));
             setScrapedTournaments(availableTournaments);
-             if (open) { 
+             if (open) {
                  if (availableTournaments.length === 0 && results.length > 0) {
                      toast({
                         title: "All Tournaments Added",
@@ -1102,12 +1106,55 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
             setIsScraping(false);
         }
     }, [toast, open, existingTournaments]);
-    
+
     React.useEffect(() => {
         if (open) {
            fetchAndFilterTournaments();
         }
     }, [open, fetchAndFilterTournaments]);
+
+    // Client-side filtering
+    const filteredTournaments = React.useMemo(() => {
+        return scrapedTournaments.filter(tournament => {
+            // Search filter
+            if (searchQuery && !tournament.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+                return false;
+            }
+
+            // School year filter
+            if (schoolYearFilter !== 'all') {
+                const yearMatch = tournament.date.match(/\d{4}/);
+                const tournamentYear = yearMatch ? yearMatch[0] : '';
+                if (tournamentYear !== schoolYearFilter) {
+                    return false;
+                }
+            }
+
+            // Month filter
+            if (monthFilter !== 'all') {
+                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                                    'July', 'August', 'September', 'October', 'November', 'December'];
+                const monthIndex = monthNames.indexOf(monthFilter);
+                if (monthIndex !== -1) {
+                    // Check if date string starts with the month number
+                    const monthNumber = (monthIndex + 1).toString();
+                    const dateMatch = tournament.date.match(/^(\d+)\/\d+/);
+                    if (!dateMatch || dateMatch[1] !== monthNumber) {
+                        return false;
+                    }
+                }
+            }
+
+            // Circuit filter
+            if (circuitFilter !== 'all') {
+                if (!tournament.name.toUpperCase().includes(circuitFilter.toUpperCase())) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    }, [scrapedTournaments, searchQuery, schoolYearFilter, monthFilter, circuitFilter]);
 
 
     const handleAddTournament = async (scrapedTournament: ScrapedTournament) => {
@@ -1152,13 +1199,13 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
                     Find Tournaments
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-3xl max-h-[90vh]">
                 <DialogHeader>
                     <div className="flex justify-between items-start">
                         <div>
                             <DialogTitle>Add Tournaments from Tabroom</DialogTitle>
                             <DialogDescription>
-                                A list of upcoming tournaments in Texas from Tabroom.com. Click add to import one to your scheduler.
+                                A list of tournaments in Texas from Tabroom.com. Use filters to narrow results.
                             </DialogDescription>
                         </div>
                         <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={isScraping}>
@@ -1168,15 +1215,86 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
                     </div>
                 </DialogHeader>
 
-                <div className="relative pt-4">
+                {/* Filters */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4">
+                    <div className="space-y-2">
+                        <Label className="text-xs">Search</Label>
+                        <Input
+                            placeholder="Tournament name..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="h-9"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-xs">School Year</Label>
+                        <Select value={schoolYearFilter} onValueChange={setSchoolYearFilter}>
+                            <SelectTrigger className="h-9">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Years</SelectItem>
+                                <SelectItem value="2027">2027</SelectItem>
+                                <SelectItem value="2026">2026</SelectItem>
+                                <SelectItem value="2025">2025</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-xs">Month</Label>
+                        <Select value={monthFilter} onValueChange={setMonthFilter}>
+                            <SelectTrigger className="h-9">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Months</SelectItem>
+                                <SelectItem value="August">August</SelectItem>
+                                <SelectItem value="September">September</SelectItem>
+                                <SelectItem value="October">October</SelectItem>
+                                <SelectItem value="November">November</SelectItem>
+                                <SelectItem value="December">December</SelectItem>
+                                <SelectItem value="January">January</SelectItem>
+                                <SelectItem value="February">February</SelectItem>
+                                <SelectItem value="March">March</SelectItem>
+                                <SelectItem value="April">April</SelectItem>
+                                <SelectItem value="May">May</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-xs">Circuit</Label>
+                        <Select value={circuitFilter} onValueChange={setCircuitFilter}>
+                            <SelectTrigger className="h-9">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Circuits</SelectItem>
+                                <SelectItem value="TFA">TFA</SelectItem>
+                                <SelectItem value="NIETOC">NIETOC</SelectItem>
+                                <SelectItem value="TOC">TOC</SelectItem>
+                                <SelectItem value="UIL">UIL</SelectItem>
+                                <SelectItem value="NSDA">NSDA</SelectItem>
+                                <SelectItem value="IQT">IQT</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
+                <div className="relative pt-2">
                     {isScraping ? (
                          <div className="h-72 flex items-center justify-center">
                             <Loader2 className="animate-spin text-muted-foreground" size={32} />
                          </div>
-                    ) : scrapedTournaments.length > 0 ? (
-                        <ScrollArea className="h-72">
-                            <div className="space-y-2 pr-4">
-                                {scrapedTournaments.map((t, index) => (
+                    ) : filteredTournaments.length > 0 ? (
+                        <div>
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-xs text-muted-foreground">
+                                    Showing {filteredTournaments.length} of {scrapedTournaments.length} tournaments
+                                </p>
+                            </div>
+                            <ScrollArea className="h-72">
+                                <div className="space-y-2 pr-4">
+                                    {filteredTournaments.map((t, index) => (
                                     <div key={`${t.url}-${index}`} className="flex items-center justify-between p-2 rounded-md border bg-muted/50">
                                         <div>
                                             <p className="text-sm font-medium">{t.name}</p>
@@ -1191,7 +1309,16 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
                         </ScrollArea>
                     ) : (
                          <div className="h-72 flex items-center justify-center text-center text-muted-foreground p-4">
-                            <p>All available tournaments have been added. Delete a tournament from the main list to add it again.</p>
+                            <div>
+                                {scrapedTournaments.length === 0 ? (
+                                    <p>All available tournaments have been added. Delete a tournament from the main list to add it again.</p>
+                                ) : (
+                                    <div>
+                                        <p className="font-medium">No tournaments match your filters</p>
+                                        <p className="text-sm mt-1">Try adjusting your search or filter criteria</p>
+                                    </div>
+                                )}
+                            </div>
                          </div>
                     )}
                 </div>
