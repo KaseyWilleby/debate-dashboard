@@ -1,25 +1,21 @@
 'use server';
 /**
- * @fileOverview An AI flow for scraping tournament listings from Tabroom.com.
- * 
- * - scrapeTabroomTournaments - A function that scrapes Tabroom for tournaments.
+ * @fileOverview Returns hardcoded tournament listings from Tabroom.com.
+ *
+ * - scrapeTabroomTournaments - A function that returns tournament data.
  * - ScrapedTournament - The return type for a single tournament.
  */
 
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
 import type { ScrapedTournament as ScrapedTournamentType } from '@/lib/types';
 import { format } from 'date-fns';
 
-const ScrapedTournamentSchema = z.object({
-    name: z.string().describe('The name of the tournament.'),
-    url: z.string().url().describe('The direct URL to the tournament on Tabroom.'),
-    date: z.string().describe('The date range of the tournament.'),
-    registrationCloseDate: z.string().describe('The date registration closes, formatted as YYYY-MM-DD.'),
-});
-export type ScrapedTournament = z.infer<typeof ScrapedTournamentSchema>;
-
-const ScrapeTabroomOutputSchema = z.array(ScrapedTournamentSchema);
+// Simple type for scraped tournaments (no Genkit/Zod validation needed)
+export type ScrapedTournament = {
+    name: string;
+    url: string;
+    date: string;
+    registrationCloseDate: string;
+};
 
 // This function now returns a hardcoded list of tournaments to ensure functionality.
 // The previous web scraping attempts were unreliable.
