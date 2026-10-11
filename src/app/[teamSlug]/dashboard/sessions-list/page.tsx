@@ -12,7 +12,7 @@ import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { useAuth } from "@/contexts/auth-context";
 
-export default function PracticeRoundsPage() {
+export default function SessionsPage() {
   const { firestore } = useFirebase();
   const { user, isLoading: isAuthLoading } = useAuth();
   const userId = user?.id;
@@ -20,12 +20,12 @@ export default function PracticeRoundsPage() {
   // View mode state
   const [viewMode, setViewMode] = useState<'card' | 'list'>(() => {
     if (typeof window === 'undefined') return 'card';
-    return (localStorage.getItem('practice-rounds-view-mode') as 'card' | 'list') || 'card';
+    return (localStorage.getItem('sessions-view-mode') as 'card' | 'list') || 'card';
   });
 
   const handleViewModeChange = (mode: 'card' | 'list') => {
     setViewMode(mode);
-    localStorage.setItem('practice-rounds-view-mode', mode);
+    localStorage.setItem('sessions-view-mode', mode);
   };
 
   const mySessionsQuery = useMemoFirebase(() => {
@@ -69,9 +69,9 @@ export default function PracticeRoundsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold font-headline">Practice Rounds</h1>
+          <h1 className="text-3xl font-bold font-headline">Sessions</h1>
           <p className="text-muted-foreground">
-            A list of your upcoming and recent practice sessions.
+            Practice rounds, workshops, and study groups.
           </p>
         </div>
         <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && handleViewModeChange(value as 'card' | 'list')}>

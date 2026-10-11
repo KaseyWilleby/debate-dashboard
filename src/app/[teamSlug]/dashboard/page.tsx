@@ -195,10 +195,10 @@ export default function DashboardPage() {
                   <Users className="h-8 w-8 text-muted-foreground mb-2" />
                   <h3 className="text-lg font-semibold font-headline">No Session Data</h3>
                   <p className="text-muted-foreground mt-1 text-sm">
-                    Go to Practice Rounds to see your schedule.
+                    Go to Sessions to see your schedule.
                   </p>
                    <Button asChild className="mt-4">
-                    <Link href={`/${teamSlug}/dashboard/practice-rounds`}>View Practice Rounds</Link>
+                    <Link href={`/${teamSlug}/dashboard/sessions-list`}>View Sessions</Link>
                 </Button>
               </div>
           </CardContent>
