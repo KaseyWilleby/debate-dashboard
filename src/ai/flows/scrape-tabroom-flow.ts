@@ -19,18 +19,18 @@ export type ScrapedTournament = {
 };
 
 /**
- * Scrapes live tournament data from Tabroom.com homepage
+ * Scrapes tournaments from a specific Tabroom URL
  */
-async function scrapeLiveTournaments(): Promise<ScrapedTournament[]> {
+async function scrapeTournamentsFromUrl(url: string): Promise<ScrapedTournament[]> {
     try {
-        const response = await fetch('https://www.tabroom.com/index/index.mhtml', {
+        const response = await fetch(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
         });
 
         if (!response.ok) {
-            throw new Error(`Failed to fetch: ${response.status}`);
+            throw new Error(`Failed to fetch ${url}: ${response.status}`);
         }
 
         const html = await response.text();
@@ -106,12 +106,61 @@ async function scrapeLiveTournaments(): Promise<ScrapedTournament[]> {
             }
         });
 
-        console.log(`Scraped ${tournaments.length} tournaments from Tabroom.com`);
         return tournaments;
     } catch (error) {
-        console.error('Failed to scrape live tournaments:', error);
+        console.error(`Failed to scrape from ${url}:`, error);
         return [];
     }
+}
+
+/**
+ * Scrapes live tournament data from Tabroom.com by filtering through different states
+ * This ensures we get comprehensive coverage since the homepage only shows ~130 tournaments
+ */
+async function scrapeLiveTournaments(): Promise<ScrapedTournament[]> {
+    // Major debate states to scrape - covers most of the tournament activity
+    const statesToScrape = ['TX', 'CA', 'FL', 'NY', 'IL', 'PA', 'OH', 'GA', 'NC', 'VA', 'WA', 'MA', 'TN', 'IN', 'MI', 'MO', 'MD', 'WI', 'CO', 'MN', 'AZ', 'OR', 'KY', 'SC', 'AL', 'LA', 'OK', 'CT', 'UT', 'NV', 'NM', 'KS', 'AR', 'MS'];
+
+    const allTournaments: ScrapedTournament[] = [];
+    const seenUrls = new Set<string>();
+
+    console.log('Scraping tournaments from multiple states for comprehensive coverage...');
+
+    // Scrape base page first (gets most upcoming tournaments)
+    const baseTournaments = await scrapeTournamentsFromUrl('https://www.tabroom.com/index/index.mhtml');
+    for (const tournament of baseTournaments) {
+        if (!seenUrls.has(tournament.url)) {
+            seenUrls.add(tournament.url);
+            allTournaments.push(tournament);
+        }
+    }
+    console.log(`Base scrape found ${baseTournaments.length} tournaments`);
+
+    // Scrape each state to catch tournaments that aren't on the front page
+    for (const state of statesToScrape) {
+        const url = `https://www.tabroom.com/index/index.mhtml?state=${state}`;
+        const stateTournaments = await scrapeTournamentsFromUrl(url);
+
+        // Only add tournaments we haven't seen yet
+        let newCount = 0;
+        for (const tournament of stateTournaments) {
+            if (!seenUrls.has(tournament.url)) {
+                seenUrls.add(tournament.url);
+                allTournaments.push(tournament);
+                newCount++;
+            }
+        }
+
+        if (newCount > 0) {
+            console.log(`State ${state}: Found ${newCount} new tournaments (${stateTournaments.length} total)`);
+        }
+
+        // Small delay to avoid overwhelming Tabroom's server
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    console.log(`Total scraped: ${allTournaments.length} unique tournaments from ${statesToScrape.length + 1} sources`);
+    return allTournaments;
 }
 
 // Hardcoded fallback list of tournaments
