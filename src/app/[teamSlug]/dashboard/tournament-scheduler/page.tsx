@@ -1185,11 +1185,11 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
             });
             console.error(error);
         }
-    }
-    
+    };
+
     const handleRefresh = () => {
          fetchAndFilterTournaments();
-    }
+    };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -1307,6 +1307,7 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
                                 ))}
                             </div>
                         </ScrollArea>
+                        </div>
                     ) : (
                          <div className="h-72 flex items-center justify-center text-center text-muted-foreground p-4">
                             <div>
