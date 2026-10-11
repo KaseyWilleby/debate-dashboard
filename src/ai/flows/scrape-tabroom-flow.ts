@@ -193,19 +193,20 @@ async function getTabroomTournaments(): Promise<ScrapedTournament[]> {
         }));
 }
 
-const scrapeTabroomFlow = ai.defineFlow(
-    {
-        name: 'scrapeTabroomFlow',
-        inputSchema: z.void(),
-        outputSchema: ScrapeTabroomOutputSchema,
-    },
-    async () => {
-        return getTabroomTournaments();
-    }
-);
+// No longer using AI flow since we're returning hardcoded data
+// const scrapeTabroomFlow = ai.defineFlow(
+//     {
+//         name: 'scrapeTabroomFlow',
+//         inputSchema: z.void(),
+//         outputSchema: ScrapeTabroomOutputSchema,
+//     },
+//     async () => {
+//         return getTabroomTournaments();
+//     }
+// );
 
 export async function scrapeTabroomTournaments(): Promise<ScrapedTournament[]> {
-    return scrapeTabroomFlow();
+    return getTabroomTournaments();
 }
 
     
