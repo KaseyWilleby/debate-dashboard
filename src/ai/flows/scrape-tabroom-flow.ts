@@ -51,6 +51,7 @@ async function getTabroomTournaments(): Promise<ScrapedTournament[]> {
       { name: 'Athens UIL Invitational', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=35823', date: '10/18', registrationCloseDate: '2026-10-14' },
       { name: 'Tompkins Falcon Frenzie TFA', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36760', date: '10/18', registrationCloseDate: '2026-10-13' },
       { name: 'Warrior Middle School Debate Tournament Series 1 2025', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37628', date: '10/20', registrationCloseDate: '2026-10-20' },
+      { name: 'Spartan Ram Fall Classic', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37219', date: '10/21 - 10/24', registrationCloseDate: '2026-10-16' },
       { name: '2nd Annual Eastlake Spooktacular Speech and Debate Tournament', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37120', date: '10/24 - 10/25', registrationCloseDate: '2026-10-20' },
       { name: 'DUDA Middle School Tournament 1', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=37163', date: '10/25', registrationCloseDate: '2026-10-17' },
       { name: '2025 Austin HS Top Dawg MS Tournament', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36617', date: '10/25', registrationCloseDate: '2026-10-21' },
