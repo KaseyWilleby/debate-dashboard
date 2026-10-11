@@ -1178,13 +1178,13 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
                     Find Tournaments
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh]">
+            <DialogContent className="max-w-6xl max-h-[90vh]">
                 <DialogHeader>
                     <div className="flex justify-between items-start">
                         <div>
                             <DialogTitle>Add Tournaments from Tabroom</DialogTitle>
                             <DialogDescription>
-                                A list of tournaments in Texas from Tabroom.com. Use filters to narrow results.
+                                A list of tournaments from Tabroom.com. Use filters to narrow results.
                             </DialogDescription>
                         </div>
                         <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={isScraping}>
@@ -1195,113 +1195,115 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
                 </DialogHeader>
 
                 {/* Filters */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4">
+                <div className="space-y-3 pt-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="space-y-2">
+                            <Label className="text-xs">School Year</Label>
+                            <Select value={schoolYearFilter} onValueChange={setSchoolYearFilter}>
+                                <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Years</SelectItem>
+                                    <SelectItem value="2027">2027</SelectItem>
+                                    <SelectItem value="2026">2026</SelectItem>
+                                    <SelectItem value="2025">2025</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs">Month</Label>
+                            <Select value={monthFilter} onValueChange={setMonthFilter}>
+                                <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Months</SelectItem>
+                                    <SelectItem value="August">August</SelectItem>
+                                    <SelectItem value="September">September</SelectItem>
+                                    <SelectItem value="October">October</SelectItem>
+                                    <SelectItem value="November">November</SelectItem>
+                                    <SelectItem value="December">December</SelectItem>
+                                    <SelectItem value="January">January</SelectItem>
+                                    <SelectItem value="February">February</SelectItem>
+                                    <SelectItem value="March">March</SelectItem>
+                                    <SelectItem value="April">April</SelectItem>
+                                    <SelectItem value="May">May</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs">Circuit</Label>
+                            <Select value={circuitFilter} onValueChange={setCircuitFilter}>
+                                <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Circuits</SelectItem>
+                                    <SelectItem value="TFA">TFA</SelectItem>
+                                    <SelectItem value="NIETOC">NIETOC</SelectItem>
+                                    <SelectItem value="TOC">TOC</SelectItem>
+                                    <SelectItem value="UIL">UIL</SelectItem>
+                                    <SelectItem value="NSDA">NSDA</SelectItem>
+                                    <SelectItem value="IQT">IQT</SelectItem>
+                                    <SelectItem value="NCFL">NCFL</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs">State</Label>
+                            <Select value={stateFilter} onValueChange={setStateFilter}>
+                                <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All States</SelectItem>
+                                    <SelectItem value="TX">Texas (TX)</SelectItem>
+                                    <SelectItem value="CA">California (CA)</SelectItem>
+                                    <SelectItem value="FL">Florida (FL)</SelectItem>
+                                    <SelectItem value="NY">New York (NY)</SelectItem>
+                                    <SelectItem value="IL">Illinois (IL)</SelectItem>
+                                    <SelectItem value="PA">Pennsylvania (PA)</SelectItem>
+                                    <SelectItem value="OH">Ohio (OH)</SelectItem>
+                                    <SelectItem value="GA">Georgia (GA)</SelectItem>
+                                    <SelectItem value="NC">North Carolina (NC)</SelectItem>
+                                    <SelectItem value="MI">Michigan (MI)</SelectItem>
+                                    <SelectItem value="VA">Virginia (VA)</SelectItem>
+                                    <SelectItem value="WA">Washington (WA)</SelectItem>
+                                    <SelectItem value="AZ">Arizona (AZ)</SelectItem>
+                                    <SelectItem value="MA">Massachusetts (MA)</SelectItem>
+                                    <SelectItem value="TN">Tennessee (TN)</SelectItem>
+                                    <SelectItem value="IN">Indiana (IN)</SelectItem>
+                                    <SelectItem value="MO">Missouri (MO)</SelectItem>
+                                    <SelectItem value="MD">Maryland (MD)</SelectItem>
+                                    <SelectItem value="WI">Wisconsin (WI)</SelectItem>
+                                    <SelectItem value="CO">Colorado (CO)</SelectItem>
+                                    <SelectItem value="MN">Minnesota (MN)</SelectItem>
+                                    <SelectItem value="SC">South Carolina (SC)</SelectItem>
+                                    <SelectItem value="AL">Alabama (AL)</SelectItem>
+                                    <SelectItem value="LA">Louisiana (LA)</SelectItem>
+                                    <SelectItem value="KY">Kentucky (KY)</SelectItem>
+                                    <SelectItem value="OR">Oregon (OR)</SelectItem>
+                                    <SelectItem value="OK">Oklahoma (OK)</SelectItem>
+                                    <SelectItem value="CT">Connecticut (CT)</SelectItem>
+                                    <SelectItem value="UT">Utah (UT)</SelectItem>
+                                    <SelectItem value="NV">Nevada (NV)</SelectItem>
+                                    <SelectItem value="NM">New Mexico (NM)</SelectItem>
+                                    <SelectItem value="KS">Kansas (KS)</SelectItem>
+                                    <SelectItem value="AR">Arkansas (AR)</SelectItem>
+                                    <SelectItem value="MS">Mississippi (MS)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
                     <div className="space-y-2">
                         <Label className="text-xs">Search</Label>
                         <Input
-                            placeholder="Tournament name..."
+                            placeholder="Search tournament names..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="h-9"
+                            className="h-9 w-full"
                         />
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-xs">School Year</Label>
-                        <Select value={schoolYearFilter} onValueChange={setSchoolYearFilter}>
-                            <SelectTrigger className="h-9">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Years</SelectItem>
-                                <SelectItem value="2027">2027</SelectItem>
-                                <SelectItem value="2026">2026</SelectItem>
-                                <SelectItem value="2025">2025</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-xs">Month</Label>
-                        <Select value={monthFilter} onValueChange={setMonthFilter}>
-                            <SelectTrigger className="h-9">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Months</SelectItem>
-                                <SelectItem value="August">August</SelectItem>
-                                <SelectItem value="September">September</SelectItem>
-                                <SelectItem value="October">October</SelectItem>
-                                <SelectItem value="November">November</SelectItem>
-                                <SelectItem value="December">December</SelectItem>
-                                <SelectItem value="January">January</SelectItem>
-                                <SelectItem value="February">February</SelectItem>
-                                <SelectItem value="March">March</SelectItem>
-                                <SelectItem value="April">April</SelectItem>
-                                <SelectItem value="May">May</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-xs">Circuit</Label>
-                        <Select value={circuitFilter} onValueChange={setCircuitFilter}>
-                            <SelectTrigger className="h-9">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Circuits</SelectItem>
-                                <SelectItem value="TFA">TFA</SelectItem>
-                                <SelectItem value="NIETOC">NIETOC</SelectItem>
-                                <SelectItem value="TOC">TOC</SelectItem>
-                                <SelectItem value="UIL">UIL</SelectItem>
-                                <SelectItem value="NSDA">NSDA</SelectItem>
-                                <SelectItem value="IQT">IQT</SelectItem>
-                                <SelectItem value="NCFL">NCFL</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-xs">State</Label>
-                        <Select value={stateFilter} onValueChange={setStateFilter}>
-                            <SelectTrigger className="h-9">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All States</SelectItem>
-                                <SelectItem value="TX">Texas (TX)</SelectItem>
-                                <SelectItem value="CA">California (CA)</SelectItem>
-                                <SelectItem value="FL">Florida (FL)</SelectItem>
-                                <SelectItem value="NY">New York (NY)</SelectItem>
-                                <SelectItem value="IL">Illinois (IL)</SelectItem>
-                                <SelectItem value="PA">Pennsylvania (PA)</SelectItem>
-                                <SelectItem value="OH">Ohio (OH)</SelectItem>
-                                <SelectItem value="GA">Georgia (GA)</SelectItem>
-                                <SelectItem value="NC">North Carolina (NC)</SelectItem>
-                                <SelectItem value="MI">Michigan (MI)</SelectItem>
-                                <SelectItem value="VA">Virginia (VA)</SelectItem>
-                                <SelectItem value="WA">Washington (WA)</SelectItem>
-                                <SelectItem value="AZ">Arizona (AZ)</SelectItem>
-                                <SelectItem value="MA">Massachusetts (MA)</SelectItem>
-                                <SelectItem value="TN">Tennessee (TN)</SelectItem>
-                                <SelectItem value="IN">Indiana (IN)</SelectItem>
-                                <SelectItem value="MO">Missouri (MO)</SelectItem>
-                                <SelectItem value="MD">Maryland (MD)</SelectItem>
-                                <SelectItem value="WI">Wisconsin (WI)</SelectItem>
-                                <SelectItem value="CO">Colorado (CO)</SelectItem>
-                                <SelectItem value="MN">Minnesota (MN)</SelectItem>
-                                <SelectItem value="SC">South Carolina (SC)</SelectItem>
-                                <SelectItem value="AL">Alabama (AL)</SelectItem>
-                                <SelectItem value="LA">Louisiana (LA)</SelectItem>
-                                <SelectItem value="KY">Kentucky (KY)</SelectItem>
-                                <SelectItem value="OR">Oregon (OR)</SelectItem>
-                                <SelectItem value="OK">Oklahoma (OK)</SelectItem>
-                                <SelectItem value="CT">Connecticut (CT)</SelectItem>
-                                <SelectItem value="UT">Utah (UT)</SelectItem>
-                                <SelectItem value="NV">Nevada (NV)</SelectItem>
-                                <SelectItem value="NM">New Mexico (NM)</SelectItem>
-                                <SelectItem value="KS">Kansas (KS)</SelectItem>
-                                <SelectItem value="AR">Arkansas (AR)</SelectItem>
-                                <SelectItem value="MS">Mississippi (MS)</SelectItem>
-                            </SelectContent>
-                        </Select>
                     </div>
                 </div>
 
