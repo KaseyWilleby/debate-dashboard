@@ -43,8 +43,8 @@ const TeamNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoach: b
                 </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/sessions-list`)} tooltip="Sessions">
-                  <Link href={`/${teamSlug}/dashboard/sessions-list`}><Briefcase /><span>Sessions</span></Link>
+                <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/sessions-list`)} tooltip="My Sessions">
+                  <Link href={`/${teamSlug}/dashboard/sessions-list`}><Briefcase /><span>My Sessions</span></Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
