@@ -1,13 +1,14 @@
 'use server';
 /**
- * @fileOverview Returns hardcoded tournament listings from Tabroom.com.
+ * @fileOverview Scrapes tournament listings from Tabroom.com with fallback to hardcoded data.
  *
- * - scrapeTabroomTournaments - A function that returns tournament data.
+ * - scrapeTabroomTournaments - A function that returns tournament data from live scraping or fallback.
  * - ScrapedTournament - The return type for a single tournament.
  */
 
 import type { ScrapedTournament as ScrapedTournamentType } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
+import * as cheerio from 'cheerio';
 
 // Simple type for scraped tournaments (no Genkit/Zod validation needed)
 export type ScrapedTournament = {
@@ -17,9 +18,83 @@ export type ScrapedTournament = {
     registrationCloseDate: string;
 };
 
-// This function now returns a hardcoded list of tournaments to ensure functionality.
-// The previous web scraping attempts were unreliable.
-async function getTabroomTournaments(): Promise<ScrapedTournament[]> {
+/**
+ * Scrapes live tournament data from Tabroom.com homepage
+ */
+async function scrapeLiveTournaments(): Promise<ScrapedTournament[]> {
+    try {
+        const response = await fetch('https://www.tabroom.com/index/index.mhtml', {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch: ${response.status}`);
+        }
+
+        const html = await response.text();
+        const $ = cheerio.load(html);
+        const tournaments: ScrapedTournament[] = [];
+
+        // Parse the tournament table (#tournlist)
+        $('#tournlist tbody tr').each((_, element) => {
+            const $row = $(element);
+            const cells = $row.find('td');
+
+            if (cells.length >= 6) {
+                // Extract tournament name and URL
+                const nameCell = $(cells[1]);
+                const link = nameCell.find('a').first();
+                const name = link.text().trim();
+                const href = link.attr('href');
+
+                // Extract dates
+                const dateText = $(cells[0]).text().trim();
+
+                // Extract registration status to get close date
+                const regCell = $(cells[5]);
+                const regText = regCell.text().trim();
+
+                if (name && href) {
+                    const url = href.startsWith('http') ? href : `https://www.tabroom.com${href}`;
+
+                    // Parse registration close date from "Due MM/DD" or similar format
+                    let registrationCloseDate = '';
+                    const dueMatch = regText.match(/Due\s+(\d{1,2})\/(\d{1,2})/);
+                    if (dueMatch) {
+                        const month = dueMatch[1].padStart(2, '0');
+                        const day = dueMatch[2].padStart(2, '0');
+                        // Assume current or next year based on month
+                        const now = new Date();
+                        const currentMonth = now.getMonth() + 1;
+                        const year = parseInt(month) < currentMonth ? now.getFullYear() + 1 : now.getFullYear();
+                        registrationCloseDate = `${year}-${month}-${day}`;
+                    } else {
+                        // Default to a date in the past if we can't parse
+                        registrationCloseDate = '2026-01-01';
+                    }
+
+                    tournaments.push({
+                        name,
+                        url,
+                        date: dateText,
+                        registrationCloseDate
+                    });
+                }
+            }
+        });
+
+        console.log(`Scraped ${tournaments.length} tournaments from Tabroom.com`);
+        return tournaments;
+    } catch (error) {
+        console.error('Failed to scrape live tournaments:', error);
+        return [];
+    }
+}
+
+// Hardcoded fallback list of tournaments
+async function getHardcodedTournaments(): Promise<ScrapedTournament[]> {
     const allTournaments: (Omit<ScrapedTournamentType, 'registrationCloseDate'> & { registrationCloseDate: string })[] = [
       { name: 'Jordan Warrior Classic', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=40376', date: '8/28 - 8/29', registrationCloseDate: '2026-08-20' },
       { name: 'Lewisville High School TFA Invitational', url: 'https://www.tabroom.com/index/tourn/index.mhtml?tourn_id=36801', date: '9/6 - 9/7', registrationCloseDate: '2026-08-30' },
@@ -190,20 +265,24 @@ async function getTabroomTournaments(): Promise<ScrapedTournament[]> {
         }));
 }
 
-// No longer using AI flow since we're returning hardcoded data
-// const scrapeTabroomFlow = ai.defineFlow(
-//     {
-//         name: 'scrapeTabroomFlow',
-//         inputSchema: z.void(),
-//         outputSchema: ScrapeTabroomOutputSchema,
-//     },
-//     async () => {
-//         return getTabroomTournaments();
-//     }
-// );
-
+/**
+ * Main export function that tries to scrape live data from Tabroom.com
+ * Falls back to hardcoded tournament list if scraping fails
+ */
 export async function scrapeTabroomTournaments(): Promise<ScrapedTournament[]> {
-    return getTabroomTournaments();
+    console.log('Attempting to scrape live tournaments from Tabroom.com...');
+
+    // Try live scraping first
+    const liveTournaments = await scrapeLiveTournaments();
+
+    if (liveTournaments.length > 0) {
+        console.log(`Successfully scraped ${liveTournaments.length} live tournaments`);
+        return liveTournaments;
+    }
+
+    // Fall back to hardcoded list if live scraping fails
+    console.log('Live scraping failed or returned no results, using hardcoded fallback');
+    return getHardcodedTournaments();
 }
 
     
