@@ -1,4 +1,4 @@
-
+// Force rebuild to deploy latest tournament fixes
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
