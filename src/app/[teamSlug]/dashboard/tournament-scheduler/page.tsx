@@ -69,7 +69,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 // Temporarily disabled AI extraction due to Genkit incompatibility in production
 // import { extractTournamentInfo } from "@/ai/flows/extract-tournament-info-flow";
-import { scrapeTabroomTournaments } from "@/ai/flows/scrape-tabroom-flow";
+// Tournaments are now fetched from Firestore collection (scraped weekly by background job)
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
@@ -1045,38 +1045,35 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
     const [stateFilter, setStateFilter] = React.useState<string>('all');
     const { toast } = useToast();
 
-    const fetchAndFilterTournaments = React.useCallback(async () => {
-        setIsScraping(true);
-        try {
-            const results = await scrapeTabroomTournaments();
-            const existingUrls = new Set(existingTournaments.map(t => t.webpageUrl));
-            const availableTournaments = results.filter(t => !existingUrls.has(t.url));
-            setScrapedTournaments(availableTournaments);
-             if (open) {
-                 if (availableTournaments.length === 0 && results.length > 0) {
-                     toast({
-                        title: "All Tournaments Added",
-                        description: "All upcoming tournaments from Tabroom are already in your scheduler.",
-                    });
-                }
-            }
-        } catch (error) {
-             toast({
-                variant: "destructive",
-                title: "Scraping Failed",
-                description: "Could not retrieve the tournament list from Tabroom.com.",
-            });
-            console.error(error);
-        } finally {
-            setIsScraping(false);
-        }
-    }, [toast, open, existingTournaments]);
+    // Fetch tournaments from Firestore collection instead of live scraping
+    const tournamentsCollectionQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'scrapedTournaments');
+    }, [firestore]);
+
+    const { data: firestoreTournaments, isLoading: isLoadingTournaments } = useCollection<ScrapedTournament>(tournamentsCollectionQuery);
 
     React.useEffect(() => {
-        if (open) {
-           fetchAndFilterTournaments();
+        if (firestoreTournaments) {
+            const existingUrls = new Set(existingTournaments.map(t => t.webpageUrl));
+            const availableTournaments = firestoreTournaments.filter(t => !existingUrls.has(t.url));
+            setScrapedTournaments(availableTournaments);
+            setIsScraping(false);
+
+            if (open && availableTournaments.length === 0 && firestoreTournaments.length > 0) {
+                toast({
+                    title: "All Tournaments Added",
+                    description: "All upcoming tournaments from Tabroom are already in your scheduler.",
+                });
+            }
         }
-    }, [open, fetchAndFilterTournaments]);
+    }, [firestoreTournaments, existingTournaments, open, toast]);
+
+    React.useEffect(() => {
+        if (open && !firestoreTournaments) {
+            setIsScraping(true);
+        }
+    }, [open, firestoreTournaments]);
 
     // Client-side filtering
     const filteredTournaments = React.useMemo(() => {
@@ -1166,10 +1163,6 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
         }
     };
 
-    const handleRefresh = () => {
-         fetchAndFilterTournaments();
-    };
-
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -1180,18 +1173,10 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
             </DialogTrigger>
             <DialogContent className="max-w-6xl max-h-[90vh]">
                 <DialogHeader>
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <DialogTitle>Add Tournaments from Tabroom</DialogTitle>
-                            <DialogDescription>
-                                A list of tournaments from Tabroom.com. Use filters to narrow results.
-                            </DialogDescription>
-                        </div>
-                        <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={isScraping}>
-                           <RefreshCw className={cn("h-4 w-4", isScraping && "animate-spin")} />
-                           <span className="sr-only">Refresh</span>
-                        </Button>
-                    </div>
+                    <DialogTitle>Add Tournaments from Tabroom</DialogTitle>
+                    <DialogDescription>
+                        A list of tournaments from Tabroom.com. Use filters to narrow results.
+                    </DialogDescription>
                 </DialogHeader>
 
                 {/* Filters */}

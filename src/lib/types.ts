@@ -221,6 +221,7 @@ export interface ScrapedTournament {
   city?: string;
   state?: string;
   circuits?: string[]; // e.g., ['TFA', 'NIETOC']
+  lastScraped?: string; // ISO timestamp of when this was last scraped
 }
 
 export type PracticeMode = "extemp" | "impromptu" | "congress" | "informative" | "oratory" | "humorous" | "dramatic" | "duo" | "duet" | "prose" | "poetry";

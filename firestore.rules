@@ -566,5 +566,25 @@ service cloud.firestore {
       allow read, delete: if isSignedIn() && request.auth.uid == userId;
       allow create: if isSignedIn(); // Allow anyone to create notifications for others
     }
+
+    /**
+     * @description Manages access to scraped tournaments collection.
+     * @path /scrapedTournaments/{tournamentId}
+     * All authenticated users can read. Only server (via admin SDK) can write.
+     */
+    match /scrapedTournaments/{tournamentId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Only admin SDK can write
+    }
+
+    /**
+     * @description Manages access to metadata collection.
+     * @path /metadata/{docId}
+     * All authenticated users can read metadata. Only server can write.
+     */
+    match /metadata/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Only admin SDK can write
+    }
   }
 }
