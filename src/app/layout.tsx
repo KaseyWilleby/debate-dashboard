@@ -1,4 +1,4 @@
-// Force rebuild to deploy latest tournament fixes
+// Deploy: Remove Genkit imports fix
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
