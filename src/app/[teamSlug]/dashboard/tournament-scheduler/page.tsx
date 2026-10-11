@@ -67,7 +67,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Tournament, ScrapedTournament } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { extractTournamentInfo } from "@/ai/flows/extract-tournament-info-flow";
+// Temporarily disabled AI extraction due to Genkit incompatibility in production
+// import { extractTournamentInfo } from "@/ai/flows/extract-tournament-info-flow";
 import { scrapeTabroomTournaments } from "@/ai/flows/scrape-tabroom-flow";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
@@ -390,6 +391,13 @@ function AddTournamentDialog({ onTournamentCreated }: { onTournamentCreated: (to
 
     setIsFetching(true);
     try {
+        // AI extraction temporarily disabled
+        toast({
+            title: "Feature Temporarily Disabled",
+            description: "Auto-fill is temporarily unavailable. Please enter tournament details manually.",
+            variant: "destructive"
+        });
+        /*
         const result = await extractTournamentInfo(url);
         if (result.name) form.setValue('name', result.name);
         if (result.date) {
@@ -985,6 +993,13 @@ function ImportFromUrlDialog({ onTournamentCreated }: { onTournamentCreated: (to
 
         setIsImporting(true);
         try {
+            // AI extraction temporarily disabled
+            toast({
+                variant: "destructive",
+                title: "Feature Temporarily Disabled",
+                description: "Import from URL is temporarily unavailable. Please use 'Find Tournaments' or add manually.",
+            });
+            /*
             const result = await extractTournamentInfo(url);
 
             const parsedDate = parse(result.date, 'MMMM d, yyyy', new Date());
@@ -1008,6 +1023,7 @@ function ImportFromUrlDialog({ onTournamentCreated }: { onTournamentCreated: (to
                     ? `${result.name} has been added as a swing tournament with ${result.schools?.length || 0} schools.`
                     : `${result.name} has been added to your scheduler.`,
             });
+            */
 
             setOpen(false);
             setUrl('');
@@ -1159,19 +1175,18 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
 
     const handleAddTournament = async (scrapedTournament: ScrapedTournament) => {
         try {
-            const result = await extractTournamentInfo(scrapedTournament.url);
-            
-            const parsedDate = parse(result.date, 'MMMM d, yyyy', new Date());
-            const parsedCloseDate = result.registrationCloseDate ? parse(result.registrationCloseDate, 'MMMM d, yyyy', new Date()) : undefined;
+            // Use scraped data directly (AI extraction disabled due to production issues)
+            const parsedDate = parse(scrapedTournament.date.replace(', ', ' '), 'M/d yyyy', new Date());
+            const parsedCloseDate = scrapedTournament.registrationCloseDate ? parse(scrapedTournament.registrationCloseDate, 'yyyy-MM-dd', new Date()) : undefined;
 
             const newTournamentData = {
-                name: result.name,
+                name: scrapedTournament.name,
                 date: format(!isNaN(parsedDate.getTime()) ? parsedDate : new Date(), "yyyy-MM-dd"),
                 registrationCloseDate: parsedCloseDate && !isNaN(parsedCloseDate.getTime()) ? format(parsedCloseDate, "yyyy-MM-dd") : undefined,
                 webpageUrl: scrapedTournament.url,
-                scheduleUrl: result.scheduleUrl,
-                isSwing: result.isSwing,
-                schools: result.schools,
+                scheduleUrl: scrapedTournament.url, // Use webpage URL as schedule URL
+                isSwing: false, // Default to false (AI would detect this)
+                schools: undefined, // AI would populate this for swing tournaments
             };
             onTournamentCreated(newTournamentData);
             
