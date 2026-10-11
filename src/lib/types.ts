@@ -218,6 +218,9 @@ export interface ScrapedTournament {
   url: string;
   date: string;
   registrationCloseDate: string;
+  city?: string;
+  state?: string;
+  circuits?: string[]; // e.g., ['TFA', 'NIETOC']
 }
 
 export type PracticeMode = "extemp" | "impromptu" | "congress" | "informative" | "oratory" | "humorous" | "dramatic" | "duo" | "duet" | "prose" | "poetry";

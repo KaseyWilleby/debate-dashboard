@@ -38,6 +38,7 @@ async function scrapeLiveTournaments(): Promise<ScrapedTournament[]> {
         const tournaments: ScrapedTournament[] = [];
 
         // Parse the tournament table (#tournlist)
+        // Columns: [0]=Dates, [1]=Tournament, [2]=City, [3]=State, [4]=Mode, [5]=Registration, [6]=Judge Signup
         $('#tournlist tbody tr').each((_, element) => {
             const $row = $(element);
             const cells = $row.find('td');
@@ -51,6 +52,13 @@ async function scrapeLiveTournaments(): Promise<ScrapedTournament[]> {
 
                 // Extract dates
                 const dateText = $(cells[0]).text().trim();
+
+                // Extract city (column 2)
+                const city = $(cells[2]).text().trim() || undefined;
+
+                // Extract state (column 3) - this is the "LO/TZ Loc" column
+                const stateText = $(cells[3]).text().trim();
+                const state = stateText || undefined;
 
                 // Extract registration status to get close date
                 const regCell = $(cells[5]);
@@ -75,11 +83,24 @@ async function scrapeLiveTournaments(): Promise<ScrapedTournament[]> {
                         registrationCloseDate = '2026-01-01';
                     }
 
+                    // Detect circuits from tournament name
+                    const circuits: string[] = [];
+                    const nameUpper = name.toUpperCase();
+                    if (nameUpper.includes('TFA')) circuits.push('TFA');
+                    if (nameUpper.includes('NIETOC')) circuits.push('NIETOC');
+                    if (nameUpper.includes('TOC')) circuits.push('TOC');
+                    if (nameUpper.includes('NSDA')) circuits.push('NSDA');
+                    if (nameUpper.includes('UIL')) circuits.push('UIL');
+                    if (nameUpper.includes('NCFL')) circuits.push('NCFL');
+
                     tournaments.push({
                         name,
                         url,
                         date: dateText,
-                        registrationCloseDate
+                        registrationCloseDate,
+                        city,
+                        state,
+                        circuits: circuits.length > 0 ? circuits : undefined
                     });
                 }
             }

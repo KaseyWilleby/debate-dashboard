@@ -1042,6 +1042,7 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
     const [schoolYearFilter, setSchoolYearFilter] = React.useState<string>('all');
     const [monthFilter, setMonthFilter] = React.useState<string>('all');
     const [circuitFilter, setCircuitFilter] = React.useState<string>('all');
+    const [stateFilter, setStateFilter] = React.useState<string>('all');
     const { toast } = useToast();
 
     const fetchAndFilterTournaments = React.useCallback(async () => {
@@ -1109,16 +1110,31 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
                 }
             }
 
-            // Circuit filter
+            // Circuit filter - use circuits array if available, fallback to name search
             if (circuitFilter !== 'all') {
-                if (!tournament.name.toUpperCase().includes(circuitFilter.toUpperCase())) {
+                if (tournament.circuits && tournament.circuits.length > 0) {
+                    // Use the circuits array for accurate filtering
+                    if (!tournament.circuits.includes(circuitFilter)) {
+                        return false;
+                    }
+                } else {
+                    // Fallback to name search for tournaments without circuit data
+                    if (!tournament.name.toUpperCase().includes(circuitFilter.toUpperCase())) {
+                        return false;
+                    }
+                }
+            }
+
+            // State filter
+            if (stateFilter !== 'all') {
+                if (!tournament.state || tournament.state.toUpperCase() !== stateFilter.toUpperCase()) {
                     return false;
                 }
             }
 
             return true;
         });
-    }, [scrapedTournaments, searchQuery, schoolYearFilter, monthFilter, circuitFilter]);
+    }, [scrapedTournaments, searchQuery, schoolYearFilter, monthFilter, circuitFilter, stateFilter]);
 
 
     const handleAddTournament = async (scrapedTournament: ScrapedTournament) => {
@@ -1238,6 +1254,52 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
                                 <SelectItem value="UIL">UIL</SelectItem>
                                 <SelectItem value="NSDA">NSDA</SelectItem>
                                 <SelectItem value="IQT">IQT</SelectItem>
+                                <SelectItem value="NCFL">NCFL</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-xs">State</Label>
+                        <Select value={stateFilter} onValueChange={setStateFilter}>
+                            <SelectTrigger className="h-9">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All States</SelectItem>
+                                <SelectItem value="TX">Texas (TX)</SelectItem>
+                                <SelectItem value="CA">California (CA)</SelectItem>
+                                <SelectItem value="FL">Florida (FL)</SelectItem>
+                                <SelectItem value="NY">New York (NY)</SelectItem>
+                                <SelectItem value="IL">Illinois (IL)</SelectItem>
+                                <SelectItem value="PA">Pennsylvania (PA)</SelectItem>
+                                <SelectItem value="OH">Ohio (OH)</SelectItem>
+                                <SelectItem value="GA">Georgia (GA)</SelectItem>
+                                <SelectItem value="NC">North Carolina (NC)</SelectItem>
+                                <SelectItem value="MI">Michigan (MI)</SelectItem>
+                                <SelectItem value="VA">Virginia (VA)</SelectItem>
+                                <SelectItem value="WA">Washington (WA)</SelectItem>
+                                <SelectItem value="AZ">Arizona (AZ)</SelectItem>
+                                <SelectItem value="MA">Massachusetts (MA)</SelectItem>
+                                <SelectItem value="TN">Tennessee (TN)</SelectItem>
+                                <SelectItem value="IN">Indiana (IN)</SelectItem>
+                                <SelectItem value="MO">Missouri (MO)</SelectItem>
+                                <SelectItem value="MD">Maryland (MD)</SelectItem>
+                                <SelectItem value="WI">Wisconsin (WI)</SelectItem>
+                                <SelectItem value="CO">Colorado (CO)</SelectItem>
+                                <SelectItem value="MN">Minnesota (MN)</SelectItem>
+                                <SelectItem value="SC">South Carolina (SC)</SelectItem>
+                                <SelectItem value="AL">Alabama (AL)</SelectItem>
+                                <SelectItem value="LA">Louisiana (LA)</SelectItem>
+                                <SelectItem value="KY">Kentucky (KY)</SelectItem>
+                                <SelectItem value="OR">Oregon (OR)</SelectItem>
+                                <SelectItem value="OK">Oklahoma (OK)</SelectItem>
+                                <SelectItem value="CT">Connecticut (CT)</SelectItem>
+                                <SelectItem value="UT">Utah (UT)</SelectItem>
+                                <SelectItem value="NV">Nevada (NV)</SelectItem>
+                                <SelectItem value="NM">New Mexico (NM)</SelectItem>
+                                <SelectItem value="KS">Kansas (KS)</SelectItem>
+                                <SelectItem value="AR">Arkansas (AR)</SelectItem>
+                                <SelectItem value="MS">Mississippi (MS)</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
