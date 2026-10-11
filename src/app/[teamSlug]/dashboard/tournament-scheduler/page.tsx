@@ -397,32 +397,6 @@ function AddTournamentDialog({ onTournamentCreated }: { onTournamentCreated: (to
             description: "Auto-fill is temporarily unavailable. Please enter tournament details manually.",
             variant: "destructive"
         });
-        /*
-        const result = await extractTournamentInfo(url);
-        if (result.name) form.setValue('name', result.name);
-        if (result.date) {
-            const parsedDate = parse(result.date, 'MMMM d, yyyy', new Date());
-            if (!isNaN(parsedDate.getTime())) {
-                form.setValue('date', parsedDate);
-            }
-        }
-        if (result.registrationCloseDate) {
-            const parsedCloseDate = parse(result.registrationCloseDate, 'MMMM d, yyyy', new Date());
-            if (!isNaN(parsedCloseDate.getTime())) {
-                form.setValue('registrationCloseDate', parsedCloseDate);
-            }
-        }
-        if (result.scheduleUrl) form.setValue('scheduleUrl', result.scheduleUrl);
-        if (result.isSwing !== undefined) form.setValue('isSwing', result.isSwing);
-        if (result.schools && result.schools.length > 0) {
-            form.setValue('schools', result.schools.join(', '));
-        }
-        toast({
-            title: "Information Extracted!",
-            description: result.isSwing
-                ? `Swing tournament detected with ${result.schools?.length || 0} schools.`
-                : "The tournament details have been filled in.",
-        });
     } catch (error) {
         toast({
             variant: "destructive",
@@ -999,32 +973,6 @@ function ImportFromUrlDialog({ onTournamentCreated }: { onTournamentCreated: (to
                 title: "Feature Temporarily Disabled",
                 description: "Import from URL is temporarily unavailable. Please use 'Find Tournaments' or add manually.",
             });
-            /*
-            const result = await extractTournamentInfo(url);
-
-            const parsedDate = parse(result.date, 'MMMM d, yyyy', new Date());
-            const parsedCloseDate = result.registrationCloseDate ? parse(result.registrationCloseDate, 'MMMM d, yyyy', new Date()) : undefined;
-
-            const newTournamentData = {
-                name: result.name,
-                date: format(!isNaN(parsedDate.getTime()) ? parsedDate : new Date(), "yyyy-MM-dd"),
-                registrationCloseDate: parsedCloseDate && !isNaN(parsedCloseDate.getTime()) ? format(parsedCloseDate, "yyyy-MM-dd") : undefined,
-                webpageUrl: url,
-                scheduleUrl: result.scheduleUrl,
-                isSwing: result.isSwing,
-                schools: result.schools,
-            };
-
-            onTournamentCreated(newTournamentData);
-
-            toast({
-                title: "Tournament Imported!",
-                description: result.isSwing
-                    ? `${result.name} has been added as a swing tournament with ${result.schools?.length || 0} schools.`
-                    : `${result.name} has been added to your scheduler.`,
-            });
-            */
-
             setOpen(false);
             setUrl('');
         } catch (error: any) {
