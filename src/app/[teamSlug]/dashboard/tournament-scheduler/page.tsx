@@ -1035,6 +1035,7 @@ function ImportFromUrlDialog({ onTournamentCreated }: { onTournamentCreated: (to
 }
 
 function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { onTournamentCreated: (tournament: Omit<Tournament, 'id' | 'entries'>) => void; existingTournaments: Tournament[] }) {
+    const { firestore } = useFirebase(); // Add Firebase context
     const [open, setOpen] = React.useState(false);
     const [isScraping, setIsScraping] = React.useState(false);
     const [scrapedTournaments, setScrapedTournaments] = React.useState<ScrapedTournament[]>([]);
