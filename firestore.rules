@@ -97,10 +97,10 @@ service cloud.firestore {
      * @description Manages access to tournament documents.
      * @path /tournaments/{tournamentId}
      * Team members can read and update entries. Coaches/superadmins can manage all fields.
+     * Note: All authenticated users can read tournaments (app filters by teamId in queries)
      */
     match /tournaments/{tournamentId} {
-      allow get: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
-      allow list: if isSignedIn(); // Allow listing, application will filter by teamId
+      allow read: if isSignedIn(); // Allow all authenticated users, application filters by teamId
       allow create, delete: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || (isCoach() && request.resource.data.teamId == getUserTeamId()));
       allow update: if isSignedIn() && (
         isSuperAdmin() ||
