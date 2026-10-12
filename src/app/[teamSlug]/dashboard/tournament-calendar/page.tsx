@@ -8,7 +8,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Calendar as CalendarIcon, List, ChevronLeft, ChevronRight, ExternalLink, MapPin, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, query, where } from "firebase/firestore";
 import type { Tournament } from "@/lib/types";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, parse, isToday, isBefore, startOfDay } from "date-fns";
 import NextLink from "next/link";
@@ -22,8 +22,11 @@ export default function TournamentCalendarPage({ params }: { params: { teamSlug:
 
   // Fetch tournaments from Firestore
   const tournamentsQuery = useMemoFirebase(() => {
-    if (!firestore || !user || isAuthLoading) return null;
-    return collection(firestore, 'tournaments');
+    if (!firestore || !user || !user.teamId || isAuthLoading) return null;
+    return query(
+      collection(firestore, 'tournaments'),
+      where('teamId', '==', user.teamId)
+    );
   }, [firestore, user, isAuthLoading]);
 
   const { data: tournaments, isLoading: areTournamentsLoading } = useCollection<Tournament>(tournamentsQuery);
