@@ -1076,9 +1076,9 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
         }
     }, [open, firestoreTournaments]);
 
-    // Client-side filtering
+    // Client-side filtering and sorting
     const filteredTournaments = React.useMemo(() => {
-        return scrapedTournaments.filter(tournament => {
+        const filtered = scrapedTournaments.filter(tournament => {
             // Search filter
             if (searchQuery && !tournament.name.toLowerCase().includes(searchQuery.toLowerCase())) {
                 return false;
@@ -1131,6 +1131,18 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
             }
 
             return true;
+        });
+
+        // Sort by date (chronologically)
+        return filtered.sort((a, b) => {
+            try {
+                const dateA = parse(a.date.replace(', ', ' '), 'M/d yyyy', new Date());
+                const dateB = parse(b.date.replace(', ', ' '), 'M/d yyyy', new Date());
+                return dateA.getTime() - dateB.getTime();
+            } catch (error) {
+                // If parsing fails, keep original order
+                return 0;
+            }
         });
     }, [scrapedTournaments, searchQuery, schoolYearFilter, monthFilter, circuitFilter, stateFilter]);
 
