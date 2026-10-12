@@ -15,9 +15,10 @@ export default function MyResultsPage() {
 
   // Query for user's results
   const resultsQuery = useMemoFirebase(() => {
-    if (!firestore || !user || !user.uid) return null;
+    if (!firestore || !user || !user.uid || !user.teamId) return null;
     return query(
       collection(firestore, 'tournamentResults'),
+      where('teamId', '==', user.teamId),
       where('userId', '==', user.uid)
     );
   }, [firestore, user]);
