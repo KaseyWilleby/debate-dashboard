@@ -101,11 +101,47 @@ export default function FixTournamentDatesPage() {
           if (scrapedTournament) {
             try {
               // Parse the scraped tournament date
-              const dateStr = scrapedTournament.date.trim().replace(',', '');
+              let dateStr = scrapedTournament.date.trim();
+
+              // Handle date ranges: "11/13 - 11/14" -> use first date "11/13"
+              if (dateStr.includes(' - ')) {
+                dateStr = dateStr.split(' - ')[0].trim();
+              }
+
+              // Remove comma if present
+              dateStr = dateStr.replace(',', '').trim();
+
+              // Determine the year for the tournament
+              // If the month is in the past (relative to October), assume next year
+              // Otherwise use current year
+              const currentDate = new Date();
+              const currentYear = currentDate.getFullYear();
+              const currentMonth = currentDate.getMonth() + 1; // 0-indexed
+
+              // Extract month from date string
+              const monthMatch = dateStr.match(/^(\d+)\//);
+              const tournamentMonth = monthMatch ? parseInt(monthMatch[1]) : null;
+
+              let year = currentYear;
+              if (tournamentMonth) {
+                // If we're in October (10) and tournament is in earlier months, it's next year
+                // If tournament is in later months (Nov-Dec), it's this year
+                if (currentMonth === 10 && tournamentMonth < 10) {
+                  year = currentYear + 1;
+                } else if (currentMonth > 10 && tournamentMonth < currentMonth) {
+                  year = currentYear + 1;
+                }
+              }
+
+              // Add year to date string if not present
+              if (!dateStr.includes(year.toString())) {
+                dateStr = `${dateStr} ${year}`;
+              }
+
               const parsedDate = parse(dateStr, 'M/d yyyy', new Date());
 
               if (isNaN(parsedDate.getTime())) {
-                console.log(`   ⚠️  Could not parse scraped date: ${scrapedTournament.date}`);
+                console.log(`   ⚠️  Could not parse scraped date: ${scrapedTournament.date} -> ${dateStr}`);
                 resultsList.push({
                   tournament: tournament.name,
                   status: 'error',
@@ -116,7 +152,7 @@ export default function FixTournamentDatesPage() {
               }
 
               const correctDate = format(parsedDate, 'yyyy-MM-dd');
-              console.log(`   ✅ Updating to: ${correctDate}`);
+              console.log(`   ✅ Updating to: ${correctDate} (from: ${scrapedTournament.date})`);
 
               // Update the tournament
               const tournamentRef = doc(firestore, 'tournaments', tournament.id);
