@@ -339,13 +339,13 @@ export default function TournamentSchedulerPage({ params }: { params: { teamSlug
               viewMode === 'card' ? (
                 <Accordion type="single" collapsible className="w-full space-y-4">
                   {sortedTournaments.map((tournament) => (
-                    <TournamentItem key={tournament.id} tournament={tournament} onDelete={deleteTournament} onUpdate={updateTournament} onArchive={archiveTournament} />
+                    <TournamentItem key={tournament.id} tournament={tournament} onDelete={deleteTournament} onUpdate={updateTournament} onArchive={archiveTournament} teamSlug={params.teamSlug} />
                   ))}
                 </Accordion>
               ) : (
                 <div className="space-y-2">
                   {sortedTournaments.map((tournament) => (
-                    <TournamentListItem key={tournament.id} tournament={tournament} onDelete={deleteTournament} onUpdate={updateTournament} onArchive={archiveTournament} />
+                    <TournamentListItem key={tournament.id} tournament={tournament} onDelete={deleteTournament} onUpdate={updateTournament} onArchive={archiveTournament} teamSlug={params.teamSlug} />
                   ))}
                 </div>
               )
@@ -738,7 +738,7 @@ function EditTournamentDialog({ tournament, open, onOpenChange, onUpdate }: { to
 }
 
 
-function TournamentItem({ tournament, onDelete, onUpdate, onArchive }: { tournament: Tournament, onDelete: (id: string) => void, onUpdate: (tournament: Tournament) => void, onArchive: (id: string, isArchived: boolean) => void }) {
+function TournamentItem({ tournament, onDelete, onUpdate, onArchive, teamSlug }: { tournament: Tournament, onDelete: (id: string) => void, onUpdate: (tournament: Tournament) => void, onArchive: (id: string, isArchived: boolean) => void, teamSlug: string }) {
     const [editOpen, setEditOpen] = React.useState(false);
 
     const registrationClosed = React.useMemo(() => {
@@ -783,7 +783,7 @@ function TournamentItem({ tournament, onDelete, onUpdate, onArchive }: { tournam
                   </Button>
                   )}
                   <Button variant="default" size="sm" asChild onClick={(e) => e.stopPropagation()}>
-                      <NextLink href={`/${params.teamSlug}/dashboard/tournaments/${tournament.id}`}>
+                      <NextLink href={`/${teamSlug}/dashboard/tournaments/${tournament.id}`}>
                       <ExternalLink className="mr-2 h-3 w-3"/> View Details
                       </NextLink>
                   </Button>
@@ -867,7 +867,7 @@ function TournamentItem({ tournament, onDelete, onUpdate, onArchive }: { tournam
     )
 }
 
-function TournamentListItem({ tournament, onDelete, onUpdate, onArchive }: { tournament: Tournament, onDelete: (id: string) => void, onUpdate: (tournament: Tournament) => void, onArchive: (id: string, isArchived: boolean) => void }) {
+function TournamentListItem({ tournament, onDelete, onUpdate, onArchive, teamSlug }: { tournament: Tournament, onDelete: (id: string) => void, onUpdate: (tournament: Tournament) => void, onArchive: (id: string, isArchived: boolean) => void, teamSlug: string }) {
     const [editOpen, setEditOpen] = React.useState(false);
 
     const registrationClosed = React.useMemo(() => {
@@ -911,7 +911,7 @@ function TournamentListItem({ tournament, onDelete, onUpdate, onArchive }: { tou
               </Button>
             )}
             <Button variant="default" size="sm" asChild>
-              <NextLink href={`/${params.teamSlug}/dashboard/tournaments/${tournament.id}`}>
+              <NextLink href={`/${teamSlug}/dashboard/tournaments/${tournament.id}`}>
                 <ExternalLink className="h-3 w-3" />
               </NextLink>
             </Button>
