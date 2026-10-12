@@ -90,7 +90,7 @@ const tournamentSchema = z.object({
   schools: z.string().optional(), // Comma-separated school names
 });
 
-export default function TournamentSchedulerPage() {
+export default function TournamentSchedulerPage({ params }: { params: { teamSlug: string } }) {
   const { user, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -783,7 +783,7 @@ function TournamentItem({ tournament, onDelete, onUpdate, onArchive }: { tournam
                   </Button>
                   )}
                   <Button variant="default" size="sm" asChild onClick={(e) => e.stopPropagation()}>
-                      <NextLink href={`/dashboard/tournaments/${tournament.id}`}>
+                      <NextLink href={`/${params.teamSlug}/dashboard/tournaments/${tournament.id}`}>
                       <ExternalLink className="mr-2 h-3 w-3"/> View Details
                       </NextLink>
                   </Button>
@@ -911,7 +911,7 @@ function TournamentListItem({ tournament, onDelete, onUpdate, onArchive }: { tou
               </Button>
             )}
             <Button variant="default" size="sm" asChild>
-              <NextLink href={`/dashboard/tournaments/${tournament.id}`}>
+              <NextLink href={`/${params.teamSlug}/dashboard/tournaments/${tournament.id}`}>
                 <ExternalLink className="h-3 w-3" />
               </NextLink>
             </Button>
