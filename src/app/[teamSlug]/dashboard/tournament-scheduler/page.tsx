@@ -1136,21 +1136,52 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
         // Sort by date (chronologically)
         return filtered.sort((a, b) => {
             try {
-                // Handle various date formats: "12/6, 2024" or "12/6 2024" or "12/6/2024"
-                let dateStrA = a.date.trim();
-                let dateStrB = b.date.trim();
+                // Helper function to parse scraped tournament dates
+                const parseScrapedDate = (dateStr: string): Date => {
+                    let str = dateStr.trim();
 
-                // Remove comma if present: "12/6, 2024" -> "12/6 2024"
-                dateStrA = dateStrA.replace(',', '');
-                dateStrB = dateStrB.replace(',', '');
+                    // Handle date ranges: "11/13 - 11/14" -> use first date "11/13"
+                    if (str.includes(' - ')) {
+                        str = str.split(' - ')[0].trim();
+                    }
 
-                // Parse with flexible format
-                const dateA = parse(dateStrA, 'M/d yyyy', new Date());
-                const dateB = parse(dateStrB, 'M/d yyyy', new Date());
+                    // Remove comma if present
+                    str = str.replace(',', '').trim();
+
+                    // Determine the year
+                    const currentDate = new Date();
+                    const currentYear = currentDate.getFullYear();
+                    const currentMonth = currentDate.getMonth() + 1; // 0-indexed
+
+                    // Extract month from date string
+                    const monthMatch = str.match(/^(\d+)\//);
+                    const tournamentMonth = monthMatch ? parseInt(monthMatch[1]) : null;
+
+                    let year = currentYear;
+                    if (tournamentMonth) {
+                        // If we're in October (10) and tournament is in earlier months, it's next year
+                        // If tournament is in later months (Nov-Dec), it's this year
+                        if (currentMonth === 10 && tournamentMonth < 10) {
+                            year = currentYear + 1;
+                        } else if (currentMonth > 10 && tournamentMonth < currentMonth) {
+                            year = currentYear + 1;
+                        }
+                    }
+
+                    // Add year to date string if not present
+                    if (!str.includes(year.toString())) {
+                        str = `${str} ${year}`;
+                    }
+
+                    return parse(str, 'M/d yyyy', new Date());
+                };
+
+                const dateA = parseScrapedDate(a.date);
+                const dateB = parseScrapedDate(b.date);
 
                 // Validate parsed dates
                 if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
-                    console.warn('Failed to parse dates:', a.date, b.date);
+                    console.warn('Failed to parse dates for sorting:', a.date, b.date);
                     return 0;
                 }
 
