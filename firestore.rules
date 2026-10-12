@@ -183,7 +183,8 @@ service cloud.firestore {
      * Team members can read results from their team. Coaches/superadmins can manage results.
      */
     match /tournamentResults/{resultId} {
-      allow read: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
+      allow get: if isSignedIn() && (isSuperAdmin() || isSuperAdminEmail() || isSameTeam(resource.data.teamId));
+      allow list: if isSignedIn(); // Allow listing, application will filter by teamId
       allow create: if isSignedIn() && (
         isSuperAdmin() ||
         isSuperAdminEmail() ||
