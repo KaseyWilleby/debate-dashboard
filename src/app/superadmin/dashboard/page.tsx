@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, Users, ArrowRight, BarChart3, Database, TestTube2, RefreshCw } from "lucide-react";
+import { Building2, Users, ArrowRight, BarChart3, Database, TestTube2, RefreshCw, Calendar } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
@@ -231,6 +231,33 @@ export default function SuperadminDashboardPage() {
                     <span className="text-muted-foreground">Not yet scraped</span>
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/superadmin/dashboard/fix-tournament-dates" className="block">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 border-yellow-200 dark:border-yellow-800">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900">
+                  <Calendar className="h-6 w-6 text-yellow-600 dark:text-yellow-300" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle className="text-xl">Fix Tournament Dates</CardTitle>
+                  <CardDescription className="mt-1">
+                    One-time script to fix incorrectly saved tournament dates
+                  </CardDescription>
+                </div>
+                <ArrowRight className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-yellow-600" />
+                  <span className="text-muted-foreground">Utility script</span>
+                </div>
               </div>
             </CardContent>
           </Card>
