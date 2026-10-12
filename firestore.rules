@@ -570,21 +570,21 @@ service cloud.firestore {
     /**
      * @description Manages access to scraped tournaments collection.
      * @path /scrapedTournaments/{tournamentId}
-     * All authenticated users can read. Only server (via admin SDK) can write.
+     * All authenticated users can read. Only superadmins can write.
      */
     match /scrapedTournaments/{tournamentId} {
       allow read: if isSignedIn();
-      allow write: if false; // Only admin SDK can write
+      allow write: if isSuperAdmin() || isSuperAdminEmail(); // Allow superadmins to scrape and save tournaments
     }
 
     /**
      * @description Manages access to metadata collection.
      * @path /metadata/{docId}
-     * All authenticated users can read metadata. Only server can write.
+     * All authenticated users can read metadata. Only superadmins can write.
      */
     match /metadata/{docId} {
       allow read: if isSignedIn();
-      allow write: if false; // Only admin SDK can write
+      allow write: if isSuperAdmin() || isSuperAdminEmail(); // Allow superadmins to update scraper metadata
     }
   }
 }

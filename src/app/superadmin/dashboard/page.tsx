@@ -2,12 +2,14 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, Users, ArrowRight, BarChart3, Database, TestTube2 } from "lucide-react";
+import { Building2, Users, ArrowRight, BarChart3, Database, TestTube2, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { Team, User } from "@/lib/types";
+import { formatDistanceToNow } from "date-fns";
+import * as React from "react";
 
 export default function SuperadminDashboardPage() {
   const { user } = useAuth();
@@ -26,8 +28,15 @@ export default function SuperadminDashboardPage() {
   }, [firestore]);
   const { data: users } = useCollection<User>(usersQuery);
 
+  const metadataQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'metadata');
+  }, [firestore]);
+  const { data: metadata } = useCollection<{ lastScraped: string; tournamentCount: number }>(metadataQuery);
+
   const pendingApprovals = users?.filter(u => !u.approved).length || 0;
   const activeTeams = teams?.filter(t => t.isActive).length || 0;
+  const scraperMetadata = metadata?.find(m => m.id === 'tournamentScraper');
 
   return (
     <div className="flex flex-col gap-6">
@@ -178,6 +187,50 @@ export default function SuperadminDashboardPage() {
                   <div className="h-2 w-2 rounded-full bg-green-600" />
                   <span className="text-muted-foreground">Full tool access</span>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/superadmin/dashboard/tournament-scraper" className="block">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-lg bg-orange-100 dark:bg-orange-900">
+                  <RefreshCw className="h-6 w-6 text-orange-600 dark:text-orange-300" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle className="text-xl">Tournament Scraper</CardTitle>
+                  <CardDescription className="mt-1">
+                    Manage automatic tournament scraping from Tabroom.com
+                  </CardDescription>
+                </div>
+                <ArrowRight className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4 text-sm">
+                {scraperMetadata ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-orange-600" />
+                      <span className="text-muted-foreground">
+                        {scraperMetadata.tournamentCount.toLocaleString()} tournaments
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-green-600" />
+                      <span className="text-muted-foreground">
+                        {formatDistanceToNow(new Date(scraperMetadata.lastScraped), { addSuffix: true })}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-gray-400" />
+                    <span className="text-muted-foreground">Not yet scraped</span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
