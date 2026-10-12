@@ -1168,11 +1168,23 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
             // Use scraped data directly (AI extraction disabled due to production issues)
             const dateStr = scrapedTournament.date.trim().replace(',', '');
             const parsedDate = parse(dateStr, 'M/d yyyy', new Date());
+
+            // Validate the parsed date
+            if (isNaN(parsedDate.getTime())) {
+                console.error('Failed to parse tournament date:', scrapedTournament.date, 'parsed as:', parsedDate);
+                toast({
+                    variant: "destructive",
+                    title: "Invalid Date",
+                    description: `Could not parse date "${scrapedTournament.date}" for tournament "${scrapedTournament.name}". Please add it manually.`,
+                });
+                return;
+            }
+
             const parsedCloseDate = scrapedTournament.registrationCloseDate ? parse(scrapedTournament.registrationCloseDate, 'yyyy-MM-dd', new Date()) : undefined;
 
             const newTournamentData = {
                 name: scrapedTournament.name,
-                date: format(!isNaN(parsedDate.getTime()) ? parsedDate : new Date(), "yyyy-MM-dd"),
+                date: format(parsedDate, "yyyy-MM-dd"),
                 registrationCloseDate: parsedCloseDate && !isNaN(parsedCloseDate.getTime()) ? format(parsedCloseDate, "yyyy-MM-dd") : undefined,
                 webpageUrl: scrapedTournament.url,
                 scheduleUrl: scrapedTournament.url, // Use webpage URL as schedule URL
@@ -1180,7 +1192,7 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
                 schools: undefined, // AI would populate this for swing tournaments
             };
             onTournamentCreated(newTournamentData);
-            
+
             setScrapedTournaments(prev => prev.filter(t => t.url !== scrapedTournament.url));
 
         } catch (error) {
