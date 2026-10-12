@@ -81,8 +81,18 @@ export default function TournamentCalendarPage({ params }: { params: { teamSlug:
   // Get tournaments for a specific date
   const getTournamentsForDate = (date: Date) => {
     return activeTournaments.filter(tournament => {
-      const tournamentDate = parse(tournament.date, 'yyyy-MM-dd', new Date());
-      return isSameDay(tournamentDate, date);
+      try {
+        const tournamentDate = parse(tournament.date, 'yyyy-MM-dd', new Date());
+        // Validate the parsed date
+        if (isNaN(tournamentDate.getTime())) {
+          console.warn('Invalid tournament date:', tournament.date, 'for tournament:', tournament.name);
+          return false;
+        }
+        return isSameDay(tournamentDate, date);
+      } catch (error) {
+        console.error('Error parsing tournament date:', tournament.date, error);
+        return false;
+      }
     });
   };
 
@@ -93,11 +103,20 @@ export default function TournamentCalendarPage({ params }: { params: { teamSlug:
     const past: Tournament[] = [];
 
     activeTournaments.forEach(tournament => {
-      const tournamentDate = parse(tournament.date, 'yyyy-MM-dd', new Date());
-      if (isBefore(tournamentDate, today)) {
-        past.push(tournament);
-      } else {
-        future.push(tournament);
+      try {
+        const tournamentDate = parse(tournament.date, 'yyyy-MM-dd', new Date());
+        // Validate the parsed date
+        if (isNaN(tournamentDate.getTime())) {
+          console.warn('Invalid tournament date in sorting:', tournament.date, 'for tournament:', tournament.name);
+          return;
+        }
+        if (isBefore(tournamentDate, today)) {
+          past.push(tournament);
+        } else {
+          future.push(tournament);
+        }
+      } catch (error) {
+        console.error('Error parsing tournament date in sorting:', tournament.date, error);
       }
     });
 
@@ -243,7 +262,8 @@ export default function TournamentCalendarPage({ params }: { params: { teamSlug:
               {sortedTournaments.length > 0 ? (
                 sortedTournaments.map((tournament) => {
                   const tournamentDate = parse(tournament.date, 'yyyy-MM-dd', new Date());
-                  const isPast = isBefore(tournamentDate, startOfDay(new Date()));
+                  const isPast = !isNaN(tournamentDate.getTime()) && isBefore(tournamentDate, startOfDay(new Date()));
+                  const isValidDate = !isNaN(tournamentDate.getTime());
 
                   return (
                     <Card key={tournament.id} className={cn(isPast && "opacity-60")}>
@@ -259,7 +279,12 @@ export default function TournamentCalendarPage({ params }: { params: { teamSlug:
                             <CardDescription className="flex flex-col gap-1">
                               <div className="flex items-center gap-2">
                                 <CalendarIcon className="h-4 w-4" />
-                                <span>{format(tournamentDate, 'EEEE, MMMM d, yyyy')}</span>
+                                <span>
+                                  {isValidDate
+                                    ? format(tournamentDate, 'EEEE, MMMM d, yyyy')
+                                    : `Invalid Date: ${tournament.date}`
+                                  }
+                                </span>
                               </div>
                               {tournament.registrationCloseDate && (
                                 <div className="text-sm">
