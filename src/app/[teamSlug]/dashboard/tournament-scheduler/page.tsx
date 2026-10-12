@@ -1136,11 +1136,27 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
         // Sort by date (chronologically)
         return filtered.sort((a, b) => {
             try {
-                const dateA = parse(a.date.replace(', ', ' '), 'M/d yyyy', new Date());
-                const dateB = parse(b.date.replace(', ', ' '), 'M/d yyyy', new Date());
+                // Handle various date formats: "12/6, 2024" or "12/6 2024" or "12/6/2024"
+                let dateStrA = a.date.trim();
+                let dateStrB = b.date.trim();
+
+                // Remove comma if present: "12/6, 2024" -> "12/6 2024"
+                dateStrA = dateStrA.replace(',', '');
+                dateStrB = dateStrB.replace(',', '');
+
+                // Parse with flexible format
+                const dateA = parse(dateStrA, 'M/d yyyy', new Date());
+                const dateB = parse(dateStrB, 'M/d yyyy', new Date());
+
+                // Validate parsed dates
+                if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+                    console.warn('Failed to parse dates:', a.date, b.date);
+                    return 0;
+                }
+
                 return dateA.getTime() - dateB.getTime();
             } catch (error) {
-                // If parsing fails, keep original order
+                console.error('Error sorting tournaments by date:', error, a.date, b.date);
                 return 0;
             }
         });
@@ -1150,7 +1166,8 @@ function FindTournamentDialog({ onTournamentCreated, existingTournaments }: { on
     const handleAddTournament = async (scrapedTournament: ScrapedTournament) => {
         try {
             // Use scraped data directly (AI extraction disabled due to production issues)
-            const parsedDate = parse(scrapedTournament.date.replace(', ', ' '), 'M/d yyyy', new Date());
+            const dateStr = scrapedTournament.date.trim().replace(',', '');
+            const parsedDate = parse(dateStr, 'M/d yyyy', new Date());
             const parsedCloseDate = scrapedTournament.registrationCloseDate ? parse(scrapedTournament.registrationCloseDate, 'yyyy-MM-dd', new Date()) : undefined;
 
             const newTournamentData = {
