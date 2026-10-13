@@ -85,7 +85,13 @@ export default function TournamentDetailsPage() {
     notFound();
   }
 
-  const registrationClosed = tournament.registrationCloseDate && parseLocalDate(tournament.registrationCloseDate) < new Date();
+  // Check if registration is currently open
+  const now = new Date();
+  const registrationPastCloseDate = tournament.registrationCloseDate && parseLocalDate(tournament.registrationCloseDate) < now;
+  const registrationBeforeOpenDate = tournament.registrationOpenDate && parseLocalDate(tournament.registrationOpenDate) > now;
+  const registrationManuallyDisabled = tournament.registrationEnabled === false;
+
+  const registrationClosed = registrationPastCloseDate || registrationBeforeOpenDate || registrationManuallyDisabled;
   const isAdmin = (user?.role === 'coach' || user?.role === 'superadmin');
 
   // Available events

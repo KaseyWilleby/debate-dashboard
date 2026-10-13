@@ -145,7 +145,9 @@ export interface Tournament {
   webpageUrl?: string;
   scheduleUrl?: string;
   entries: TournamentEntry[];
-  registrationCloseDate?: string;
+  registrationCloseDate?: string; // Tabroom registration deadline
+  registrationOpenDate?: string; // When student registration opens (defaults to creation time)
+  registrationEnabled?: boolean; // Manual toggle to enable/disable registration (defaults to true)
   leaveTime?: string;
   periodLeaving?: PeriodLeaving;
   notes?: string;

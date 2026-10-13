@@ -597,9 +597,17 @@ export default function TournamentSignupPage() {
                 const totalEvents = tournament.isSwing && userEntry?.schoolEntries
                   ? userEntry.schoolEntries.reduce((sum, se) => sum + se.events.length, 0)
                   : (userEntry?.events.length || 0);
-                const registrationClosed = tournament.registrationCloseDate
-                  ? new Date(tournament.registrationCloseDate) < new Date()
+
+                // Check if registration is currently open
+                const now = new Date();
+                const registrationPastCloseDate = tournament.registrationCloseDate
+                  ? new Date(tournament.registrationCloseDate) < now
                   : false;
+                const registrationBeforeOpenDate = tournament.registrationOpenDate
+                  ? new Date(tournament.registrationOpenDate) > now
+                  : false;
+                const registrationManuallyDisabled = tournament.registrationEnabled === false;
+                const registrationClosed = registrationPastCloseDate || registrationBeforeOpenDate || registrationManuallyDisabled;
 
                 return (
                   <div key={tournament.id} className="space-y-2">
