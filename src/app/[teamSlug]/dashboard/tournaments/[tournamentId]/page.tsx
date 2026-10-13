@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import type { Tournament, User, TournamentEntry, Partnership } from "@/lib/types";
+import type { Tournament, User, TournamentEntry, Partnership, SchoolEntry } from "@/lib/types";
 import { useParams, notFound, useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,9 @@ export default function TournamentDetailsPage() {
   const [selectedMember, setSelectedMember] = React.useState<string>("");
   const [selectedEvents, setSelectedEvents] = React.useState<string[]>([]);
   const [partnerships, setPartnerships] = React.useState<Record<string, string[]>>({});
+
+  // Swing tournament state (per-school entries)
+  const [schoolEntries, setSchoolEntries] = React.useState<Record<string, { events: string[], partnerships: Record<string, string[]> }>>({});
 
   const tournamentDocRef = useMemoFirebase(() => {
     if (!firestore || !tournamentId) return null;
@@ -97,6 +100,18 @@ export default function TournamentDetailsPage() {
     setSelectedMember("");
     setSelectedEvents([]);
     setPartnerships({});
+
+    // Initialize swing tournament entries
+    if (tournament.isSwing && tournament.schools) {
+      const initialSchoolEntries: Record<string, { events: string[], partnerships: Record<string, string[]> }> = {};
+      tournament.schools.forEach(school => {
+        initialSchoolEntries[school] = { events: [], partnerships: {} };
+      });
+      setSchoolEntries(initialSchoolEntries);
+    } else {
+      setSchoolEntries({});
+    }
+
     setShowManualEntryDialog(true);
   };
 
@@ -106,18 +121,53 @@ export default function TournamentDetailsPage() {
     // Pre-fill with user's own info if they already have an entry
     if (userEntry) {
       setSelectedMember(user.id);
-      setSelectedEvents(userEntry.events);
 
-      // Pre-fill partnerships
-      const partnerMap: Record<string, string[]> = {};
-      userEntry.partnerships.forEach(p => {
-        partnerMap[p.event] = p.partnerIds;
-      });
-      setPartnerships(partnerMap);
+      if (tournament.isSwing && userEntry.schoolEntries) {
+        // Pre-fill swing tournament data
+        const swingEntries: Record<string, { events: string[], partnerships: Record<string, string[]> }> = {};
+        userEntry.schoolEntries.forEach(se => {
+          const partnerMap: Record<string, string[]> = {};
+          se.partnerships.forEach(p => {
+            partnerMap[p.event] = p.partnerIds;
+          });
+          swingEntries[se.school] = { events: se.events, partnerships: partnerMap };
+        });
+        setSchoolEntries(swingEntries);
+        setSelectedEvents([]);
+        setPartnerships({});
+      } else {
+        // Pre-fill regular tournament data
+        setSelectedEvents(userEntry.events);
+        const partnerMap: Record<string, string[]> = {};
+        userEntry.partnerships.forEach(p => {
+          partnerMap[p.event] = p.partnerIds;
+        });
+        setPartnerships(partnerMap);
+
+        // Initialize empty swing entries
+        if (tournament.isSwing && tournament.schools) {
+          const initialSchoolEntries: Record<string, { events: string[], partnerships: Record<string, string[]> }> = {};
+          tournament.schools.forEach(school => {
+            initialSchoolEntries[school] = { events: [], partnerships: {} };
+          });
+          setSchoolEntries(initialSchoolEntries);
+        }
+      }
     } else {
       setSelectedMember(user.id);
       setSelectedEvents([]);
       setPartnerships({});
+
+      // Initialize swing tournament entries
+      if (tournament.isSwing && tournament.schools) {
+        const initialSchoolEntries: Record<string, { events: string[], partnerships: Record<string, string[]> }> = {};
+        tournament.schools.forEach(school => {
+          initialSchoolEntries[school] = { events: [], partnerships: {} };
+        });
+        setSchoolEntries(initialSchoolEntries);
+      } else {
+        setSchoolEntries({});
+      }
     }
 
     setShowManualEntryDialog(true);
@@ -166,26 +216,73 @@ export default function TournamentDetailsPage() {
     }));
   };
 
+  // Swing tournament handlers
+  const handleSchoolEventToggle = (school: string, event: string, checked: boolean) => {
+    setSchoolEntries(prev => {
+      const schoolEntry = prev[school] || { events: [], partnerships: {} };
+      const events = schoolEntry.events;
+
+      if (checked) {
+        // Check event limits (per school)
+        const debateEventsCount = events.filter(e => DEBATE_EVENTS.includes(e)).length;
+        const isDebateEvent = DEBATE_EVENTS.includes(event);
+
+        if (events.length >= 3) {
+          alert('Maximum 3 events allowed per school');
+          return prev;
+        }
+
+        if (isDebateEvent && debateEventsCount >= 1) {
+          alert('Maximum 1 debate event allowed per school');
+          return prev;
+        }
+
+        // Check extemp conflict
+        if ((event === 'FX' && events.includes('DX')) || (event === 'DX' && events.includes('FX'))) {
+          alert('Cannot sign up for both FX and DX at the same school');
+          return prev;
+        }
+
+        return {
+          ...prev,
+          [school]: {
+            events: [...events, event],
+            partnerships: schoolEntry.partnerships
+          }
+        };
+      } else {
+        // Remove partnerships when event is unchecked
+        const newPartnerships = { ...schoolEntry.partnerships };
+        delete newPartnerships[event];
+
+        return {
+          ...prev,
+          [school]: {
+            events: events.filter(e => e !== event),
+            partnerships: newPartnerships
+          }
+        };
+      }
+    });
+  };
+
+  const handleSchoolPartnerChange = (school: string, event: string, partnerIds: string[]) => {
+    setSchoolEntries(prev => ({
+      ...prev,
+      [school]: {
+        ...prev[school],
+        partnerships: {
+          ...prev[school].partnerships,
+          [event]: partnerIds
+        }
+      }
+    }));
+  };
+
   const handleCreateManualEntry = async () => {
     if (!selectedMember) {
       alert('Please select a member');
       return;
-    }
-
-    if (selectedEvents.length === 0) {
-      alert('Please select at least one event');
-      return;
-    }
-
-    // Validate partnerships
-    for (const event of selectedEvents) {
-      if (PARTNERED_EVENTS.includes(event)) {
-        const partners = partnerships[event] || [];
-        if (partners.length === 0) {
-          alert(`Please select a partner for ${event}`);
-          return;
-        }
-      }
     }
 
     const member = teamMembers.find(m => m.id === selectedMember);
@@ -195,26 +292,100 @@ export default function TournamentDetailsPage() {
     const existingEntryIndex = tournament.entries.findIndex(e => e.id === selectedMember);
     const isUpdate = existingEntryIndex !== -1;
 
-    // Create entry
-    const newEntry: TournamentEntry = {
-      id: member.id,
-      name: member.name,
-      events: selectedEvents,
-      partnerships: selectedEvents
-        .filter(event => PARTNERED_EVENTS.includes(event))
-        .map(event => {
-          const partnerIds = partnerships[event] || [];
-          const partnerNames = partnerIds
-            .map(pid => teamMembers.find(m => m.id === pid)?.name)
-            .filter(Boolean) as string[];
+    let newEntry: TournamentEntry;
 
-          return {
-            event,
-            partnerIds,
-            partnerNames
-          };
-        })
-    };
+    if (tournament.isSwing && tournament.schools) {
+      // Swing tournament entry
+      const hasAnyEvents = Object.values(schoolEntries).some(se => se.events.length > 0);
+      if (!hasAnyEvents) {
+        alert('Please select at least one event for at least one school');
+        return;
+      }
+
+      // Validate partnerships for each school
+      for (const school of tournament.schools) {
+        const schoolEntry = schoolEntries[school];
+        if (!schoolEntry) continue;
+
+        for (const event of schoolEntry.events) {
+          if (PARTNERED_EVENTS.includes(event)) {
+            const partners = schoolEntry.partnerships[event] || [];
+            if (partners.length === 0) {
+              alert(`Please select a partner for ${event} at ${school}`);
+              return;
+            }
+          }
+        }
+      }
+
+      // Create school entries
+      const formattedSchoolEntries: SchoolEntry[] = tournament.schools.map(school => {
+        const schoolEntry = schoolEntries[school] || { events: [], partnerships: {} };
+        return {
+          school,
+          events: schoolEntry.events,
+          partnerships: schoolEntry.events
+            .filter(event => PARTNERED_EVENTS.includes(event))
+            .map(event => {
+              const partnerIds = schoolEntry.partnerships[event] || [];
+              const partnerNames = partnerIds
+                .map(pid => teamMembers.find(m => m.id === pid)?.name)
+                .filter(Boolean) as string[];
+
+              return {
+                event,
+                partnerIds,
+                partnerNames
+              };
+            })
+        };
+      });
+
+      newEntry = {
+        id: member.id,
+        name: member.name,
+        events: [], // Empty for swing tournaments
+        partnerships: [], // Empty for swing tournaments
+        schoolEntries: formattedSchoolEntries
+      };
+    } else {
+      // Regular tournament entry
+      if (selectedEvents.length === 0) {
+        alert('Please select at least one event');
+        return;
+      }
+
+      // Validate partnerships
+      for (const event of selectedEvents) {
+        if (PARTNERED_EVENTS.includes(event)) {
+          const partners = partnerships[event] || [];
+          if (partners.length === 0) {
+            alert(`Please select a partner for ${event}`);
+            return;
+          }
+        }
+      }
+
+      newEntry = {
+        id: member.id,
+        name: member.name,
+        events: selectedEvents,
+        partnerships: selectedEvents
+          .filter(event => PARTNERED_EVENTS.includes(event))
+          .map(event => {
+            const partnerIds = partnerships[event] || [];
+            const partnerNames = partnerIds
+              .map(pid => teamMembers.find(m => m.id === pid)?.name)
+              .filter(Boolean) as string[];
+
+            return {
+              event,
+              partnerIds,
+              partnerNames
+            };
+          })
+      };
+    }
 
     try {
       if (!firestore) return;
@@ -759,103 +930,217 @@ export default function TournamentDetailsPage() {
               </div>
             )}
 
-            {/* Event Selection */}
-            <div className="space-y-3">
-              <Label>Select Events (max 3, max 1 debate event)</Label>
+            {/* Event Selection - Regular or Swing Tournament */}
+            {tournament.isSwing && tournament.schools ? (
+              /* Swing Tournament - Per-School Selection */
+              <div className="space-y-6">
+                <Label className="text-base">Select Events by School (max 3 per school, max 1 debate per school)</Label>
+                {tournament.schools.map(school => {
+                  const schoolEntry = schoolEntries[school] || { events: [], partnerships: {} };
+                  const schoolEvents = schoolEntry.events;
 
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm font-medium mb-2">Debate Events</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {DEBATE_EVENTS.map(event => (
-                      <div key={event} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`event-${event}`}
-                          checked={selectedEvents.includes(event)}
-                          onCheckedChange={(checked) => handleEventToggle(event, checked as boolean)}
-                        />
-                        <Label
-                          htmlFor={`event-${event}`}
-                          className="text-sm font-normal cursor-pointer"
-                        >
-                          {event}
-                        </Label>
+                  return (
+                    <div key={school} className="rounded-lg border p-4 space-y-4 bg-muted/30">
+                      <h4 className="font-semibold text-lg">{school}</h4>
+
+                      {/* Debate Events for this school */}
+                      <div>
+                        <p className="text-sm font-medium mb-2">Debate Events</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {DEBATE_EVENTS.map(event => (
+                            <div key={event} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`${school}-${event}`}
+                                checked={schoolEvents.includes(event)}
+                                onCheckedChange={(checked) => handleSchoolEventToggle(school, event, checked as boolean)}
+                              />
+                              <Label
+                                htmlFor={`${school}-${event}`}
+                                className="text-sm font-normal cursor-pointer"
+                              >
+                                {event}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
 
-                <div>
-                  <p className="text-sm font-medium mb-2">Speech Events</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {SPEECH_EVENTS.map(event => (
-                      <div key={event} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`event-${event}`}
-                          checked={selectedEvents.includes(event)}
-                          onCheckedChange={(checked) => handleEventToggle(event, checked as boolean)}
-                        />
-                        <Label
-                          htmlFor={`event-${event}`}
-                          className="text-sm font-normal cursor-pointer"
-                        >
-                          {event}
-                        </Label>
+                      {/* Speech Events for this school */}
+                      <div>
+                        <p className="text-sm font-medium mb-2">Speech Events</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {SPEECH_EVENTS.map(event => (
+                            <div key={event} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`${school}-${event}`}
+                                checked={schoolEvents.includes(event)}
+                                onCheckedChange={(checked) => handleSchoolEventToggle(school, event, checked as boolean)}
+                              />
+                              <Label
+                                htmlFor={`${school}-${event}`}
+                                className="text-sm font-normal cursor-pointer"
+                              >
+                                {event}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            {/* Partner Selection for partnered events */}
-            {selectedEvents.filter(e => PARTNERED_EVENTS.includes(e)).length > 0 && (
-              <div className="space-y-3">
-                <Label>Select Partners</Label>
-                {selectedEvents
-                  .filter(event => PARTNERED_EVENTS.includes(event))
-                  .map(event => (
-                    <div key={event} className="space-y-2">
-                      <p className="text-sm font-medium">{event} Partner</p>
-                      <Select
-                        value={partnerships[event]?.[0] || ""}
-                        onValueChange={(value) => handlePartnerChange(event, value ? [value] : [])}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={`Choose partner for ${event}`} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {teamMembers
-                            .filter(m => m.id !== selectedMember)
-                            .map(member => (
-                              <SelectItem key={member.id} value={member.id}>
-                                {member.name} ({member.role})
-                              </SelectItem>
+                      {/* Partner Selection for this school */}
+                      {schoolEvents.filter(e => PARTNERED_EVENTS.includes(e)).length > 0 && (
+                        <div className="space-y-3 bg-background rounded-md p-3">
+                          <Label className="text-sm font-semibold">Partners for {school}</Label>
+                          {schoolEvents
+                            .filter(event => PARTNERED_EVENTS.includes(event))
+                            .map(event => (
+                              <div key={event} className="space-y-2">
+                                <p className="text-sm font-medium">{event} Partner</p>
+                                <Select
+                                  value={schoolEntry.partnerships[event]?.[0] || ""}
+                                  onValueChange={(value) => handleSchoolPartnerChange(school, event, value ? [value] : [])}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder={`Choose partner for ${event}`} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {teamMembers
+                                      .filter(m => m.id !== selectedMember)
+                                      .map(member => (
+                                        <SelectItem key={member.id} value={member.id}>
+                                          {member.name} ({member.role})
+                                        </SelectItem>
+                                      ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ))}
-              </div>
-            )}
-
-            {/* Selected Events Summary */}
-            {selectedEvents.length > 0 && (
-              <div className="rounded-lg border p-3 bg-muted/50">
-                <p className="text-sm font-medium mb-2">Selected Events:</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedEvents.map(event => (
-                    <Badge key={event} variant="secondary">
-                      {event}
-                      {PARTNERED_EVENTS.includes(event) && partnerships[event]?.[0] && (
-                        <span className="ml-1">
-                          (with {teamMembers.find(m => m.id === partnerships[event][0])?.name})
-                        </span>
+                        </div>
                       )}
-                    </Badge>
-                  ))}
-                </div>
+
+                      {/* Summary for this school */}
+                      {schoolEvents.length > 0 && (
+                        <div className="rounded-lg border p-2 bg-background">
+                          <p className="text-xs font-medium mb-1.5">Selected:</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {schoolEvents.map(event => (
+                              <Badge key={event} variant="secondary" className="text-xs">
+                                {event}
+                                {PARTNERED_EVENTS.includes(event) && schoolEntry.partnerships[event]?.[0] && (
+                                  <span className="ml-1">
+                                    (with {teamMembers.find(m => m.id === schoolEntry.partnerships[event][0])?.name})
+                                  </span>
+                                )}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
+            ) : (
+              /* Regular Tournament - Single Selection */
+              <>
+                <div className="space-y-3">
+                  <Label>Select Events (max 3, max 1 debate event)</Label>
+
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm font-medium mb-2">Debate Events</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {DEBATE_EVENTS.map(event => (
+                          <div key={event} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`event-${event}`}
+                              checked={selectedEvents.includes(event)}
+                              onCheckedChange={(checked) => handleEventToggle(event, checked as boolean)}
+                            />
+                            <Label
+                              htmlFor={`event-${event}`}
+                              className="text-sm font-normal cursor-pointer"
+                            >
+                              {event}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-medium mb-2">Speech Events</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {SPEECH_EVENTS.map(event => (
+                          <div key={event} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`event-${event}`}
+                              checked={selectedEvents.includes(event)}
+                              onCheckedChange={(checked) => handleEventToggle(event, checked as boolean)}
+                            />
+                            <Label
+                              htmlFor={`event-${event}`}
+                              className="text-sm font-normal cursor-pointer"
+                            >
+                              {event}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Partner Selection for partnered events */}
+                {selectedEvents.filter(e => PARTNERED_EVENTS.includes(e)).length > 0 && (
+                  <div className="space-y-3">
+                    <Label>Select Partners</Label>
+                    {selectedEvents
+                      .filter(event => PARTNERED_EVENTS.includes(event))
+                      .map(event => (
+                        <div key={event} className="space-y-2">
+                          <p className="text-sm font-medium">{event} Partner</p>
+                          <Select
+                            value={partnerships[event]?.[0] || ""}
+                            onValueChange={(value) => handlePartnerChange(event, value ? [value] : [])}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={`Choose partner for ${event}`} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {teamMembers
+                                .filter(m => m.id !== selectedMember)
+                                .map(member => (
+                                  <SelectItem key={member.id} value={member.id}>
+                                    {member.name} ({member.role})
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                  </div>
+                )}
+
+                {/* Selected Events Summary */}
+                {selectedEvents.length > 0 && (
+                  <div className="rounded-lg border p-3 bg-muted/50">
+                    <p className="text-sm font-medium mb-2">Selected Events:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedEvents.map(event => (
+                        <Badge key={event} variant="secondary">
+                          {event}
+                          {PARTNERED_EVENTS.includes(event) && partnerships[event]?.[0] && (
+                            <span className="ml-1">
+                              (with {teamMembers.find(m => m.id === partnerships[event][0])?.name})
+                            </span>
+                          )}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
