@@ -79,6 +79,12 @@ export default function TournamentDetailsPage() {
   const registrationClosed = tournament.registrationCloseDate && parseLocalDate(tournament.registrationCloseDate) < new Date();
   const isAdmin = (user?.role === 'coach' || user?.role === 'superadmin');
 
+  // Check if current user has an entry
+  const userEntry = React.useMemo(() => {
+    if (!user) return null;
+    return tournament.entries.find(e => e.id === user.id);
+  }, [tournament.entries, user]);
+
   // Available events
   const DEBATE_EVENTS = ['LD', 'PF', 'WSD', 'Big Questions', 'Congress'];
   const SPEECH_EVENTS = ['OO', 'Info', 'DI', 'HI', 'Duo', 'POI', 'Impromptu', 'FX', 'DX'];
@@ -91,6 +97,29 @@ export default function TournamentDetailsPage() {
     setSelectedMember("");
     setSelectedEvents([]);
     setPartnerships({});
+    setShowManualEntryDialog(true);
+  };
+
+  const handleOpenStudentSignup = () => {
+    if (!user) return;
+
+    // Pre-fill with user's own info if they already have an entry
+    if (userEntry) {
+      setSelectedMember(user.id);
+      setSelectedEvents(userEntry.events);
+
+      // Pre-fill partnerships
+      const partnerMap: Record<string, string[]> = {};
+      userEntry.partnerships.forEach(p => {
+        partnerMap[p.event] = p.partnerIds;
+      });
+      setPartnerships(partnerMap);
+    } else {
+      setSelectedMember(user.id);
+      setSelectedEvents([]);
+      setPartnerships({});
+    }
+
     setShowManualEntryDialog(true);
   };
 
@@ -148,12 +177,6 @@ export default function TournamentDetailsPage() {
       return;
     }
 
-    // Check if member already has an entry
-    if (tournament.entries.some(e => e.id === selectedMember)) {
-      alert('This member already has an entry for this tournament');
-      return;
-    }
-
     // Validate partnerships
     for (const event of selectedEvents) {
       if (PARTNERED_EVENTS.includes(event)) {
@@ -167,6 +190,10 @@ export default function TournamentDetailsPage() {
 
     const member = teamMembers.find(m => m.id === selectedMember);
     if (!member) return;
+
+    // Check if this is an update or new entry
+    const existingEntryIndex = tournament.entries.findIndex(e => e.id === selectedMember);
+    const isUpdate = existingEntryIndex !== -1;
 
     // Create entry
     const newEntry: TournamentEntry = {
@@ -192,15 +219,25 @@ export default function TournamentDetailsPage() {
     try {
       if (!firestore) return;
 
+      let updatedEntries;
+      if (isUpdate) {
+        // Update existing entry
+        updatedEntries = [...tournament.entries];
+        updatedEntries[existingEntryIndex] = newEntry;
+      } else {
+        // Add new entry
+        updatedEntries = [...tournament.entries, newEntry];
+      }
+
       await updateDoc(doc(firestore, 'tournaments', tournament.id), {
-        entries: [...tournament.entries, newEntry]
+        entries: updatedEntries
       });
 
       setShowManualEntryDialog(false);
-      alert('Entry created successfully!');
+      alert(isUpdate ? 'Registration updated successfully!' : 'Entry created successfully!');
     } catch (error) {
-      console.error('Failed to create entry:', error);
-      alert('Failed to create entry. Please try again.');
+      console.error('Failed to create/update entry:', error);
+      alert('Failed to save entry. Please try again.');
     }
   };
 
@@ -407,7 +444,17 @@ export default function TournamentDetailsPage() {
                     Registration Closes: {format(parseLocalDate(tournament.registrationCloseDate), "MMMM d, yyyy")}
                 </Badge>
               )}
-               <div className="flex items-center justify-end gap-2">
+               <div className="flex items-center justify-end gap-2 flex-wrap">
+                    {!isAdmin && !registrationClosed && (
+                      <Button
+                        onClick={handleOpenStudentSignup}
+                        size="sm"
+                        variant={userEntry ? "outline" : "default"}
+                      >
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        {userEntry ? "Update Registration" : "Sign Up"}
+                      </Button>
+                    )}
                     {tournament.webpageUrl && (
                       <Button variant="outline" size="sm" asChild>
                         <a href={tournament.webpageUrl} target="_blank" rel="noopener noreferrer">
@@ -680,31 +727,37 @@ export default function TournamentDetailsPage() {
       <Dialog open={showManualEntryDialog} onOpenChange={setShowManualEntryDialog}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Tournament Entry</DialogTitle>
+            <DialogTitle>
+              {isAdmin ? 'Add Tournament Entry' : (userEntry ? 'Update Registration' : 'Sign Up for Tournament')}
+            </DialogTitle>
             <DialogDescription>
-              Manually register a team member for this tournament
+              {isAdmin
+                ? 'Manually register a team member for this tournament'
+                : 'Select the events you want to compete in'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6 py-4">
-            {/* Member Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="member">Select Member</Label>
-              <Select value={selectedMember} onValueChange={setSelectedMember}>
-                <SelectTrigger id="member">
-                  <SelectValue placeholder="Choose a team member" />
-                </SelectTrigger>
-                <SelectContent>
-                  {teamMembers
-                    .filter(member => !tournament.entries.some(e => e.id === member.id))
-                    .map(member => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.name} ({member.role})
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Member Selection - Only show for coaches */}
+            {isAdmin && (
+              <div className="space-y-2">
+                <Label htmlFor="member">Select Member</Label>
+                <Select value={selectedMember} onValueChange={setSelectedMember}>
+                  <SelectTrigger id="member">
+                    <SelectValue placeholder="Choose a team member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamMembers
+                      .filter(member => !tournament.entries.some(e => e.id === member.id))
+                      .map(member => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.name} ({member.role})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Event Selection */}
             <div className="space-y-3">
@@ -811,7 +864,7 @@ export default function TournamentDetailsPage() {
               Cancel
             </Button>
             <Button onClick={handleCreateManualEntry}>
-              Create Entry
+              {userEntry && selectedMember === user?.id ? 'Update Registration' : (isAdmin ? 'Create Entry' : 'Sign Up')}
             </Button>
           </DialogFooter>
         </DialogContent>
