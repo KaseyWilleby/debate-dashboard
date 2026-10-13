@@ -748,7 +748,7 @@ function TournamentItem({ tournament, onDelete, onUpdate, onArchive, teamSlug }:
 
     const registrationClosed = React.useMemo(() => {
         if (!tournament.registrationCloseDate) return false;
-        return isBefore(new Date(tournament.registrationCloseDate), addDays(new Date(), -1));
+        return isBefore(parseLocalDate(tournament.registrationCloseDate), addDays(new Date(), -1));
     }, [tournament.registrationCloseDate]);
     
     return (
@@ -759,12 +759,12 @@ function TournamentItem({ tournament, onDelete, onUpdate, onArchive, teamSlug }:
                   <div className="space-y-1">
                       <h3 className="font-headline text-lg font-semibold">{tournament.name}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {format(new Date(tournament.date), "EEEE, MMMM d, yyyy")}
+                        {format(parseLocalDate(tournament.date), "EEEE, MMMM d, yyyy")}
                         {tournament.leaveTime && <span className="ml-2">• Leave: {tournament.leaveTime}</span>}
                       </p>
                       {tournament.registrationCloseDate && (
                          <p className={cn("text-xs", registrationClosed ? "text-red-700 dark:text-red-300 font-medium" : "text-muted-foreground")}>
-                           Registration closes: {format(new Date(tournament.registrationCloseDate), "MMMM d, yyyy")}
+                           Registration closes: {format(parseLocalDate(tournament.registrationCloseDate), "MMMM d, yyyy")}
                          </p>
                       )}
                       {tournament.notes && (
@@ -877,7 +877,7 @@ function TournamentListItem({ tournament, onDelete, onUpdate, onArchive, teamSlu
 
     const registrationClosed = React.useMemo(() => {
         if (!tournament.registrationCloseDate) return false;
-        return isBefore(new Date(tournament.registrationCloseDate), addDays(new Date(), -1));
+        return isBefore(parseLocalDate(tournament.registrationCloseDate), addDays(new Date(), -1));
     }, [tournament.registrationCloseDate]);
 
     return (
@@ -886,11 +886,11 @@ function TournamentListItem({ tournament, onDelete, onUpdate, onArchive, teamSlu
           <div className="flex-1 min-w-0">
             <h3 className="font-headline text-base font-semibold truncate">{tournament.name}</h3>
             <p className="text-sm text-muted-foreground">
-              {format(new Date(tournament.date), "EEEE, MMMM d, yyyy")}
+              {format(parseLocalDate(tournament.date), "EEEE, MMMM d, yyyy")}
               {tournament.leaveTime && <span className="ml-2">• Leave: {tournament.leaveTime}</span>}
               {tournament.registrationCloseDate && (
                 <span className={cn("ml-2 •", registrationClosed ? "text-red-700 dark:text-red-300 font-medium" : "")}>
-                  Reg: {format(new Date(tournament.registrationCloseDate), "MMM d")}
+                  Reg: {format(parseLocalDate(tournament.registrationCloseDate), "MMM d")}
                 </span>
               )}
             </p>
