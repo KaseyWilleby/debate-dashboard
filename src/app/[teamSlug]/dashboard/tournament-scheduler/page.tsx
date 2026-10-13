@@ -76,6 +76,11 @@ import { collection, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestor
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 
+// Helper function to parse yyyy-MM-dd dates in local time (avoid timezone shifts)
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day); // month is 0-indexed
+}
 
 const tournamentSchema = z.object({
   name: z.string().min(3, "Tournament name must be at least 3 characters."),
@@ -570,8 +575,8 @@ function EditTournamentDialog({ tournament, open, onOpenChange, onUpdate }: { to
     resolver: zodResolver(tournamentSchema),
     defaultValues: {
       name: tournament.name,
-      date: new Date(tournament.date),
-      registrationCloseDate: tournament.registrationCloseDate ? new Date(tournament.registrationCloseDate) : undefined,
+      date: parseLocalDate(tournament.date),
+      registrationCloseDate: tournament.registrationCloseDate ? parseLocalDate(tournament.registrationCloseDate) : undefined,
       webpageUrl: tournament.webpageUrl || "",
       scheduleUrl: tournament.scheduleUrl || "",
       leaveTime: tournament.leaveTime || "",
@@ -586,8 +591,8 @@ function EditTournamentDialog({ tournament, open, onOpenChange, onUpdate }: { to
     if (open) {
       form.reset({
         name: tournament.name,
-        date: new Date(tournament.date),
-        registrationCloseDate: tournament.registrationCloseDate ? new Date(tournament.registrationCloseDate) : undefined,
+        date: parseLocalDate(tournament.date),
+        registrationCloseDate: tournament.registrationCloseDate ? parseLocalDate(tournament.registrationCloseDate) : undefined,
         webpageUrl: tournament.webpageUrl || "",
         scheduleUrl: tournament.scheduleUrl || "",
         leaveTime: tournament.leaveTime || "",
