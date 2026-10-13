@@ -41,11 +41,7 @@ export default function TournamentCalendarPage({ params }: { params: { teamSlug:
   // Filter only active (non-archived) tournaments
   const activeTournaments = React.useMemo(() => {
     if (!tournaments) return [];
-    console.log('[Tournament Calendar] All tournaments:', tournaments.length);
-    const active = tournaments.filter(t => !t.isArchived);
-    console.log('[Tournament Calendar] Active tournaments:', active.length);
-    console.log('[Tournament Calendar] Active tournament dates:', active.map(t => ({ name: t.name, date: t.date })));
-    return active;
+    return tournaments.filter(t => !t.isArchived);
   }, [tournaments]);
 
   // Get tournaments for current month
@@ -54,20 +50,10 @@ export default function TournamentCalendarPage({ params }: { params: { teamSlug:
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
 
-    console.log('[Tournament Calendar] Current month:', format(currentMonth, 'MMMM yyyy'));
-    console.log('[Tournament Calendar] Month range:', format(monthStart, 'yyyy-MM-dd'), 'to', format(monthEnd, 'yyyy-MM-dd'));
-
-    const filtered = activeTournaments.filter(tournament => {
+    return activeTournaments.filter(tournament => {
       const tournamentDate = parseLocalDate(tournament.date);
-      const inRange = tournamentDate >= monthStart && tournamentDate <= monthEnd;
-      if (inRange) {
-        console.log('[Tournament Calendar] Tournament in month:', tournament.name, tournament.date);
-      }
-      return inRange;
+      return tournamentDate >= monthStart && tournamentDate <= monthEnd;
     });
-
-    console.log('[Tournament Calendar] Tournaments in current month:', filtered.length);
-    return filtered;
   }, [activeTournaments, currentMonth]);
 
   // Get all days in the current month view (including padding days)
