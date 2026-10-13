@@ -680,6 +680,56 @@ function EditTournamentDialog({ tournament, open, onOpenChange, onUpdate }: { to
                 </FormItem>
                 )}/>
             </div>
+
+            {/* Registration Window Controls */}
+            <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+              <h4 className="font-semibold text-sm">Student Registration Settings</h4>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={form.control} name="registrationOpenDate" render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Registration Opens</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button variant={"outline"} className={cn(!field.value && "text-muted-foreground")}>
+                            {field.value ? format(field.value, "PPP") : <span>Immediately</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} />
+                      </PopoverContent>
+                    </Popover>
+                    <p className="text-xs text-muted-foreground">When students can start signing up</p>
+                    <FormMessage />
+                  </FormItem>
+                )}/>
+
+                <FormField control={form.control} name="registrationEnabled" render={({ field }) => (
+                  <FormItem className="flex flex-col justify-between">
+                    <FormLabel>Registration Status</FormLabel>
+                    <div className="flex items-center space-x-2 rounded-md border p-3 bg-background">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value !== false}
+                          onCheckedChange={(checked) => field.onChange(checked === true)}
+                        />
+                      </FormControl>
+                      <div className="space-y-0.5 leading-none">
+                        <FormLabel className="font-normal cursor-pointer">
+                          {field.value !== false ? "Enabled" : "Disabled"}
+                        </FormLabel>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Toggle to manually control registration</p>
+                    <FormMessage />
+                  </FormItem>
+                )}/>
+              </div>
+            </div>
+
             <FormField control={form.control} name="webpageUrl" render={({ field }) => (
               <FormItem><FormLabel>Tournament Webpage URL</FormLabel><FormControl><Input placeholder="https://tabroom.com/..." {...field} /></FormControl><FormMessage /></FormItem>
             )}/>
