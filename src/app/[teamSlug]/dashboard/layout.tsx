@@ -103,6 +103,11 @@ const TournamentNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCo
               </SidebarMenuItem>
             )}
             <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/tournament-signup`)} tooltip="Tournament Sign Up">
+                <Link href={`/${teamSlug}/dashboard/tournament-signup`}><ClipboardList /><span>Tournament Sign Up</span></Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/tournament-calendar`)} tooltip="Tournament Calendar">
                 <Link href={`/${teamSlug}/dashboard/tournament-calendar`}><CalendarDays /><span>Tournament Calendar</span></Link>
               </SidebarMenuButton>
