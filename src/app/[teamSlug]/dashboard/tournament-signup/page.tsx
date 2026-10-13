@@ -600,8 +600,8 @@ export default function TournamentSignupPage() {
 
                 // Check if registration is currently open
                 const now = new Date();
-                const registrationPastCloseDate = tournament.registrationCloseDate
-                  ? new Date(tournament.registrationCloseDate) < now
+                const registrationPastCloseDate = tournament.studentRegistrationCloseDate
+                  ? new Date(tournament.studentRegistrationCloseDate) < now
                   : false;
                 const registrationBeforeOpenDate = tournament.registrationOpenDate
                   ? new Date(tournament.registrationOpenDate) > now

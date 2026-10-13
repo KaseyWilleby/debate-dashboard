@@ -86,6 +86,7 @@ const tournamentSchema = z.object({
   name: z.string().min(3, "Tournament name must be at least 3 characters."),
   date: z.date({ required_error: "A date is required." }),
   registrationCloseDate: z.date().optional(),
+  studentRegistrationCloseDate: z.date().optional(),
   registrationOpenDate: z.date().optional(),
   registrationEnabled: z.boolean().optional(),
   webpageUrl: z.string().url().optional().or(z.literal('')),
@@ -421,6 +422,7 @@ function AddTournamentDialog({ onTournamentCreated }: { onTournamentCreated: (to
       name: values.name,
       date: format(values.date, "yyyy-MM-dd"),
       registrationCloseDate: values.registrationCloseDate ? format(values.registrationCloseDate, "yyyy-MM-dd") : undefined,
+      studentRegistrationCloseDate: values.studentRegistrationCloseDate ? format(values.studentRegistrationCloseDate, "yyyy-MM-dd") : format(addDays(values.date, -3), "yyyy-MM-dd"),
       registrationOpenDate: values.registrationOpenDate ? format(values.registrationOpenDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
       registrationEnabled: values.registrationEnabled !== undefined ? values.registrationEnabled : true,
       webpageUrl: values.webpageUrl,
@@ -490,7 +492,7 @@ function AddTournamentDialog({ onTournamentCreated }: { onTournamentCreated: (to
                 </FormItem>
                 )}/>
                  <FormField control={form.control} name="registrationCloseDate" render={({ field }) => (
-                <FormItem className="flex flex-col"><FormLabel>Reg. Closes</FormLabel>
+                <FormItem className="flex flex-col"><FormLabel>Tabroom Deadline</FormLabel>
                     <Popover>
                     <PopoverTrigger asChild>
                         <FormControl>
@@ -597,6 +599,7 @@ function EditTournamentDialog({ tournament, open, onOpenChange, onUpdate }: { to
         name: tournament.name,
         date: parseLocalDate(tournament.date),
         registrationCloseDate: tournament.registrationCloseDate ? parseLocalDate(tournament.registrationCloseDate) : undefined,
+        studentRegistrationCloseDate: tournament.studentRegistrationCloseDate ? parseLocalDate(tournament.studentRegistrationCloseDate) : undefined,
         registrationOpenDate: tournament.registrationOpenDate ? parseLocalDate(tournament.registrationOpenDate) : undefined,
         registrationEnabled: tournament.registrationEnabled !== undefined ? tournament.registrationEnabled : true,
         webpageUrl: tournament.webpageUrl || "",
@@ -616,6 +619,7 @@ function EditTournamentDialog({ tournament, open, onOpenChange, onUpdate }: { to
       name: values.name,
       date: format(values.date, "yyyy-MM-dd"),
       registrationCloseDate: values.registrationCloseDate ? format(values.registrationCloseDate, "yyyy-MM-dd") : undefined,
+      studentRegistrationCloseDate: values.studentRegistrationCloseDate ? format(values.studentRegistrationCloseDate, "yyyy-MM-dd") : undefined,
       registrationOpenDate: values.registrationOpenDate ? format(values.registrationOpenDate, "yyyy-MM-dd") : undefined,
       registrationEnabled: values.registrationEnabled,
       webpageUrl: values.webpageUrl,
@@ -663,7 +667,7 @@ function EditTournamentDialog({ tournament, open, onOpenChange, onUpdate }: { to
                 </FormItem>
                 )}/>
                  <FormField control={form.control} name="registrationCloseDate" render={({ field }) => (
-                <FormItem className="flex flex-col"><FormLabel>Reg. Closes</FormLabel>
+                <FormItem className="flex flex-col"><FormLabel>Tabroom Deadline</FormLabel>
                     <Popover>
                     <PopoverTrigger asChild>
                         <FormControl>
@@ -707,27 +711,48 @@ function EditTournamentDialog({ tournament, open, onOpenChange, onUpdate }: { to
                   </FormItem>
                 )}/>
 
-                <FormField control={form.control} name="registrationEnabled" render={({ field }) => (
-                  <FormItem className="flex flex-col justify-between">
-                    <FormLabel>Registration Status</FormLabel>
-                    <div className="flex items-center space-x-2 rounded-md border p-3 bg-background">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value !== false}
-                          onCheckedChange={(checked) => field.onChange(checked === true)}
-                        />
-                      </FormControl>
-                      <div className="space-y-0.5 leading-none">
-                        <FormLabel className="font-normal cursor-pointer">
-                          {field.value !== false ? "Enabled" : "Disabled"}
-                        </FormLabel>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Toggle to manually control registration</p>
+                <FormField control={form.control} name="studentRegistrationCloseDate" render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Student Registration Closes</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button variant={"outline"} className={cn(!field.value && "text-muted-foreground")}>
+                            {field.value ? format(field.value, "PPP") : <span>3 days before</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} />
+                      </PopoverContent>
+                    </Popover>
+                    <p className="text-xs text-muted-foreground">Last day students can sign up</p>
                     <FormMessage />
                   </FormItem>
                 )}/>
               </div>
+
+              <FormField control={form.control} name="registrationEnabled" render={({ field }) => (
+                <FormItem className="flex flex-col justify-between">
+                  <FormLabel>Registration Status</FormLabel>
+                  <div className="flex items-center space-x-2 rounded-md border p-3 bg-background">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value !== false}
+                        onCheckedChange={(checked) => field.onChange(checked === true)}
+                      />
+                    </FormControl>
+                    <div className="space-y-0.5 leading-none">
+                      <FormLabel className="font-normal cursor-pointer">
+                        {field.value !== false ? "Enabled" : "Disabled"}
+                      </FormLabel>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Toggle to manually control registration</p>
+                  <FormMessage />
+                </FormItem>
+              )}/>
             </div>
 
             <FormField control={form.control} name="webpageUrl" render={({ field }) => (

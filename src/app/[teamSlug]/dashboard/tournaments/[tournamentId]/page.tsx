@@ -87,7 +87,7 @@ export default function TournamentDetailsPage() {
 
   // Check if registration is currently open
   const now = new Date();
-  const registrationPastCloseDate = tournament.registrationCloseDate && parseLocalDate(tournament.registrationCloseDate) < now;
+  const registrationPastCloseDate = tournament.studentRegistrationCloseDate && parseLocalDate(tournament.studentRegistrationCloseDate) < now;
   const registrationBeforeOpenDate = tournament.registrationOpenDate && parseLocalDate(tournament.registrationOpenDate) > now;
   const registrationManuallyDisabled = tournament.registrationEnabled === false;
 

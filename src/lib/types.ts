@@ -145,7 +145,8 @@ export interface Tournament {
   webpageUrl?: string;
   scheduleUrl?: string;
   entries: TournamentEntry[];
-  registrationCloseDate?: string; // Tabroom registration deadline
+  registrationCloseDate?: string; // Tabroom registration deadline (for coach reference)
+  studentRegistrationCloseDate?: string; // When student registration closes (defaults to 3 days before tournament)
   registrationOpenDate?: string; // When student registration opens (defaults to creation time)
   registrationEnabled?: boolean; // Manual toggle to enable/disable registration (defaults to true)
   leaveTime?: string;
