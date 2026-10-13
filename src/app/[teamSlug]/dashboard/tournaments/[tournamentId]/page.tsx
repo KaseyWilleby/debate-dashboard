@@ -2,21 +2,23 @@
 "use client";
 
 import * as React from "react";
-import type { Tournament } from "@/lib/types";
+import type { Tournament, User, TournamentEntry, Partnership } from "@/lib/types";
 import { useParams, notFound, useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ArrowLeft, Calendar, ExternalLink, Globe, Loader2, DollarSign, FileDown, RefreshCw, Trash2, FileText } from "lucide-react";
+import { ArrowLeft, Calendar, ExternalLink, Globe, Loader2, DollarSign, FileDown, RefreshCw, Trash2, FileText, Plus, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { useFirebase, useDoc, useMemoFirebase, useCollection } from "@/firebase";
+import { doc, updateDoc, collection } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { useAuth } from "@/contexts/auth-context";
 import TournamentPaperworkChecklist from "@/components/dashboard/tournament-paperwork-checklist";
@@ -39,12 +41,32 @@ export default function TournamentDetailsPage() {
   const [showPODialog, setShowPODialog] = React.useState(false);
   const [selectedAccount, setSelectedAccount] = React.useState<'Budget' | 'Activity' | 'Booster'>('Budget');
 
+  // Manual entry creation state
+  const [showManualEntryDialog, setShowManualEntryDialog] = React.useState(false);
+  const [selectedMember, setSelectedMember] = React.useState<string>("");
+  const [selectedEvents, setSelectedEvents] = React.useState<string[]>([]);
+  const [partnerships, setPartnerships] = React.useState<Record<string, string[]>>({});
+
   const tournamentDocRef = useMemoFirebase(() => {
     if (!firestore || !tournamentId) return null;
     return doc(firestore, 'tournaments', tournamentId);
   }, [firestore, tournamentId]);
 
   const { data: tournament, isLoading } = useDoc<Tournament>(tournamentDocRef);
+
+  // Fetch all users for member selection
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.teamId) return null;
+    return collection(firestore, 'users');
+  }, [firestore, user?.teamId]);
+
+  const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
+
+  // Filter team members (students and coaches)
+  const teamMembers = React.useMemo(() => {
+    if (!allUsers || !user?.teamId) return [];
+    return allUsers.filter(u => u.teamId === user.teamId && !u.deleted);
+  }, [allUsers, user?.teamId]);
 
   if (isLoading) {
     return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin" /></div>;
@@ -56,6 +78,131 @@ export default function TournamentDetailsPage() {
 
   const registrationClosed = tournament.registrationCloseDate && parseLocalDate(tournament.registrationCloseDate) < new Date();
   const isAdmin = (user?.role === 'coach' || user?.role === 'superadmin');
+
+  // Available events
+  const DEBATE_EVENTS = ['LD', 'PF', 'WSD', 'Big Questions', 'Congress'];
+  const SPEECH_EVENTS = ['OO', 'Info', 'DI', 'HI', 'Duo', 'POI', 'Impromptu', 'FX', 'DX'];
+  const ALL_EVENTS = [...DEBATE_EVENTS, ...SPEECH_EVENTS];
+
+  // Events that require partners
+  const PARTNERED_EVENTS = ['PF', 'WSD', 'Duo'];
+
+  const handleOpenManualEntryDialog = () => {
+    setSelectedMember("");
+    setSelectedEvents([]);
+    setPartnerships({});
+    setShowManualEntryDialog(true);
+  };
+
+  const handleEventToggle = (event: string, checked: boolean) => {
+    setSelectedEvents(prev => {
+      if (checked) {
+        // Check event limits
+        const debateEventsCount = prev.filter(e => DEBATE_EVENTS.includes(e)).length;
+        const isDebateEvent = DEBATE_EVENTS.includes(event);
+
+        if (prev.length >= 3) {
+          alert('Maximum 3 events allowed per tournament');
+          return prev;
+        }
+
+        if (isDebateEvent && debateEventsCount >= 1) {
+          alert('Maximum 1 debate event allowed per tournament');
+          return prev;
+        }
+
+        // Check extemp conflict
+        if ((event === 'FX' && prev.includes('DX')) || (event === 'DX' && prev.includes('FX'))) {
+          alert('Cannot sign up for both FX and DX');
+          return prev;
+        }
+
+        return [...prev, event];
+      } else {
+        // Remove partnerships when event is unchecked
+        setPartnerships(prev => {
+          const newPartnerships = { ...prev };
+          delete newPartnerships[event];
+          return newPartnerships;
+        });
+        return prev.filter(e => e !== event);
+      }
+    });
+  };
+
+  const handlePartnerChange = (event: string, partnerIds: string[]) => {
+    setPartnerships(prev => ({
+      ...prev,
+      [event]: partnerIds
+    }));
+  };
+
+  const handleCreateManualEntry = async () => {
+    if (!selectedMember) {
+      alert('Please select a member');
+      return;
+    }
+
+    if (selectedEvents.length === 0) {
+      alert('Please select at least one event');
+      return;
+    }
+
+    // Check if member already has an entry
+    if (tournament.entries.some(e => e.id === selectedMember)) {
+      alert('This member already has an entry for this tournament');
+      return;
+    }
+
+    // Validate partnerships
+    for (const event of selectedEvents) {
+      if (PARTNERED_EVENTS.includes(event)) {
+        const partners = partnerships[event] || [];
+        if (partners.length === 0) {
+          alert(`Please select a partner for ${event}`);
+          return;
+        }
+      }
+    }
+
+    const member = teamMembers.find(m => m.id === selectedMember);
+    if (!member) return;
+
+    // Create entry
+    const newEntry: TournamentEntry = {
+      id: member.id,
+      name: member.name,
+      events: selectedEvents,
+      partnerships: selectedEvents
+        .filter(event => PARTNERED_EVENTS.includes(event))
+        .map(event => {
+          const partnerIds = partnerships[event] || [];
+          const partnerNames = partnerIds
+            .map(pid => teamMembers.find(m => m.id === pid)?.name)
+            .filter(Boolean) as string[];
+
+          return {
+            event,
+            partnerIds,
+            partnerNames
+          };
+        })
+    };
+
+    try {
+      if (!firestore) return;
+
+      await updateDoc(doc(firestore, 'tournaments', tournament.id), {
+        entries: [...tournament.entries, newEntry]
+      });
+
+      setShowManualEntryDialog(false);
+      alert('Entry created successfully!');
+    } catch (error) {
+      console.error('Failed to create entry:', error);
+      alert('Failed to create entry. Please try again.');
+    }
+  };
 
   const handleFetchFeeSheet = async () => {
     // Debug logging
@@ -290,7 +437,15 @@ export default function TournamentDetailsPage() {
             <TabsContent value="entries" className="mt-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-headline text-xl">Tournament Entries</CardTitle>
+                  <div className="flex items-start justify-between">
+                    <CardTitle className="font-headline text-xl">Tournament Entries</CardTitle>
+                    {isAdmin && (
+                      <Button onClick={handleOpenManualEntryDialog} size="sm">
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Add Entry
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {tournament.entries.length > 0 ? (
@@ -516,6 +671,147 @@ export default function TournamentDetailsPage() {
               ) : (
                 'Generate P.O.'
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Entry Dialog */}
+      <Dialog open={showManualEntryDialog} onOpenChange={setShowManualEntryDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add Tournament Entry</DialogTitle>
+            <DialogDescription>
+              Manually register a team member for this tournament
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Member Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="member">Select Member</Label>
+              <Select value={selectedMember} onValueChange={setSelectedMember}>
+                <SelectTrigger id="member">
+                  <SelectValue placeholder="Choose a team member" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teamMembers
+                    .filter(member => !tournament.entries.some(e => e.id === member.id))
+                    .map(member => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.name} ({member.role})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Event Selection */}
+            <div className="space-y-3">
+              <Label>Select Events (max 3, max 1 debate event)</Label>
+
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium mb-2">Debate Events</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {DEBATE_EVENTS.map(event => (
+                      <div key={event} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`event-${event}`}
+                          checked={selectedEvents.includes(event)}
+                          onCheckedChange={(checked) => handleEventToggle(event, checked as boolean)}
+                        />
+                        <Label
+                          htmlFor={`event-${event}`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          {event}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium mb-2">Speech Events</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {SPEECH_EVENTS.map(event => (
+                      <div key={event} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`event-${event}`}
+                          checked={selectedEvents.includes(event)}
+                          onCheckedChange={(checked) => handleEventToggle(event, checked as boolean)}
+                        />
+                        <Label
+                          htmlFor={`event-${event}`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          {event}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Partner Selection for partnered events */}
+            {selectedEvents.filter(e => PARTNERED_EVENTS.includes(e)).length > 0 && (
+              <div className="space-y-3">
+                <Label>Select Partners</Label>
+                {selectedEvents
+                  .filter(event => PARTNERED_EVENTS.includes(event))
+                  .map(event => (
+                    <div key={event} className="space-y-2">
+                      <p className="text-sm font-medium">{event} Partner</p>
+                      <Select
+                        value={partnerships[event]?.[0] || ""}
+                        onValueChange={(value) => handlePartnerChange(event, value ? [value] : [])}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={`Choose partner for ${event}`} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {teamMembers
+                            .filter(m => m.id !== selectedMember)
+                            .map(member => (
+                              <SelectItem key={member.id} value={member.id}>
+                                {member.name} ({member.role})
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
+              </div>
+            )}
+
+            {/* Selected Events Summary */}
+            {selectedEvents.length > 0 && (
+              <div className="rounded-lg border p-3 bg-muted/50">
+                <p className="text-sm font-medium mb-2">Selected Events:</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedEvents.map(event => (
+                    <Badge key={event} variant="secondary">
+                      {event}
+                      {PARTNERED_EVENTS.includes(event) && partnerships[event]?.[0] && (
+                        <span className="ml-1">
+                          (with {teamMembers.find(m => m.id === partnerships[event][0])?.name})
+                        </span>
+                      )}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowManualEntryDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateManualEntry}>
+              Create Entry
             </Button>
           </DialogFooter>
         </DialogContent>
