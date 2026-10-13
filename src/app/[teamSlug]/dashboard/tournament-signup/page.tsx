@@ -71,11 +71,18 @@ export default function TournamentSignupPage() {
 
     const today = startOfDay(new Date());
 
-    return tournaments.filter(tournament => {
-      const tournamentDate = parseISO(tournament.date);
-      // Show tournament if it's today or in the future
-      return !isBefore(tournamentDate, today);
-    });
+    return tournaments
+      .filter(tournament => {
+        const tournamentDate = parseISO(tournament.date);
+        // Show tournament if it's today or in the future
+        return !isBefore(tournamentDate, today);
+      })
+      .sort((a, b) => {
+        // Sort by date chronologically (earliest first)
+        const dateA = parseISO(a.date);
+        const dateB = parseISO(b.date);
+        return dateA.getTime() - dateB.getTime();
+      });
   }, [tournaments]);
 
   const userEntries = React.useMemo(() => {
