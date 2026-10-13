@@ -5,13 +5,18 @@
  * to fix the timezone corruption bug that was shifting dates back by 1 day.
  */
 
-const { initializeApp } = require('firebase-admin/app');
+require('dotenv').config();
+const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { format, addDays } = require('date-fns');
 
-// Initialize Firebase Admin with explicit project ID
+// Initialize Firebase Admin with credentials from .env
 initializeApp({
-  projectId: 'debate-dashboard'
+  credential: cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY
+  })
 });
 const db = getFirestore();
 
@@ -38,8 +43,8 @@ async function fixTournamentDates() {
     let fixedCount = 0;
     let skippedCount = 0;
 
-    for (const doc of tournamentsSnapshot.docs) {
-      const tournament = doc.data();
+    for (const tournamentDoc of tournamentsSnapshot.docs) {
+      const tournament = tournamentDoc.data();
       const updates = {};
       let needsUpdate = false;
 
@@ -80,7 +85,7 @@ async function fixTournamentDates() {
       }
 
       if (needsUpdate) {
-        await doc.ref.update(updates);
+        await db.collection('tournaments').doc(tournamentDoc.id).update(updates);
         console.log(`  ✅ Updated!`);
         fixedCount++;
       } else {
