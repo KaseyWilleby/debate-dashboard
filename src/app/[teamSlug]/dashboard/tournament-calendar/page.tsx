@@ -14,6 +14,12 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSam
 import NextLink from "next/link";
 import { cn } from "@/lib/utils";
 
+// Helper function to parse yyyy-MM-dd dates in local time (avoid timezone shifts)
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day); // month is 0-indexed
+}
+
 export default function TournamentCalendarPage({ params }: { params: { teamSlug: string } }) {
   const { user, isLoading: isAuthLoading } = useAuth();
   const { firestore } = useFirebase();
@@ -45,7 +51,7 @@ export default function TournamentCalendarPage({ params }: { params: { teamSlug:
     const monthEnd = endOfMonth(currentMonth);
 
     return activeTournaments.filter(tournament => {
-      const tournamentDate = parse(tournament.date, 'yyyy-MM-dd', new Date());
+      const tournamentDate = parseLocalDate(tournament.date);
       return tournamentDate >= monthStart && tournamentDate <= monthEnd;
     });
   }, [activeTournaments, currentMonth]);
@@ -85,7 +91,7 @@ export default function TournamentCalendarPage({ params }: { params: { teamSlug:
   const getTournamentsForDate = (date: Date) => {
     return activeTournaments.filter(tournament => {
       try {
-        const tournamentDate = parse(tournament.date, 'yyyy-MM-dd', new Date());
+        const tournamentDate = parseLocalDate(tournament.date);
         // Validate the parsed date
         if (isNaN(tournamentDate.getTime())) {
           console.warn('Invalid tournament date:', tournament.date, 'for tournament:', tournament.name);
@@ -107,7 +113,7 @@ export default function TournamentCalendarPage({ params }: { params: { teamSlug:
 
     activeTournaments.forEach(tournament => {
       try {
-        const tournamentDate = parse(tournament.date, 'yyyy-MM-dd', new Date());
+        const tournamentDate = parseLocalDate(tournament.date);
         // Validate the parsed date
         if (isNaN(tournamentDate.getTime())) {
           console.warn('Invalid tournament date in sorting:', tournament.date, 'for tournament:', tournament.name);
@@ -125,15 +131,15 @@ export default function TournamentCalendarPage({ params }: { params: { teamSlug:
 
     // Sort future tournaments by date (earliest first)
     future.sort((a, b) => {
-      const dateA = parse(a.date, 'yyyy-MM-dd', new Date());
-      const dateB = parse(b.date, 'yyyy-MM-dd', new Date());
+      const dateA = parseLocalDate(a.date);
+      const dateB = parseLocalDate(b.date);
       return dateA.getTime() - dateB.getTime();
     });
 
     // Sort past tournaments by date (most recent first)
     past.sort((a, b) => {
-      const dateA = parse(a.date, 'yyyy-MM-dd', new Date());
-      const dateB = parse(b.date, 'yyyy-MM-dd', new Date());
+      const dateA = parseLocalDate(a.date);
+      const dateB = parseLocalDate(b.date);
       return dateB.getTime() - dateA.getTime();
     });
 
@@ -264,7 +270,7 @@ export default function TournamentCalendarPage({ params }: { params: { teamSlug:
             <div className="space-y-4">
               {sortedTournaments.length > 0 ? (
                 sortedTournaments.map((tournament) => {
-                  const tournamentDate = parse(tournament.date, 'yyyy-MM-dd', new Date());
+                  const tournamentDate = parseLocalDate(tournament.date);
                   const isPast = !isNaN(tournamentDate.getTime()) && isBefore(tournamentDate, startOfDay(new Date()));
                   const isValidDate = !isNaN(tournamentDate.getTime());
 
@@ -291,7 +297,7 @@ export default function TournamentCalendarPage({ params }: { params: { teamSlug:
                               </div>
                               {tournament.registrationCloseDate && (
                                 <div className="text-sm">
-                                  Registration closes: {format(parse(tournament.registrationCloseDate, 'yyyy-MM-dd', new Date()), 'MMMM d, yyyy')}
+                                  Registration closes: {format(parseLocalDate(tournament.registrationCloseDate), 'MMMM d, yyyy')}
                                 </div>
                               )}
                             </CardDescription>
