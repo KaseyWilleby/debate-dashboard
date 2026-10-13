@@ -68,6 +68,12 @@ export default function TournamentDetailsPage() {
     return allUsers.filter(u => u.teamId === user.teamId && !u.deleted);
   }, [allUsers, user?.teamId]);
 
+  // Check if current user has an entry (must be before early returns)
+  const userEntry = React.useMemo(() => {
+    if (!user || !tournament) return null;
+    return tournament.entries.find(e => e.id === user.id);
+  }, [tournament, user]);
+
   if (isLoading) {
     return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin" /></div>;
   }
@@ -78,12 +84,6 @@ export default function TournamentDetailsPage() {
 
   const registrationClosed = tournament.registrationCloseDate && parseLocalDate(tournament.registrationCloseDate) < new Date();
   const isAdmin = (user?.role === 'coach' || user?.role === 'superadmin');
-
-  // Check if current user has an entry
-  const userEntry = React.useMemo(() => {
-    if (!user) return null;
-    return tournament.entries.find(e => e.id === user.id);
-  }, [tournament.entries, user]);
 
   // Available events
   const DEBATE_EVENTS = ['LD', 'PF', 'WSD', 'Big Questions', 'Congress'];
