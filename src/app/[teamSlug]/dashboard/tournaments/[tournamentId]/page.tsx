@@ -21,6 +21,12 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { useAuth } from "@/contexts/auth-context";
 import TournamentPaperworkChecklist from "@/components/dashboard/tournament-paperwork-checklist";
 
+// Helper function to parse yyyy-MM-dd dates in local time (avoid timezone shifts)
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day); // month is 0-indexed
+}
+
 export default function TournamentDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -48,7 +54,7 @@ export default function TournamentDetailsPage() {
     notFound();
   }
 
-  const registrationClosed = tournament.registrationCloseDate && new Date(tournament.registrationCloseDate) < new Date();
+  const registrationClosed = tournament.registrationCloseDate && parseLocalDate(tournament.registrationCloseDate) < new Date();
   const isAdmin = (user?.role === 'coach' || user?.role === 'superadmin');
 
   const handleFetchFeeSheet = async () => {
@@ -245,13 +251,13 @@ export default function TournamentDetailsPage() {
               <CardTitle className="font-headline text-3xl">{tournament.name}</CardTitle>
               <CardDescription className="mt-2 text-lg flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                {format(new Date(tournament.date), "EEEE, MMMM d, yyyy")}
+                {format(parseLocalDate(tournament.date), "EEEE, MMMM d, yyyy")}
               </CardDescription>
             </div>
             <div className="flex-shrink-0 space-y-2 text-right">
               {tournament.registrationCloseDate && (
                 <Badge className={cn("text-sm", registrationClosed ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800")}>
-                    Registration Closes: {format(new Date(tournament.registrationCloseDate), "MMMM d, yyyy")}
+                    Registration Closes: {format(parseLocalDate(tournament.registrationCloseDate), "MMMM d, yyyy")}
                 </Badge>
               )}
                <div className="flex items-center justify-end gap-2">
