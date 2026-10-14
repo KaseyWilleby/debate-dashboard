@@ -533,3 +533,82 @@ export interface OfficerAvailability {
   createdAt: string; // ISO date
   updatedAt: string; // ISO date
 }
+
+// Coach Bot System Types
+export type CoachBotType =
+  | 'ld-coach'          // Lincoln-Douglas Debate Coach
+  | 'pf-coach'          // Public Forum Debate Coach
+  | 'cx-coach'          // Policy (CX) Debate Coach
+  | 'wsd-coach'         // World Schools Debate Coach
+  | 'congress-coach'    // Congressional Debate Coach
+  | 'extemp-coach'      // Extemporaneous Speaking Coach
+  | 'impromptu-coach'   // Impromptu Speaking Coach
+  | 'oratory-coach'     // Original Oratory Coach
+  | 'info-coach'        // Informative Speaking Coach
+  | 'interp-coach'      // Interpretation Events Coach (HI, DI, Duo, etc.)
+  | 'general-coach';    // General speech & debate coach
+
+export type CoachBotMode =
+  | 'chat'              // General Q&A conversation
+  | 'case-feedback'     // Analyzing a case/argument
+  | 'rebuttal-practice' // Practicing rebuttals
+  | 'cx-practice'       // Cross-examination practice
+  | 'speech-feedback'   // Analyzing a speech structure
+  | 'topic-generation'; // Generating practice topics
+
+export interface CoachBotMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: string;
+  metadata?: {
+    mode?: CoachBotMode;
+    attachmentType?: 'case' | 'speech' | 'recording';
+    attachmentId?: string;
+  };
+}
+
+export interface CoachBotConversation {
+  id: string;
+  teamId: string; // Reference to team
+  userId: string; // Student using the bot
+  botType: CoachBotType;
+  mode: CoachBotMode;
+  title: string; // Auto-generated or user-set title
+  messages: CoachBotMessage[];
+  createdAt: string; // ISO date
+  updatedAt: string; // ISO date
+  isArchived?: boolean;
+  context?: {
+    // Additional context for the conversation
+    eventType?: string; // e.g., "Lincoln-Douglas", "Public Forum"
+    topicId?: string; // If practicing on a specific topic
+    caseId?: string; // If reviewing a specific case
+    speechId?: string; // If analyzing a specific speech
+  };
+}
+
+export interface CoachBotSession {
+  id: string;
+  teamId: string;
+  userId: string;
+  botType: CoachBotType;
+  mode: CoachBotMode;
+  conversationId: string; // Reference to conversation
+  duration: number; // In minutes
+  messagesExchanged: number;
+  skillsPracticed: string[]; // e.g., ['rebuttals', 'cross-examination']
+  feedbackGiven?: string; // Summary of AI feedback
+  createdAt: string; // ISO date
+}
+
+// Bot configuration for each specialization
+export interface CoachBotConfig {
+  type: CoachBotType;
+  name: string; // e.g., "LD Coach", "Extemp Coach"
+  description: string;
+  icon: string; // Icon name or emoji
+  supportedModes: CoachBotMode[];
+  systemPrompt: string; // Base system prompt for this bot
+  examples?: string[]; // Example questions/use cases
+}

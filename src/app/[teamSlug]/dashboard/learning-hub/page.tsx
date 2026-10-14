@@ -3,10 +3,17 @@
 
 import * as React from 'react';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowRight, Gavel, Mic, Drama, Flag, Globe, FileText } from 'lucide-react';
+import { ArrowRight, Gavel, Mic, Drama, Flag, Globe, FileText, BrainCircuit } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 const learningCategories = [
+  {
+    title: 'AI Coach Bots',
+    description: 'Get personalized coaching from AI experts in debate and speech.',
+    href: '/dashboard/learning-hub/coach-bots',
+    icon: <BrainCircuit className="h-8 w-8" />,
+    featured: true,
+  },
   {
     title: 'Platform Guides',
     description: 'Tutorials for Tabroom, the NSDA website, and more.',

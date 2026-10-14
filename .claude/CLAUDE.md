@@ -53,8 +53,18 @@ src/
 
 ## Recent Work & Current Focus
 
-### Tournament Registration System (Latest)
-We've been building comprehensive tournament registration features:
+### AI Coach Bot System (Latest)
+We've built a comprehensive AI coaching system with specialized bots for all debate and speech events:
+
+- **11 Specialized Coach Bots**: LD, PF, CX, WSD, Congress, Extemp, Impromptu, Oratory, Informative, Interp, and General coaches
+- **Multiple Modes**: Chat, case feedback, rebuttal practice, cross-examination practice, speech feedback, topic generation
+- **AI Integration**: Uses Claude 3.5 Sonnet via Genkit and Anthropic integration for high-quality coaching conversations
+- **Interactive Chat Interface**: Real-time messaging with coach bots, suggested follow-ups, example questions
+- **Learning Hub Integration**: New "AI Coach Bots" page in Learning Hub with bot selector and chat interface
+- **System Prompts**: Each bot has specialized expertise and coaching style tailored to their event
+
+### Tournament Registration System
+We've built comprehensive tournament registration features:
 
 - **Registration Window Controls**: Added `registrationOpens` and `registrationCloses` timestamps to tournaments
 - **Separate Student Close Date**: Students can have earlier registration deadlines than coaches (`studentRegistrationCloses`)
@@ -211,6 +221,47 @@ import { parseLocalDate } from '@/lib/utils'
 const date = parseLocalDate(tournament.startDate)
 const display = format(date, 'MMM d, yyyy') // "Mar 15, 2024"
 ```
+
+### Coach Bot System
+```typescript
+// Using coach bots in components
+import { CoachBotType, CoachBotMode } from '@/lib/types'
+import { getBotConfig } from '@/lib/coach-bot-config'
+import { ChatInterface } from '@/components/dashboard/coach-bot/chat-interface'
+
+// Get bot configuration
+const botConfig = getBotConfig('ld-coach')
+
+// Render chat interface
+<ChatInterface
+  botType="ld-coach"
+  mode="chat"
+  onModeChange={setMode}
+/>
+
+// Call API endpoint
+const response = await fetch('/api/coach-bot/chat', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    botType: 'pf-coach',
+    mode: 'rebuttal-practice',
+    userMessage: 'Give me an argument to rebut',
+    conversationHistory: [],
+  }),
+})
+```
+
+**Coach Bot Architecture:**
+- **AI Flow**: `src/ai/flows/coach-bot-chat-flow.ts` - Genkit flow using Claude 3.5 Sonnet
+- **Bot Configs**: `src/lib/coach-bot-config.ts` - System prompts and metadata for each bot
+- **API Route**: `src/app/api/coach-bot/chat/route.ts` - Server endpoint for client requests
+- **Components**: `src/components/dashboard/coach-bot/` - Chat UI, bot selector, message display
+- **Page**: `src/app/[teamSlug]/dashboard/learning-hub/coach-bots/page.tsx` - Main interface
+
+**Bot Types:** ld-coach, pf-coach, cx-coach, wsd-coach, congress-coach, extemp-coach, impromptu-coach, oratory-coach, info-coach, interp-coach, general-coach
+
+**Modes:** chat, case-feedback, rebuttal-practice, cx-practice, speech-feedback, topic-generation
 
 ## Security Considerations
 
