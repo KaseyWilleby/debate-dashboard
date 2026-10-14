@@ -114,23 +114,28 @@ Provide multiple options and explain why each topic is valuable for practice.`;
       systemPrompt += `\n\nAdditional context: ${context.additionalContext}`;
     }
 
-    // Build the conversation messages
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      ...conversationHistory,
-      { role: 'user', content: userMessage },
-    ];
+    // Build the conversation prompt
+    let prompt = `${systemPrompt}\n\n`;
 
-    // Generate response using AI (using Claude for better coaching conversations)
+    // Add conversation history
+    if (conversationHistory.length > 0) {
+      prompt += 'Previous conversation:\n';
+      for (const msg of conversationHistory) {
+        const label = msg.role === 'user' ? 'STUDENT' : 'COACH';
+        prompt += `${label}: ${msg.content}\n\n`;
+      }
+    }
+
+    // Add current user message
+    prompt += `STUDENT: ${userMessage}\n\nCOACH:`;
+
+    // Generate response using AI (using Gemini for coaching conversations)
     const { text } = await ai.generate({
-      model: 'claude/claude-3-5-sonnet-latest',
-      messages: messages.map(m => ({
-        role: m.role === 'system' ? 'user' : m.role as 'user' | 'assistant',
-        content: m.role === 'system' ? `<system>${m.content}</system>` : m.content,
-      })),
+      model: 'googleai/gemini-2.0-flash-exp',
+      prompt,
       config: {
         temperature: 0.7,
-        maxTokens: 2048,
+        maxOutputTokens: 2048,
       },
     });
 
