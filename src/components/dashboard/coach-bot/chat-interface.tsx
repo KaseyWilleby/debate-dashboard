@@ -31,8 +31,49 @@ export function ChatInterface({
   const [isLoading, setIsLoading] = React.useState(false);
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const prevModeRef = React.useRef<CoachBotMode>(mode);
 
   const botConfig = getBotConfig(botType);
+
+  // Send greeting when mode changes
+  React.useEffect(() => {
+    if (prevModeRef.current !== mode) {
+      prevModeRef.current = mode;
+
+      // Get mode-specific greeting
+      let greeting = '';
+      switch (mode) {
+        case 'chat':
+          greeting = "Hi! I'm ready to answer any questions you have. What would you like to talk about?";
+          break;
+        case 'case-feedback':
+          greeting = "I'm ready to review your case! Please share your case or argument, and I'll provide detailed feedback on its strengths, weaknesses, and how you can improve it.";
+          break;
+        case 'rebuttal-practice':
+          greeting = "Let's practice rebuttals! I can either present arguments for you to rebut, or you can share an opponent's argument and I'll help you craft a strong response. What would you like to do?";
+          break;
+        case 'cx-practice':
+          greeting = "Time to practice cross-examination! I can role-play as your opponent and you can question me, or I can demonstrate effective CX techniques. Which would you prefer?";
+          break;
+        case 'speech-feedback':
+          greeting = "I'm here to help improve your speech! Share your speech outline or full text, and I'll provide feedback on structure, argumentation, delivery suggestions, and ways to make it more compelling.";
+          break;
+        case 'topic-generation':
+          greeting = "I'll help you find great practice topics! Let me know what event you're practicing for and I can generate relevant, current topics for you to work on.";
+          break;
+      }
+
+      // Add coach greeting message
+      const greetingMessage: CoachBotMessage = {
+        id: `msg-${Date.now()}-greeting`,
+        role: 'assistant',
+        content: greeting,
+        timestamp: new Date().toISOString(),
+      };
+
+      setMessages(prev => [...prev, greetingMessage]);
+    }
+  }, [mode]);
 
   // Scroll to bottom when messages change
   React.useEffect(() => {
