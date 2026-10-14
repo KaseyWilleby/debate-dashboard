@@ -131,7 +131,7 @@ Provide multiple options and explain why each topic is valuable for practice.`;
 
     // Generate response using AI (using Gemini for coaching conversations)
     const { text } = await ai.generate({
-      model: 'googleai/gemini-2.0-flash-exp',
+      model: 'googleai/gemini-2.5-flash',
       prompt,
       config: {
         temperature: 0.7,
