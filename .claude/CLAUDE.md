@@ -58,7 +58,9 @@ We've built a comprehensive AI coaching system with specialized bots for all deb
 
 - **11 Specialized Coach Bots**: LD, PF, CX, WSD, Congress, Extemp, Impromptu, Oratory, Informative, Interp, and General coaches
 - **Multiple Modes**: Chat, case feedback, rebuttal practice, cross-examination practice, speech feedback, topic generation
-- **AI Integration**: Uses Claude 3.5 Sonnet via Genkit and Anthropic integration for high-quality coaching conversations
+- **Visual Mode Selection**: Mode selector displays as clickable cards with icons and descriptions (similar to example questions)
+- **Mode-Specific Greetings**: Coach automatically sends contextual greeting messages when switching modes
+- **AI Integration**: Uses Google Gemini 2.5 Flash via Genkit for high-quality coaching conversations
 - **Interactive Chat Interface**: Real-time messaging with coach bots, suggested follow-ups, example questions
 - **Learning Hub Integration**: New "AI Coach Bots" page in Learning Hub with bot selector and chat interface
 - **System Prompts**: Each bot has specialized expertise and coaching style tailored to their event
@@ -253,10 +255,10 @@ const response = await fetch('/api/coach-bot/chat', {
 ```
 
 **Coach Bot Architecture:**
-- **AI Flow**: `src/ai/flows/coach-bot-chat-flow.ts` - Genkit flow using Claude 3.5 Sonnet
+- **AI Flow**: `src/ai/flows/coach-bot-chat-flow.ts` - Genkit flow using Google Gemini 2.5 Flash
 - **Bot Configs**: `src/lib/coach-bot-config.ts` - System prompts and metadata for each bot
-- **API Route**: `src/app/api/coach-bot/chat/route.ts` - Server endpoint for client requests
-- **Components**: `src/components/dashboard/coach-bot/` - Chat UI, bot selector, message display
+- **API Route**: `src/app/api/coach-bot/chat/route.ts` - Server endpoint for client requests (calls ai.generate directly)
+- **Components**: `src/components/dashboard/coach-bot/` - Chat UI with visual mode selector, bot selector, message display
 - **Page**: `src/app/[teamSlug]/dashboard/learning-hub/coach-bots/page.tsx` - Main interface
 
 **Bot Types:** ld-coach, pf-coach, cx-coach, wsd-coach, congress-coach, extemp-coach, impromptu-coach, oratory-coach, info-coach, interp-coach, general-coach
