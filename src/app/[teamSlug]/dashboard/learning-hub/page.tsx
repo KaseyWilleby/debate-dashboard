@@ -5,11 +5,23 @@ import * as React from 'react';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ArrowRight, Gavel, Mic, Drama, Flag, Globe, FileText, BrainCircuit } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
 export default function LearningHubPage() {
   const router = useRouter();
   const params = useParams();
   const teamSlug = params?.teamSlug as string;
+  const { firestore } = useFirebase();
+
+  // Fetch team settings to check if coach bot is enabled
+  const teamDocRef = useMemoFirebase(() => {
+    if (!firestore || !teamSlug) return null;
+    return doc(firestore, 'teams', teamSlug);
+  }, [firestore, teamSlug]);
+
+  const { data: team } = useDoc(teamDocRef);
+  const isCoachBotEnabled = team?.settings?.enablePracticeCoachBot ?? false;
 
   const learningCategories = [
     {
@@ -67,24 +79,32 @@ export default function LearningHubPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {learningCategories.map((category) => (
-          <Card
-            key={category.title}
-            className="group cursor-pointer transition-all hover:bg-muted/50"
-            onClick={() => router.push(category.href)}
-          >
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="text-primary">{category.icon}</div>
-                <div>
-                  <CardTitle>{category.title}</CardTitle>
-                  <CardDescription>{category.description}</CardDescription>
+        {learningCategories
+          .filter(category => {
+            // Hide AI Coach Bots if feature is disabled
+            if (category.title === 'AI Coach Bots' && !isCoachBotEnabled) {
+              return false;
+            }
+            return true;
+          })
+          .map((category) => (
+            <Card
+              key={category.title}
+              className="group cursor-pointer transition-all hover:bg-muted/50"
+              onClick={() => router.push(category.href)}
+            >
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="text-primary">{category.icon}</div>
+                  <div>
+                    <CardTitle>{category.title}</CardTitle>
+                    <CardDescription>{category.description}</CardDescription>
+                  </div>
                 </div>
-              </div>
-              <ArrowRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
-            </CardHeader>
-          </Card>
-        ))}
+                <ArrowRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
+              </CardHeader>
+            </Card>
+          ))}
       </div>
     </div>
   );

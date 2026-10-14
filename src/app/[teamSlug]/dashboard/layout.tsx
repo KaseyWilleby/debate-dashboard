@@ -170,18 +170,20 @@ const PracticeNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoac
   </>
 );
 
-const LearningNav = ({ pathname, teamSlug }: { pathname: string; teamSlug: string }) => (
+const LearningNav = ({ pathname, teamSlug, isCoachBotEnabled }: { pathname: string; teamSlug: string; isCoachBotEnabled: boolean }) => (
     <>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={pathname === `/${teamSlug}/dashboard/learning-hub`} tooltip="Learning Hub">
           <Link href={`/${teamSlug}/dashboard/learning-hub`}><BrainCircuit /><span>Learning Hub</span></Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
-      <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/coach-bots`)} tooltip="AI Coach Bots">
-          <Link href={`/${teamSlug}/dashboard/coach-bots`}><BrainCircuit /><span>AI Coach Bots</span></Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
+      {isCoachBotEnabled && (
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/coach-bots`)} tooltip="AI Coach Bots">
+            <Link href={`/${teamSlug}/dashboard/coach-bots`}><BrainCircuit /><span>AI Coach Bots</span></Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      )}
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/learning-hub/platforms`)} tooltip="Platform Guides">
           <Link href={`/${teamSlug}/dashboard/learning-hub/platforms`}><Globe /><span>Platform Guides</span></Link>
@@ -327,7 +329,7 @@ export default function DashboardLayout({
               {activeHub === 'team' && <TeamNav pathname={pathname} isCoach={user?.role === 'coach' || user?.role === 'superadmin'} teamSlug={teamSlug} />}
               {activeHub === 'tournament' && <TournamentNav pathname={pathname} isCoach={user?.role === 'coach' || user?.role === 'superadmin'} teamSlug={teamSlug} />}
               {activeHub === 'practice' && <PracticeNav pathname={pathname} isCoach={user?.role === 'coach' || user?.role === 'superadmin'} teamSlug={teamSlug} />}
-              {activeHub === 'learning' && <LearningNav pathname={pathname} teamSlug={teamSlug} />}
+              {activeHub === 'learning' && <LearningNav pathname={pathname} teamSlug={teamSlug} isCoachBotEnabled={teamData?.settings?.enablePracticeCoachBot ?? false} />}
             </SidebarMenu>
           </SidebarContent>
         </Sidebar>
