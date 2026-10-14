@@ -17,6 +17,8 @@ export interface Team {
     allowStudentAnalytics?: boolean;
     allowNoviceDebateEvents?: boolean;
     allowVarsityDebateEvents?: boolean;
+    // AI Coach Bot settings
+    enablePracticeCoachBot?: boolean;
   };
   isActive: boolean;
   headCoachEmail?: string; // Primary contact for the school account

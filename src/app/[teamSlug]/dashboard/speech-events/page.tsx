@@ -61,6 +61,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { WriteSpeechDialog } from "@/components/dashboard/write-speech-dialog";
 import { SubmitRecordingDialog } from "@/components/dashboard/submit-recording-dialog";
 import { MigrateRecordingsDialog } from "@/components/dashboard/migrate-recordings-dialog";
+import { CoachBotDialog } from "@/components/dashboard/coach-bot/coach-bot-dialog";
+import type { CoachBotType } from "@/lib/types";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, deleteDoc, updateDoc, doc, query, where, arrayUnion } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -1780,6 +1782,33 @@ export default function ExtempPracticePage() {
                 open={isMigrateDialogOpen}
                 onOpenChange={setIsMigrateDialogOpen}
             />
+
+            {/* AI Coach Bot - context-aware based on selected event */}
+            {(() => {
+                let botType: CoachBotType = 'extemp-coach';
+                let sessionName = '';
+
+                if (mode === 'extemp') {
+                    botType = 'extemp-coach';
+                    sessionName = 'Extemporaneous Practice';
+                } else if (mode === 'impromptu') {
+                    botType = 'impromptu-coach';
+                    sessionName = 'Impromptu Practice';
+                } else if (mode === 'informative') {
+                    botType = 'info-coach';
+                    sessionName = 'Informative Speaking Practice';
+                } else if (mode === 'oratory') {
+                    botType = 'oratory-coach';
+                    sessionName = 'Oratory Practice';
+                }
+
+                return (
+                    <CoachBotDialog
+                        botType={botType}
+                        context={{ sessionName, eventType: mode }}
+                    />
+                );
+            })()}
         </div>
     );
 }

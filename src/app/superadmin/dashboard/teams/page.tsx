@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Team } from "@/lib/types";
-import { Plus, Edit, Trash2, CheckCircle, XCircle, Loader2, Building2, AlertTriangle, RotateCcw } from "lucide-react";
+import { Plus, Edit, Trash2, CheckCircle, XCircle, Loader2, Building2, AlertTriangle, RotateCcw, Bot } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -319,6 +319,29 @@ export default function TeamsManagerPage() {
     }
   };
 
+  const handleToggleCoachBot = async (team: Team) => {
+    if (!firestore) return;
+
+    const newValue = !team.settings?.enablePracticeCoachBot;
+
+    try {
+      await updateDoc(doc(firestore, 'teams', team.id), {
+        'settings.enablePracticeCoachBot': newValue,
+      });
+      toast({
+        title: newValue ? "Practice Coach Bot Enabled" : "Practice Coach Bot Disabled",
+        description: `Practice session coach bot integration has been ${newValue ? 'enabled' : 'disabled'} for ${team.name}`,
+      });
+    } catch (error) {
+      console.error("Error toggling coach bot:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update coach bot setting",
+        variant: "destructive",
+      });
+    }
+  };
+
   const activeTeams = teams?.filter(t => !t.deleted) || [];
   const deletedTeams = teams?.filter(t => t.deleted) || [];
 
@@ -330,6 +353,7 @@ export default function TeamsManagerPage() {
           <TableHead>Slug (Subdomain)</TableHead>
           <TableHead>Display Name</TableHead>
           <TableHead>Status</TableHead>
+          {!showRecovery && <TableHead className="text-center">Practice Coach Bot</TableHead>}
           <TableHead>Created</TableHead>
           {showRecovery && <TableHead>Archived</TableHead>}
           <TableHead className="text-right">Actions</TableHead>
@@ -364,6 +388,17 @@ export default function TeamsManagerPage() {
                 )}
               </Badge>
             </TableCell>
+            {!showRecovery && (
+              <TableCell className="text-center">
+                <div className="flex items-center justify-center gap-2">
+                  <Switch
+                    checked={team.settings?.enablePracticeCoachBot ?? false}
+                    onCheckedChange={() => handleToggleCoachBot(team)}
+                  />
+                  <Bot className={`h-4 w-4 ${team.settings?.enablePracticeCoachBot ? 'text-primary' : 'text-muted-foreground'}`} />
+                </div>
+              </TableCell>
+            )}
             <TableCell className="text-sm text-muted-foreground">
               {new Date(team.createdAt).toLocaleDateString()}
             </TableCell>

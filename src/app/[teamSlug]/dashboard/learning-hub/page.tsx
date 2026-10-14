@@ -15,7 +15,7 @@ export default function LearningHubPage() {
     {
       title: 'AI Coach Bots',
       description: 'Get personalized coaching from AI experts in debate and speech.',
-      href: `/${teamSlug}/dashboard/learning-hub/coach-bots`,
+      href: `/${teamSlug}/dashboard/coach-bots`,
       icon: <BrainCircuit className="h-8 w-8" />,
       featured: true,
     },

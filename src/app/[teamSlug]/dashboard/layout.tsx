@@ -178,6 +178,11 @@ const LearningNav = ({ pathname, teamSlug }: { pathname: string; teamSlug: strin
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/coach-bots`)} tooltip="AI Coach Bots">
+          <Link href={`/${teamSlug}/dashboard/coach-bots`}><BrainCircuit /><span>AI Coach Bots</span></Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/learning-hub/platforms`)} tooltip="Platform Guides">
           <Link href={`/${teamSlug}/dashboard/learning-hub/platforms`}><Globe /><span>Platform Guides</span></Link>
         </SidebarMenuButton>
