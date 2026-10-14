@@ -4,56 +4,58 @@
 import * as React from 'react';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ArrowRight, Gavel, Mic, Drama, Flag, Globe, FileText, BrainCircuit } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-
-const learningCategories = [
-  {
-    title: 'AI Coach Bots',
-    description: 'Get personalized coaching from AI experts in debate and speech.',
-    href: '/dashboard/learning-hub/coach-bots',
-    icon: <BrainCircuit className="h-8 w-8" />,
-    featured: true,
-  },
-  {
-    title: 'Platform Guides',
-    description: 'Tutorials for Tabroom, the NSDA website, and more.',
-    href: '/dashboard/learning-hub/platforms',
-    icon: <Globe className="h-8 w-8" />,
-  },
-  {
-    title: 'Standing Rules',
-    description: 'Official rulebooks and guides from NSDA, TFA, and UIL.',
-    href: '/dashboard/learning-hub/standing-rules',
-    icon: <FileText className="h-8 w-8" />,
-  },
-  {
-    title: 'Debate Events',
-    description: 'Resources for LD, PF, CX, and WSD.',
-    href: '/dashboard/learning-hub/debate',
-    icon: <Gavel className="h-8 w-8" />,
-  },
-  {
-    title: 'Speech Events',
-    description: 'Guides for Extemp, Oratory, and Informative.',
-    href: '/dashboard/learning-hub/speech',
-    icon: <Mic className="h-8 w-8" />,
-  },
-  {
-    title: 'Interpretation Events',
-    description: 'Tips for HI, DI, Duo, Duet, Prose, and Poetry.',
-    href: '/dashboard/learning-hub/interp',
-    icon: <Drama className="h-8 w-8" />,
-  },
-  {
-    title: 'Student Congress',
-    description: 'Learn about legislation, procedure, and strategy.',
-    href: '/dashboard/learning-hub/congress',
-    icon: <Flag className="h-8 w-8" />,
-  },
-];
+import { useRouter, useParams } from 'next/navigation';
 
 export default function LearningHubPage() {
   const router = useRouter();
+  const params = useParams();
+  const teamSlug = params?.teamSlug as string;
+
+  const learningCategories = [
+    {
+      title: 'AI Coach Bots',
+      description: 'Get personalized coaching from AI experts in debate and speech.',
+      href: `/${teamSlug}/dashboard/learning-hub/coach-bots`,
+      icon: <BrainCircuit className="h-8 w-8" />,
+      featured: true,
+    },
+    {
+      title: 'Platform Guides',
+      description: 'Tutorials for Tabroom, the NSDA website, and more.',
+      href: `/${teamSlug}/dashboard/learning-hub/platforms`,
+      icon: <Globe className="h-8 w-8" />,
+    },
+    {
+      title: 'Standing Rules',
+      description: 'Official rulebooks and guides from NSDA, TFA, and UIL.',
+      href: `/${teamSlug}/dashboard/learning-hub/standing-rules`,
+      icon: <FileText className="h-8 w-8" />,
+    },
+    {
+      title: 'Debate Events',
+      description: 'Resources for LD, PF, CX, and WSD.',
+      href: `/${teamSlug}/dashboard/learning-hub/debate`,
+      icon: <Gavel className="h-8 w-8" />,
+    },
+    {
+      title: 'Speech Events',
+      description: 'Guides for Extemp, Oratory, and Informative.',
+      href: `/${teamSlug}/dashboard/learning-hub/speech`,
+      icon: <Mic className="h-8 w-8" />,
+    },
+    {
+      title: 'Interpretation Events',
+      description: 'Tips for HI, DI, Duo, Duet, Prose, and Poetry.',
+      href: `/${teamSlug}/dashboard/learning-hub/interp`,
+      icon: <Drama className="h-8 w-8" />,
+    },
+    {
+      title: 'Student Congress',
+      description: 'Learn about legislation, procedure, and strategy.',
+      href: `/${teamSlug}/dashboard/learning-hub/congress`,
+      icon: <Flag className="h-8 w-8" />,
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
