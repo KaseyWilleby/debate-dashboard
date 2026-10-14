@@ -22,5 +22,7 @@ env:
     secret: GOOGLE_GENAI_API_KEY
   - variable: NEWS_API_KEY
     secret: NEWS_API_KEY
+  - variable: ANTHROPIC_API_KEY
+    secret: ANTHROPIC_API_KEY
   - variable: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
     value: "true"
