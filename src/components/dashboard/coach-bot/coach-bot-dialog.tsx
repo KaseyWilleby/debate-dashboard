@@ -12,7 +12,8 @@ import {
 import { ChatInterface } from './chat-interface';
 import type { CoachBotType, CoachBotMode } from '@/lib/types';
 import { getBotConfig } from '@/lib/coach-bot-config';
-import { useDoc } from '@/firebase/firestore/use-doc';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import { useParams } from 'next/navigation';
 
 interface CoachBotDialogProps {
@@ -30,9 +31,15 @@ export function CoachBotDialog({ botType, defaultMode, context }: CoachBotDialog
   const [mode, setMode] = React.useState<CoachBotMode | null>(defaultMode || null);
   const params = useParams();
   const teamSlug = params?.teamSlug as string;
+  const { firestore } = useFirebase();
 
   // Fetch team settings to check if coach bot is enabled
-  const team = useDoc(teamSlug ? `teams/${teamSlug}` : null);
+  const teamDocRef = useMemoFirebase(() => {
+    if (!firestore || !teamSlug) return null;
+    return doc(firestore, 'teams', teamSlug);
+  }, [firestore, teamSlug]);
+
+  const { data: team } = useDoc(teamDocRef);
   const isEnabled = team?.settings?.enablePracticeCoachBot ?? false;
 
   const botConfig = getBotConfig(botType);
