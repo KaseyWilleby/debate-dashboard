@@ -49,8 +49,9 @@ firestore-debug.log
 .vercel
 serviceAccountKey.json
 
-# claude
-.claude/
+# claude - ignore local settings but allow workspace docs
+.claude/*.local.*
+.claude/settings.json
 
 # windows reserved files
 nul
