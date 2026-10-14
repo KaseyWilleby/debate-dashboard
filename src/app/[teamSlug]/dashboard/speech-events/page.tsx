@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Play, Pause, RefreshCw, Loader2, Video, StopCircle, Save, ChevronsRight, Trash2, VideoIcon, Repeat, Camera, CameraOff, ArrowUp, ArrowDown, Share, FilePenLine, Minus, Plus, Timer, Send, Upload } from "lucide-react";
+import { Play, Pause, RefreshCw, Loader2, Video, StopCircle, Save, ChevronsRight, Trash2, VideoIcon, Repeat, Camera, CameraOff, ArrowUp, ArrowDown, Share, FilePenLine, Minus, Plus, Timer, Send, Upload, BrainCircuit } from "lucide-react";
 import { cn, getRoleBasedColor, formatTime } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { generatePracticeTopics, type GeneratePracticeTopicsInput } from "@/ai/flows/generate-practice-topics-flow";
@@ -258,6 +258,10 @@ export default function ExtempPracticePage() {
     // Migration state
     const [isMigrateDialogOpen, setIsMigrateDialogOpen] = React.useState(false);
     const [hasCheckedForMigration, setHasCheckedForMigration] = React.useState(false);
+
+    // Coach bot feedback state
+    const [isCoachBotOpen, setIsCoachBotOpen] = React.useState(false);
+    const [recordingForFeedback, setRecordingForFeedback] = React.useState<SavedSpeech | null>(null);
 
     // Auto-detect local recordings and prompt migration on first load
     React.useEffect(() => {
@@ -864,9 +868,12 @@ export default function ExtempPracticePage() {
                 sharedWith: [],
             };
 
-            await addDoc(collection(firestore, 'savedSpeeches'), newSavedSpeech);
+            const docRef = await addDoc(collection(firestore, 'savedSpeeches'), newSavedSpeech);
 
-            toast({ title: 'Recording Saved!', description: 'Your practice session has been archived.' });
+            toast({
+                title: 'Recording Saved!',
+                description: 'Your practice session has been archived. Click "Get Feedback" to receive AI coaching on your performance.'
+            });
             setIsPracticeSessionOpen(false);
             resetPractice();
 
@@ -1019,6 +1026,11 @@ export default function ExtempPracticePage() {
     const openSubmitDialog = (speech: SavedSpeech) => {
         setSpeechToSubmit(speech);
         setIsSubmitDialogOpen(true);
+    };
+
+    const openCoachBotFeedback = (speech: SavedSpeech) => {
+        setRecordingForFeedback(speech);
+        setIsCoachBotOpen(true);
     };
 
     const handleConfirmShare = async () => {
@@ -1260,9 +1272,12 @@ export default function ExtempPracticePage() {
                                     </AccordionTrigger>
                                     <AccordionContent>
                                         <p className="text-xs text-muted-foreground mb-2">{format(new Date(speech.date), 'PPP')}</p>
-                                        <div className="flex gap-2">
-                                            <Button size="sm" variant="secondary" className="flex-1" onClick={() => handleViewArchivedSpeech(speech)}>
+                                        <div className="flex flex-wrap gap-2">
+                                            <Button size="sm" variant="secondary" onClick={() => handleViewArchivedSpeech(speech)}>
                                                 <ChevronsRight className="mr-2 h-4 w-4"/> View
+                                            </Button>
+                                            <Button size="sm" variant="outline" onClick={() => openCoachBotFeedback(speech)}>
+                                                <BrainCircuit className="mr-2 h-4 w-4"/> Get Feedback
                                             </Button>
                                              {isOwner && (
                                                 <>
@@ -1788,25 +1803,57 @@ export default function ExtempPracticePage() {
                 let botType: CoachBotType = 'extemp-coach';
                 let sessionName = '';
 
-                if (mode === 'extemp') {
+                // Determine bot type based on recording or current mode
+                const currentMode = recordingForFeedback?.mode || mode;
+
+                if (currentMode === 'extemp') {
                     botType = 'extemp-coach';
                     sessionName = 'Extemporaneous Practice';
-                } else if (mode === 'impromptu') {
+                } else if (currentMode === 'impromptu') {
                     botType = 'impromptu-coach';
                     sessionName = 'Impromptu Practice';
-                } else if (mode === 'informative') {
+                } else if (currentMode === 'informative') {
                     botType = 'info-coach';
                     sessionName = 'Informative Speaking Practice';
-                } else if (mode === 'oratory') {
+                } else if (currentMode === 'oratory') {
                     botType = 'oratory-coach';
                     sessionName = 'Oratory Practice';
                 }
 
+                // Build recording context if a recording is selected for feedback
+                const recordingContext = recordingForFeedback ? {
+                    topic: recordingForFeedback.topic,
+                    duration: formatTime(recordingForFeedback.speechTime),
+                    recordingUrl: recordingForFeedback.videoUrl,
+                } : undefined;
+
                 return (
-                    <CoachBotDialog
-                        botType={botType}
-                        context={{ sessionName, eventType: mode }}
-                    />
+                    <>
+                        {/* Floating bot for general practice guidance */}
+                        {!recordingForFeedback && (
+                            <CoachBotDialog
+                                botType={botType}
+                                context={{ sessionName, eventType: currentMode }}
+                                trigger="fab"
+                            />
+                        )}
+                        {/* Controlled bot for recording feedback */}
+                        {recordingForFeedback && (
+                            <CoachBotDialog
+                                botType={botType}
+                                defaultMode="speech-feedback"
+                                recordingContext={recordingContext}
+                                trigger="none"
+                                open={isCoachBotOpen}
+                                onOpenChange={(open) => {
+                                    setIsCoachBotOpen(open);
+                                    if (!open) {
+                                        setRecordingForFeedback(null);
+                                    }
+                                }}
+                            />
+                        )}
+                    </>
                 );
             })()}
         </div>

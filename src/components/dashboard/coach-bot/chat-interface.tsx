@@ -17,6 +17,7 @@ interface ChatInterfaceProps {
   onModeChange?: (mode: CoachBotMode) => void;
   initialMessages?: CoachBotMessage[];
   conversationId?: string;
+  initialMessage?: string; // Auto-send this message when provided
 }
 
 export function ChatInterface({
@@ -25,9 +26,11 @@ export function ChatInterface({
   onModeChange,
   initialMessages = [],
   conversationId,
+  initialMessage,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = React.useState<CoachBotMessage[]>(initialMessages);
   const [input, setInput] = React.useState('');
+  const [hasAutoSent, setHasAutoSent] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -85,18 +88,21 @@ export function ChatInterface({
     }
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading || !mode) return;
+  const handleSend = React.useCallback(async (messageOverride?: string) => {
+    const messageToSend = messageOverride || input.trim();
+    if (!messageToSend || isLoading || !mode) return;
 
     const userMessage: CoachBotMessage = {
       id: `msg-${Date.now()}`,
       role: 'user',
-      content: input.trim(),
+      content: messageToSend,
       timestamp: new Date().toISOString(),
     };
 
     setMessages(prev => [...prev, userMessage]);
-    setInput('');
+    if (!messageOverride) {
+      setInput('');
+    }
     setIsLoading(true);
 
     try {
@@ -144,7 +150,15 @@ export function ChatInterface({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [input, isLoading, mode, botType, messages, toast]);
+
+  // Auto-send initial message when provided
+  React.useEffect(() => {
+    if (initialMessage && mode && !hasAutoSent && !isLoading) {
+      setHasAutoSent(true);
+      handleSend(initialMessage);
+    }
+  }, [initialMessage, mode, hasAutoSent, isLoading, handleSend]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
