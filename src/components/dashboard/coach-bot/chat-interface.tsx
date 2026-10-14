@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Send, Sparkles } from 'lucide-react';
+import { Loader2, Send, Sparkles, MessageSquare, FileSearch, Swords, HelpCircle, Presentation, Lightbulb } from 'lucide-react';
 import { ChatMessage } from './chat-message';
 import type { CoachBotType, CoachBotMode, CoachBotMessage } from '@/lib/types';
 import { getBotConfig } from '@/lib/coach-bot-config';
@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface ChatInterfaceProps {
   botType: CoachBotType;
-  mode: CoachBotMode;
+  mode: CoachBotMode | null;
   onModeChange?: (mode: CoachBotMode) => void;
   initialMessages?: CoachBotMessage[];
   conversationId?: string;
@@ -37,7 +37,7 @@ export function ChatInterface({
 
   // Send greeting when mode changes
   React.useEffect(() => {
-    if (prevModeRef.current !== mode) {
+    if (prevModeRef.current !== mode && mode !== null) {
       prevModeRef.current = mode;
 
       // Get mode-specific greeting
@@ -86,7 +86,7 @@ export function ChatInterface({
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !mode) return;
 
     const userMessage: CoachBotMessage = {
       id: `msg-${Date.now()}`,
@@ -153,6 +153,47 @@ export function ChatInterface({
     }
   };
 
+  const getModeInfo = (modeType: CoachBotMode) => {
+    switch (modeType) {
+      case 'chat':
+        return {
+          icon: <MessageSquare className="h-5 w-5" />,
+          title: 'General Chat',
+          description: 'Ask me anything about debate and get personalized coaching advice',
+        };
+      case 'case-feedback':
+        return {
+          icon: <FileSearch className="h-5 w-5" />,
+          title: 'Case Feedback',
+          description: 'Share your case or argument for detailed feedback and improvements',
+        };
+      case 'rebuttal-practice':
+        return {
+          icon: <Swords className="h-5 w-5" />,
+          title: 'Rebuttal Practice',
+          description: 'Practice responding to arguments with organized, effective rebuttals',
+        };
+      case 'cx-practice':
+        return {
+          icon: <HelpCircle className="h-5 w-5" />,
+          title: 'Cross-Examination Practice',
+          description: 'Improve your questioning skills through interactive CX practice',
+        };
+      case 'speech-feedback':
+        return {
+          icon: <Presentation className="h-5 w-5" />,
+          title: 'Speech Feedback',
+          description: 'Get feedback on speech structure, delivery, and persuasiveness',
+        };
+      case 'topic-generation':
+        return {
+          icon: <Lightbulb className="h-5 w-5" />,
+          title: 'Topic Generation',
+          description: 'Generate relevant practice topics for your event',
+        };
+    }
+  };
+
   return (
     <Card className="flex flex-col h-full">
       <CardHeader>
@@ -168,25 +209,57 @@ export function ChatInterface({
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-8">
               <Sparkles className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Start a conversation</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Ask me anything about {botConfig.name.toLowerCase()}.
-              </p>
-              {botConfig.examples && (
-                <div className="space-y-2 w-full max-w-md">
-                  <p className="text-xs font-medium text-muted-foreground">Example questions:</p>
-                  {botConfig.examples.slice(0, 3).map((example, i) => (
-                    <Button
-                      key={i}
-                      variant="outline"
-                      size="sm"
-                      className="w-full text-left justify-start h-auto py-2 px-3"
-                      onClick={() => setInput(example)}
-                    >
-                      <span className="text-xs">{example}</span>
-                    </Button>
-                  ))}
-                </div>
+              {!mode ? (
+                <>
+                  <h3 className="text-lg font-semibold mb-2">Choose a mode</h3>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    Select how you'd like to work with {botConfig.name}.
+                  </p>
+                  <div className="grid gap-3 w-full max-w-2xl">
+                    {botConfig.supportedModes.map((modeType) => {
+                      const modeInfo = getModeInfo(modeType);
+                      return (
+                        <Button
+                          key={modeType}
+                          variant="outline"
+                          className="h-auto py-4 px-4 text-left justify-start hover:bg-accent"
+                          onClick={() => onModeChange?.(modeType)}
+                        >
+                          <div className="flex items-start gap-3 w-full">
+                            <div className="text-primary mt-0.5">{modeInfo.icon}</div>
+                            <div className="flex-1">
+                              <div className="font-semibold text-sm mb-1">{modeInfo.title}</div>
+                              <div className="text-xs text-muted-foreground">{modeInfo.description}</div>
+                            </div>
+                          </div>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-lg font-semibold mb-2">Start a conversation</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Ask me anything about {botConfig.name.toLowerCase()}.
+                  </p>
+                  {botConfig.examples && (
+                    <div className="space-y-2 w-full max-w-md">
+                      <p className="text-xs font-medium text-muted-foreground">Example questions:</p>
+                      {botConfig.examples.slice(0, 3).map((example, i) => (
+                        <Button
+                          key={i}
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-left justify-start h-auto py-2 px-3"
+                          onClick={() => setInput(example)}
+                        >
+                          <span className="text-xs">{example}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           ) : (
