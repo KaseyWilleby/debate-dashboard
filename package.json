@@ -51,7 +51,7 @@
     "file-saver": "^2.0.5",
     "firebase": "^11.9.1",
     "firebase-admin": "^12.3.0",
-    "framer-motion": "^12.38.0",
+    "framer-motion": "^12.43.0",
     "genkit": "^1.20.0",
     "genkitx-anthropic": "^0.30.0",
     "googleapis": "^183.0.0",

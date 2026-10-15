@@ -7,7 +7,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Send, Sparkles, MessageSquare, FileSearch, Swords, HelpCircle, Presentation, Lightbulb } from 'lucide-react';
 import { ChatMessage } from './chat-message';
-import type { CoachBotType, CoachBotMode, CoachBotMessage } from '@/lib/types';
+import { TutorialMode } from './tutorial-mode';
+import type { CoachBotType, CoachBotMode, CoachBotMessage, PracticeMode } from '@/lib/types';
 import { getBotConfig } from '@/lib/coach-bot-config';
 import { useToast } from '@/hooks/use-toast';
 
@@ -25,6 +26,8 @@ interface ChatInterfaceProps {
     transcript?: string;
   };
   sessionName?: string;
+  eventType?: PracticeMode;
+  onClose?: () => void;
 }
 
 export function ChatInterface({
@@ -36,6 +39,8 @@ export function ChatInterface({
   initialMessage,
   recordingContext,
   sessionName,
+  eventType,
+  onClose,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = React.useState<CoachBotMessage[]>(initialMessages);
   const [input, setInput] = React.useState('');
@@ -176,8 +181,14 @@ export function ChatInterface({
     }
   };
 
-  const getModeInfo = (modeType: CoachBotMode) => {
+  const getModeInfo = (modeType: CoachBotMode | 'tutorial') => {
     switch (modeType) {
+      case 'tutorial':
+        return {
+          icon: <Sparkles className="h-5 w-5" />,
+          title: 'Guided Tutorial',
+          description: 'Interactive walkthrough of the practice workflow with step-by-step pointers',
+        };
       case 'chat':
         return {
           icon: <MessageSquare className="h-5 w-5" />,
@@ -240,39 +251,58 @@ export function ChatInterface({
       </CardHeader>
 
       <CardContent className="flex-1 min-h-0 p-0">
-        <ScrollArea className="h-full px-6" ref={scrollAreaRef}>
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8">
-              <Sparkles className="h-12 w-12 text-muted-foreground mb-4" />
-              {!mode ? (
-                <>
-                  <h3 className="text-lg font-semibold mb-2">Choose a mode</h3>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    Select how you'd like to work with {botConfig.name}.
-                  </p>
-                  <div className="grid gap-3 w-full max-w-2xl">
-                    {botConfig.supportedModes.map((modeType) => {
-                      const modeInfo = getModeInfo(modeType);
-                      return (
+        {mode === 'tutorial' && eventType && onClose ? (
+          <TutorialMode eventType={eventType} onClose={onClose} />
+        ) : (
+          <ScrollArea className="h-full px-6" ref={scrollAreaRef}>
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                <Sparkles className="h-12 w-12 text-muted-foreground mb-4" />
+                {!mode ? (
+                  <>
+                    <h3 className="text-lg font-semibold mb-2">Choose a mode</h3>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Select how you'd like to work with {botConfig.name}.
+                    </p>
+                    <div className="grid gap-3 w-full max-w-2xl">
+                      {/* Tutorial mode - only show if eventType is available */}
+                      {eventType && (
                         <Button
-                          key={modeType}
                           variant="outline"
-                          className="h-auto py-4 px-4 text-left justify-start hover:bg-accent"
-                          onClick={() => onModeChange?.(modeType)}
+                          className="h-auto py-4 px-4 text-left justify-start hover:bg-accent border-primary/50"
+                          onClick={() => onModeChange?.('tutorial' as CoachBotMode)}
                         >
                           <div className="flex items-start gap-3 w-full">
-                            <div className="text-primary mt-0.5">{modeInfo.icon}</div>
+                            <div className="text-primary mt-0.5">{getModeInfo('tutorial').icon}</div>
                             <div className="flex-1">
-                              <div className="font-semibold text-sm mb-1">{modeInfo.title}</div>
-                              <div className="text-xs text-muted-foreground">{modeInfo.description}</div>
+                              <div className="font-semibold text-sm mb-1">{getModeInfo('tutorial').title}</div>
+                              <div className="text-xs text-muted-foreground">{getModeInfo('tutorial').description}</div>
                             </div>
                           </div>
                         </Button>
-                      );
-                    })}
-                  </div>
-                </>
-              ) : (
+                      )}
+                      {botConfig.supportedModes.map((modeType) => {
+                        const modeInfo = getModeInfo(modeType);
+                        return (
+                          <Button
+                            key={modeType}
+                            variant="outline"
+                            className="h-auto py-4 px-4 text-left justify-start hover:bg-accent"
+                            onClick={() => onModeChange?.(modeType)}
+                          >
+                            <div className="flex items-start gap-3 w-full">
+                              <div className="text-primary mt-0.5">{modeInfo.icon}</div>
+                              <div className="flex-1">
+                                <div className="font-semibold text-sm mb-1">{modeInfo.title}</div>
+                                <div className="text-xs text-muted-foreground">{modeInfo.description}</div>
+                              </div>
+                            </div>
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
                 <>
                   <h3 className="text-lg font-semibold mb-2">Start a conversation</h3>
                   <p className="text-sm text-muted-foreground mb-4">
@@ -310,9 +340,11 @@ export function ChatInterface({
               )}
             </div>
           )}
-        </ScrollArea>
+          </ScrollArea>
+        )}
       </CardContent>
 
+      {mode !== 'tutorial' && (
       <CardFooter className="p-4 border-t">
         <div className="flex gap-2 w-full">
           <Textarea
@@ -337,6 +369,7 @@ export function ChatInterface({
           </Button>
         </div>
       </CardFooter>
+      )}
     </Card>
   );
 }

@@ -22,11 +22,13 @@ import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useParams } from 'next/navigation';
 
+import type { PracticeMode } from '@/lib/types';
+
 interface CoachBotDialogProps {
   botType: CoachBotType;
   defaultMode?: CoachBotMode;
   context?: {
-    eventType?: string;
+    eventType?: PracticeMode;
     topicId?: string;
     sessionName?: string;
   };
@@ -138,6 +140,8 @@ export function CoachBotDialog({
               initialMessage={initialMessage}
               recordingContext={recordingContext}
               sessionName={context?.sessionName}
+              eventType={context?.eventType}
+              onClose={() => setIsOpen(false)}
             />
           </div>
         </DialogContent>
