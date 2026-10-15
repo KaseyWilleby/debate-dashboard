@@ -106,7 +106,7 @@ export function CoachBotDialog({
       {/* Floating Action Button - only show if trigger is 'fab' */}
       {trigger === 'fab' && (
         <div className="fixed bottom-6 right-6 z-50">
-          <TooltipProvider>
+          <TooltipProvider delayDuration={300}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -129,38 +129,15 @@ export function CoachBotDialog({
 
       {/* Coach Bot Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-3xl h-[600px] flex flex-col p-0">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="flex items-center gap-2">
-                <Bot className="h-5 w-5 text-primary" />
-                {botConfig.name}
-                {recordingContext && (
-                  <span className="text-sm text-muted-foreground font-normal">
-                    • Feedback on "{recordingContext.topic}"
-                  </span>
-                )}
-                {!recordingContext && context?.sessionName && (
-                  <span className="text-sm text-muted-foreground font-normal">
-                    • {context.sessionName}
-                  </span>
-                )}
-              </DialogTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsOpen(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </DialogHeader>
-          <div className="flex-1 overflow-hidden">
+        <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 gap-0">
+          <div className="h-full overflow-hidden">
             <ChatInterface
               botType={botType}
               mode={mode}
               onModeChange={setMode}
               initialMessage={initialMessage}
+              recordingContext={recordingContext}
+              sessionName={context?.sessionName}
             />
           </div>
         </DialogContent>

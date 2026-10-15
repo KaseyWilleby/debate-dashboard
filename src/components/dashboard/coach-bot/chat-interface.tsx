@@ -18,6 +18,13 @@ interface ChatInterfaceProps {
   initialMessages?: CoachBotMessage[];
   conversationId?: string;
   initialMessage?: string; // Auto-send this message when provided
+  recordingContext?: {
+    topic: string;
+    duration?: string;
+    recordingUrl?: string;
+    transcript?: string;
+  };
+  sessionName?: string;
 }
 
 export function ChatInterface({
@@ -27,6 +34,8 @@ export function ChatInterface({
   initialMessages = [],
   conversationId,
   initialMessage,
+  recordingContext,
+  sessionName,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = React.useState<CoachBotMessage[]>(initialMessages);
   const [input, setInput] = React.useState('');
@@ -209,13 +218,25 @@ export function ChatInterface({
   };
 
   return (
-    <Card className="flex flex-col h-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <Card className="flex flex-col h-full border-0 shadow-none">
+      <CardHeader className="border-b">
+        <CardTitle className="flex items-center gap-2 flex-wrap">
           <Sparkles className="h-5 w-5 text-primary" />
-          {botConfig.name}
+          <span>{botConfig.name}</span>
+          {recordingContext && (
+            <span className="text-sm text-muted-foreground font-normal">
+              • Feedback on "{recordingContext.topic}"
+            </span>
+          )}
+          {!recordingContext && sessionName && (
+            <span className="text-sm text-muted-foreground font-normal">
+              • {sessionName}
+            </span>
+          )}
         </CardTitle>
-        <p className="text-sm text-muted-foreground">{botConfig.description}</p>
+        {!recordingContext && !sessionName && (
+          <p className="text-sm text-muted-foreground">{botConfig.description}</p>
+        )}
       </CardHeader>
 
       <CardContent className="flex-1 min-h-0 p-0">
