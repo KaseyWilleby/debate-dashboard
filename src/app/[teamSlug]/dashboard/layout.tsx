@@ -25,6 +25,8 @@ import { useEffect, useState } from "react";
 import { useFirebase } from "@/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { Team } from "@/lib/types";
+import { TutorialProvider } from "@/contexts/tutorial-context";
+import { TutorialOverlay } from "@/components/tutorial/tutorial-overlay";
 
 type Hub = 'team' | 'tournament' | 'practice' | 'learning';
 
@@ -291,6 +293,8 @@ export default function DashboardLayout({
   }
 
   return (
+    <TutorialProvider>
+      <TutorialOverlay />
       <SidebarProvider>
         <Sidebar>
           <SidebarHeader>
@@ -371,5 +375,6 @@ export default function DashboardLayout({
           <main className="flex-1 p-4 sm:px-6 sm:py-6">{children}</main>
         </SidebarInset>
       </SidebarProvider>
+    </TutorialProvider>
   );
 }

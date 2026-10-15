@@ -1082,8 +1082,9 @@ export default function ExtempPracticePage() {
     }
 
     const renderTopicCard = (topic: Topic) => (
-        <Card 
+        <Card
             key={topic.id}
+            data-tutorial="topic-card"
             className="cursor-pointer transition-all hover:bg-primary/10"
             onClick={() => setTopicToConfirm(topic)}
         >
@@ -1143,7 +1144,7 @@ export default function ExtempPracticePage() {
                     <TabsTrigger value="oratory">Oratory</TabsTrigger>
                 </TabsList>
                 <TabsContent value="extemp" className="space-y-6 mt-4">
-                    <Card>
+                    <Card data-tutorial="topic-generator">
                         <CardHeader>
                              <div className="flex items-start justify-between">
                                 <div>
@@ -1160,7 +1161,7 @@ export default function ExtempPracticePage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex gap-2">
-                                <Button onClick={handleGenerateTopics} className="w-full" disabled={isLoadingTopics}>
+                                <Button data-tutorial="generate-button" onClick={handleGenerateTopics} className="w-full" disabled={isLoadingTopics}>
                                     {isLoadingTopics ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                     Generate Topics
                                 </Button>
@@ -1276,7 +1277,7 @@ export default function ExtempPracticePage() {
                                             <Button size="sm" variant="secondary" onClick={() => handleViewArchivedSpeech(speech)}>
                                                 <ChevronsRight className="mr-2 h-4 w-4"/> View
                                             </Button>
-                                            <Button size="sm" variant="outline" onClick={() => openCoachBotFeedback(speech)}>
+                                            <Button size="sm" variant="outline" data-tutorial="get-feedback-button" onClick={() => openCoachBotFeedback(speech)}>
                                                 <BrainCircuit className="mr-2 h-4 w-4"/> Get Feedback
                                             </Button>
                                              {isOwner && (
@@ -1427,7 +1428,7 @@ export default function ExtempPracticePage() {
                                     </div>
                                     <div className="flex-1 flex justify-center">
                                         {!viewingSpeech && !videoUrl && hasCameraPermission && (
-                                            <div className="flex items-center space-x-2">
+                                            <div className="flex items-center space-x-2" data-tutorial="camera-toggle">
                                                 <Switch id="camera-toggle" checked={isCameraOn} onCheckedChange={setIsCameraOn} />
                                                 <Label htmlFor="camera-toggle">Camera ON/OFF</Label>
                                             </div>
@@ -1447,13 +1448,14 @@ export default function ExtempPracticePage() {
                                                             <Button variant="destructive" onClick={handleDeleteCurrentSpeech}>
                                                                 <Trash2 className="mr-2"/> Delete
                                                             </Button>
-                                                            <Button onClick={handleSaveSpeech} disabled={isSaving}>
+                                                            <Button data-tutorial="save-button" onClick={handleSaveSpeech} disabled={isSaving}>
                                                                 {isSaving ? <Loader2 className="mr-2 animate-spin" /> : <Save className="mr-2"/>}
                                                                 {isSaving ? 'Saving...' : 'Save Recording'}
                                                             </Button>
                                                         </div>
                                                     ) : !viewingSpeech && (
                                                         <Button
+                                                            data-tutorial="record-button"
                                                             onClick={initiateRecordingProcess}
                                                             disabled={!selectedTopic || !hasCameraPermission || !isCameraOn || !!viewingSpeech || countdown !== null || (prepTimerActive && !isScriptedEvent)}
                                                         >
@@ -1493,7 +1495,7 @@ export default function ExtempPracticePage() {
                             </Card>
                         
                             {(!viewingSpeech || viewingSpeech.ownerId === user?.id) && (
-                                <Card>
+                                <Card data-tutorial="notes">
                                     <CardHeader>
                                         <CardTitle>Notes</CardTitle>
                                         <CardDescription>Private notes visible only to you.</CardDescription>
