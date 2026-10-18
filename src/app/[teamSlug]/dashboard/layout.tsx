@@ -54,13 +54,13 @@ const TeamNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoach: b
                 <Link href={`/${teamSlug}/dashboard/session-manager`}><BookCopy /><span>Session Manager</span></Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/assignments`)} tooltip="Assignments">
+                <Link href={`/${teamSlug}/dashboard/assignments`}><ClipboardCheck /><span>Assignments</span></Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             {isCoach && (
               <>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/assignments`)} tooltip="Assignments">
-                    <Link href={`/${teamSlug}/dashboard/assignments`}><ClipboardCheck /><span>Assignments</span></Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/users`)} tooltip="User Management">
                     <Link href={`/${teamSlug}/dashboard/users`}><Users /><span>User Management</span></Link>

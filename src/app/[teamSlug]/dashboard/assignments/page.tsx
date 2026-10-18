@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Assignment, Submission } from "@/lib/types";
 import { format } from "date-fns";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { StudentAssignmentsView } from "@/components/assignments/student-assignments-view";
 
 // Helper function to format UTC dates without timezone shifting
 const formatUTCDate = (isoString: string): string => {
@@ -51,6 +52,11 @@ export default function AssignmentsPage() {
   const [feedbackRequired, setFeedbackRequired] = React.useState<number | undefined>(undefined);
 
   const isCoachOrAdmin = user?.role === 'coach' || user?.role === 'superadmin';
+
+  // Show student view for students
+  if (!isCoachOrAdmin) {
+    return <StudentAssignmentsView teamSlug={teamSlug} />;
+  }
 
   // Fetch assignments
   const assignmentsQuery = useMemoFirebase(() => {

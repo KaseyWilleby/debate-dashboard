@@ -67,6 +67,7 @@ export interface User {
   studentId?: string;
   recoveryPin?: string; // 4-digit PIN for password recovery (for students without email access)
   classPeriod?: string; // Class period for organizing students (e.g., "1st Period", "A Block", etc.)
+  class?: 'varsity' | 'novice'; // Student level classification
   nsdaId?: string; // NSDA membership ID for matching tabroom results
   tabroomEmail?: string; // Tabroom.com login email
   tabroomPassword?: string; // Tabroom.com password (should be encrypted in production)
@@ -427,18 +428,39 @@ export interface TournamentResult {
 }
 
 // Assignment types
+export type AssignmentType = 'video' | 'document' | 'text' | 'link';
+export type AssignmentClass = 'varsity' | 'novice' | 'both';
+
 export interface Assignment {
   id: string;
   title: string;
   description: string;
+  instructions?: string; // Detailed instructions for the assignment
   teamId: string; // Which team this assignment is for
   createdBy: string; // Coach user ID
   createdAt: string; // ISO date
+  updatedAt?: string; // ISO date of last update
   dueDate: string; // ISO date
   allowResubmission: boolean; // Can students resubmit?
   submissionsOpen: boolean; // Manually control if submissions are open
   classPeriods?: string[]; // Optional: specific class periods this is for (empty = all periods)
-  feedbackRequired?: number; // Number of peer videos students must give feedback on
+  class?: AssignmentClass; // Filter by varsity/novice (for teams without class periods)
+  submissionType?: AssignmentType; // What type of submission is expected
+  feedbackRequired?: number; // DEPRECATED: Number of peer videos students must give feedback on
+  requiresPeerFeedback?: boolean; // Whether peer feedback is required
+  feedbackPerSubmissionLimit?: number; // Max feedback each submission can receive
+  feedbackSubmissionsRequired?: number; // How many other submissions each student must review
+  isPublished?: boolean; // Whether students can see the assignment
+  isArchived?: boolean; // Soft delete
+}
+
+export interface SubmissionFeedback {
+  id: string;
+  submissionId: string; // Reference to submission being reviewed
+  reviewerId: string; // Student ID who gave feedback
+  reviewerName: string; // For display
+  content: string; // Feedback text
+  createdAt: string; // ISO date
 }
 
 export interface Submission {
@@ -446,8 +468,8 @@ export interface Submission {
   assignmentId: string; // Reference to Assignment
   studentId: string; // User ID of student
   studentName: string; // Student's name (for display)
-  recordingId: string; // Reference to SavedSpeech
-  recordingTitle: string; // Title of the recording (for display)
+  recordingId?: string; // Reference to SavedSpeech (optional for non-video submissions)
+  recordingTitle?: string; // Title of the recording (for display)
   submittedAt: string; // ISO date
   notes: string; // Student notes/comments
   grade?: number | string; // Grade assigned by coach
@@ -455,6 +477,12 @@ export interface Submission {
   gradedBy?: string; // Coach user ID who graded
   gradedAt?: string; // ISO date when graded
   classPeriod?: string; // Student's class period at time of submission
+
+  // Peer feedback support
+  type?: AssignmentType; // Type of submission (video, document, text, link)
+  content?: string; // URL for video/document/link, text content for text submissions
+  peerFeedback?: SubmissionFeedback[]; // Peer feedback received on this submission
+  feedbackGivenTo?: string[]; // Array of submission IDs this student gave feedback to (for tracking)
 }
 
 // Appointment System Types
@@ -613,4 +641,15 @@ export interface CoachBotConfig {
   supportedModes: CoachBotMode[];
   systemPrompt: string; // Base system prompt for this bot
   examples?: string[]; // Example questions/use cases
+}
+
+// Helper type for tracking student progress on an assignment
+export interface StudentAssignmentProgress {
+  assignmentId: string;
+  hasSubmitted: boolean;
+  submission?: Submission;
+  feedbackGivenCount: number; // How many submissions they've reviewed
+  feedbackRequiredCount: number; // How many they need to review
+  feedbackReceivedCount: number; // How much feedback their submission has
+  isComplete: boolean; // Submitted + gave required feedback
 }
