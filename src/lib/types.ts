@@ -450,6 +450,7 @@ export interface Assignment {
   requiresPeerFeedback?: boolean; // Whether peer feedback is required
   feedbackPerSubmissionLimit?: number; // Max feedback each submission can receive
   feedbackSubmissionsRequired?: number; // How many other submissions each student must review
+  randomFeedbackAssignment?: boolean; // Automatically assign random submissions for feedback (ensures even distribution)
   isPublished?: boolean; // Whether students can see the assignment
   isArchived?: boolean; // Soft delete
 }

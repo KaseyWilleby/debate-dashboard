@@ -50,6 +50,7 @@ export default function AssignmentsPage() {
   const [submissionsOpen, setSubmissionsOpen] = React.useState(true);
   const [classPeriods, setClassPeriods] = React.useState<string[]>([]);
   const [feedbackRequired, setFeedbackRequired] = React.useState<number | undefined>(undefined);
+  const [randomFeedbackAssignment, setRandomFeedbackAssignment] = React.useState(false);
 
   const isCoachOrAdmin = user?.role === 'coach' || user?.role === 'superadmin';
 
@@ -89,6 +90,7 @@ export default function AssignmentsPage() {
     setSubmissionsOpen(true);
     setClassPeriods([]);
     setFeedbackRequired(undefined);
+    setRandomFeedbackAssignment(false);
     setEditingAssignment(null);
   };
 
@@ -125,6 +127,9 @@ export default function AssignmentsPage() {
       }
       if (feedbackRequired !== undefined && feedbackRequired > 0) {
         assignmentData.feedbackRequired = feedbackRequired;
+      }
+      if (feedbackRequired !== undefined && feedbackRequired > 0) {
+        assignmentData.randomFeedbackAssignment = randomFeedbackAssignment;
       }
 
       if (editingAssignment) {
@@ -163,6 +168,7 @@ export default function AssignmentsPage() {
     setSubmissionsOpen(assignment.submissionsOpen);
     setClassPeriods(assignment.classPeriods || []);
     setFeedbackRequired(assignment.feedbackRequired);
+    setRandomFeedbackAssignment(assignment.randomFeedbackAssignment || false);
     setIsCreateDialogOpen(true);
   };
 
@@ -313,6 +319,23 @@ export default function AssignmentsPage() {
                   Number of peer videos students must provide feedback on as part of this assignment.
                 </p>
               </div>
+              {(feedbackRequired !== undefined && feedbackRequired > 0) && (
+                <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <Switch
+                    id="randomFeedbackAssignment"
+                    checked={randomFeedbackAssignment}
+                    onCheckedChange={setRandomFeedbackAssignment}
+                  />
+                  <div className="flex-1">
+                    <Label htmlFor="randomFeedbackAssignment" className="font-medium text-blue-900 cursor-pointer">
+                      Random Feedback Assignment
+                    </Label>
+                    <p className="text-xs text-blue-700 mt-0.5">
+                      Automatically assign submissions to students one at a time. Ensures even distribution of feedback across all submissions.
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center space-x-2">
                 <Switch
                   id="allowResubmission"

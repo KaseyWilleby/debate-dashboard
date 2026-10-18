@@ -65,6 +65,7 @@ export function AssignmentDetailDialog({
   const [submissionNotes, setSubmissionNotes] = React.useState('');
   const [feedbackContent, setFeedbackContent] = React.useState<Record<string, string>>({});
   const [givingFeedbackTo, setGivingFeedbackTo] = React.useState<string | null>(null);
+  const [currentRandomSubmission, setCurrentRandomSubmission] = React.useState<Submission | null>(null);
 
   // Fetch all submissions for this assignment
   const submissionsQuery = useMemoFirebase(() => {
@@ -113,6 +114,36 @@ export function AssignmentDetailDialog({
   const feedbackGiven = mySubmission?.feedbackGivenTo?.length || 0;
   const feedbackRequired = assignment?.feedbackSubmissionsRequired || 0;
   const feedbackReceived = mySubmission?.peerFeedback?.length || 0;
+
+  // Function to select a random submission for feedback (ensures even distribution)
+  const selectRandomSubmission = React.useCallback(() => {
+    if (!feedbackSubmissions || feedbackSubmissions.length === 0) {
+      setCurrentRandomSubmission(null);
+      return;
+    }
+
+    // Group submissions by feedback count to ensure even distribution
+    const minFeedbackCount = Math.min(...feedbackSubmissions.map(s => s.peerFeedback?.length || 0));
+    const submissionsWithMinFeedback = feedbackSubmissions.filter(
+      s => (s.peerFeedback?.length || 0) === minFeedbackCount
+    );
+
+    // Randomly select from submissions with the least feedback
+    const randomIndex = Math.floor(Math.random() * submissionsWithMinFeedback.length);
+    setCurrentRandomSubmission(submissionsWithMinFeedback[randomIndex]);
+  }, [feedbackSubmissions]);
+
+  // Auto-assign random submission when feedback tab is opened (only in random mode)
+  React.useEffect(() => {
+    if (
+      assignment?.randomFeedbackAssignment &&
+      activeTab === 'feedback' &&
+      !currentRandomSubmission &&
+      feedbackSubmissions.length > 0
+    ) {
+      selectRandomSubmission();
+    }
+  }, [assignment?.randomFeedbackAssignment, activeTab, currentRandomSubmission, feedbackSubmissions, selectRandomSubmission]);
 
   const handleSubmit = async () => {
     if (!firestore || !user || !assignment) return;
@@ -208,6 +239,12 @@ export function AssignmentDetailDialog({
 
       setFeedbackContent(prev => ({ ...prev, [submissionId]: '' }));
       setGivingFeedbackTo(null);
+
+      // If random assignment mode, automatically select next submission
+      if (assignment.randomFeedbackAssignment) {
+        setCurrentRandomSubmission(null); // Clear current to trigger selection of next
+        // The useEffect will automatically select the next one
+      }
     } catch (error) {
       console.error('Error submitting feedback:', error);
       toast({
@@ -485,7 +522,92 @@ export function AssignmentDetailDialog({
                         </p>
                       </CardContent>
                     </Card>
+                  ) : assignment.randomFeedbackAssignment ? (
+                    // Random Assignment Mode - Show one submission at a time
+                    <div className="space-y-4">
+                      <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                        <p className="text-sm font-medium text-blue-900 mb-1">
+                          Random Assignment Mode
+                        </p>
+                        <p className="text-xs text-blue-700">
+                          You'll be shown one submission at a time. After providing feedback, the next submission will be automatically assigned.
+                        </p>
+                      </div>
+
+                      <p className="text-sm text-muted-foreground">
+                        Progress: {feedbackGiven} / {feedbackRequired} submissions reviewed
+                      </p>
+
+                      {currentRandomSubmission ? (
+                        <Card>
+                          <CardHeader>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <CardTitle className="text-lg">{currentRandomSubmission.studentName}</CardTitle>
+                                <CardDescription>
+                                  Submitted {format(new Date(currentRandomSubmission.submittedAt), 'MMM d, yyyy')}
+                                </CardDescription>
+                              </div>
+                              <Badge variant="outline">
+                                {currentRandomSubmission.peerFeedback?.length || 0} /{' '}
+                                {assignment.feedbackPerSubmissionLimit || '∞'} feedback
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            {renderSubmissionContent(currentRandomSubmission)}
+
+                            {currentRandomSubmission.notes && (
+                              <div>
+                                <Label className="text-muted-foreground">Student Notes</Label>
+                                <p className="text-sm mt-1 bg-muted p-3 rounded-md">{currentRandomSubmission.notes}</p>
+                              </div>
+                            )}
+
+                            <Separator />
+
+                            <div className="space-y-2">
+                              <Label htmlFor={`feedback-${currentRandomSubmission.id}`}>Your Feedback</Label>
+                              <Textarea
+                                id={`feedback-${currentRandomSubmission.id}`}
+                                value={feedbackContent[currentRandomSubmission.id] || ''}
+                                onChange={e =>
+                                  setFeedbackContent(prev => ({ ...prev, [currentRandomSubmission.id]: e.target.value }))
+                                }
+                                placeholder="Provide constructive feedback on this submission..."
+                                className="min-h-[100px]"
+                              />
+                              <Button
+                                onClick={() => handleGiveFeedback(currentRandomSubmission.id)}
+                                disabled={isSubmitting}
+                                size="sm"
+                                className="w-full"
+                              >
+                                {isSubmitting ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Submitting...
+                                  </>
+                                ) : (
+                                  <>
+                                    <MessageSquare className="mr-2 h-4 w-4" />
+                                    Submit Feedback
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        <Card>
+                          <CardContent className="flex items-center justify-center h-32">
+                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
                   ) : (
+                    // Manual Selection Mode - Show all available submissions
                     <div className="space-y-4">
                       <p className="text-sm text-muted-foreground">
                         Provide feedback on {feedbackRequired - feedbackGiven} more submission(s) to complete this assignment
