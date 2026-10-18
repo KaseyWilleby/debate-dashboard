@@ -35,14 +35,11 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
   const assignmentsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
 
-    // Base query
-    const constraints = [
-      where('teamId', '==', user.teamId),
-      where('isPublished', '==', true),
-      orderBy('dueDate', 'desc')
-    ];
-
-    return query(collection(firestore, 'assignments'), ...constraints);
+    // Simple query - just filter by teamId, we'll filter the rest in code
+    return query(
+      collection(firestore, 'assignments'),
+      where('teamId', '==', user.teamId)
+    );
   }, [firestore, user]);
 
   const { data: allAssignments, isLoading: assignmentsLoading } = useCollection<Assignment>(assignmentsQuery);
@@ -51,28 +48,36 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
   const assignments = React.useMemo(() => {
     if (!allAssignments || !user) return [];
 
-    return allAssignments.filter(assignment => {
-      // Check if archived
-      if (assignment.isArchived) return false;
+    return allAssignments
+      .filter(assignment => {
+        // Only show published assignments (treat missing isPublished as true for backwards compatibility)
+        if (assignment.isPublished === false) return false;
 
-      // Check class match (varsity/novice/both)
-      if (assignment.class) {
-        if (assignment.class === 'both') {
-          // Show to everyone
-        } else if (user.class !== assignment.class) {
-          return false;
+        // Check if archived
+        if (assignment.isArchived) return false;
+
+        // Check class match (varsity/novice/both)
+        if (assignment.class) {
+          if (assignment.class === 'both') {
+            // Show to everyone
+          } else if (user.class !== assignment.class) {
+            return false;
+          }
         }
-      }
 
-      // Check class period match
-      if (assignment.classPeriods && assignment.classPeriods.length > 0) {
-        if (!user.classPeriod || !assignment.classPeriods.includes(user.classPeriod)) {
-          return false;
+        // Check class period match
+        if (assignment.classPeriods && assignment.classPeriods.length > 0) {
+          if (!user.classPeriod || !assignment.classPeriods.includes(user.classPeriod)) {
+            return false;
+          }
         }
-      }
 
-      return true;
-    });
+        return true;
+      })
+      .sort((a, b) => {
+        // Sort by due date, most recent first
+        return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+      });
   }, [allAssignments, user]);
 
   // Fetch all submissions for progress tracking
