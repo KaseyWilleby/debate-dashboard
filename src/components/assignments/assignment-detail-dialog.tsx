@@ -29,6 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Upload,
   FileText,
@@ -39,6 +40,7 @@ import {
   Loader2,
   Play,
   ExternalLink,
+  Video,
 } from 'lucide-react';
 import type { Assignment, Submission, SubmissionFeedback, AssignmentType } from '@/lib/types';
 import { format } from 'date-fns';
@@ -66,6 +68,9 @@ export function AssignmentDetailDialog({
   const [feedbackContent, setFeedbackContent] = React.useState<Record<string, string>>({});
   const [givingFeedbackTo, setGivingFeedbackTo] = React.useState<string | null>(null);
   const [currentRandomSubmission, setCurrentRandomSubmission] = React.useState<Submission | null>(null);
+  const [videoSubmissionMode, setVideoSubmissionMode] = React.useState<'recording' | 'url'>('recording');
+  const [selectedRecordingId, setSelectedRecordingId] = React.useState<string>('');
+  const [selectedRecordingTitle, setSelectedRecordingTitle] = React.useState<string>('');
 
   // Fetch all submissions for this assignment
   const submissionsQuery = useMemoFirebase(() => {
@@ -77,6 +82,43 @@ export function AssignmentDetailDialog({
   }, [firestore, assignment]);
 
   const { data: allSubmissions } = useCollection<Submission>(submissionsQuery);
+
+  // Fetch student's saved speeches (for video submissions)
+  const savedSpeechesQuery = useMemoFirebase(() => {
+    if (!firestore || !user || assignment?.submissionType !== 'video') return null;
+    return query(
+      collection(firestore, 'savedSpeeches'),
+      where('ownerId', '==', user.id)
+    );
+  }, [firestore, user, assignment?.submissionType]);
+
+  const { data: savedSpeeches } = useCollection(savedSpeechesQuery);
+
+  // Fetch ALL submissions to check which recordings are already used
+  const allSubmissionsGlobalQuery = useMemoFirebase(() => {
+    if (!firestore || !user || assignment?.submissionType !== 'video') return null;
+    return query(
+      collection(firestore, 'submissions'),
+      where('studentId', '==', user.id)
+    );
+  }, [firestore, user, assignment?.submissionType]);
+
+  const { data: myAllSubmissions } = useCollection<Submission>(allSubmissionsGlobalQuery);
+
+  // Filter saved speeches to only show ones not already submitted
+  const availableRecordings = React.useMemo(() => {
+    if (!savedSpeeches || !myAllSubmissions) return [];
+
+    // Get all recording IDs that have been submitted
+    const submittedRecordingIds = new Set(
+      myAllSubmissions
+        .filter(s => s.recordingId)
+        .map(s => s.recordingId)
+    );
+
+    // Filter out recordings that have been submitted
+    return savedSpeeches.filter(speech => !submittedRecordingIds.has(speech.id));
+  }, [savedSpeeches, myAllSubmissions]);
 
   // Find current user's submission
   const mySubmission = React.useMemo(() => {
@@ -148,13 +190,25 @@ export function AssignmentDetailDialog({
   const handleSubmit = async () => {
     if (!firestore || !user || !assignment) return;
 
-    if (!submissionContent.trim()) {
-      toast({
-        title: 'Missing Content',
-        description: 'Please provide your submission content.',
-        variant: 'destructive',
-      });
-      return;
+    // Validation
+    if (assignment.submissionType === 'video' && videoSubmissionMode === 'recording') {
+      if (!selectedRecordingId) {
+        toast({
+          title: 'Missing Recording',
+          description: 'Please select a recording to submit.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    } else {
+      if (!submissionContent.trim()) {
+        toast({
+          title: 'Missing Content',
+          description: 'Please provide your submission content.',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -167,11 +221,19 @@ export function AssignmentDetailDialog({
         submittedAt: new Date().toISOString(),
         notes: submissionNotes,
         type: assignment.submissionType,
-        content: submissionContent,
         peerFeedback: [],
         feedbackGivenTo: [],
         classPeriod: user.classPeriod,
       };
+
+      // Handle video recordings vs URL/other submissions
+      if (assignment.submissionType === 'video' && videoSubmissionMode === 'recording') {
+        submissionData.recordingId = selectedRecordingId;
+        submissionData.recordingTitle = selectedRecordingTitle;
+        submissionData.content = ''; // No URL content for recordings
+      } else {
+        submissionData.content = submissionContent;
+      }
 
       await addDoc(collection(firestore, 'submissions'), submissionData);
 
@@ -397,28 +459,108 @@ export function AssignmentDetailDialog({
 
               <TabsContent value="submit" className="mt-0 space-y-4">
                 <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="content">
-                      {assignment.submissionType === 'text' ? 'Your Response' : 'Link to Submission'}
-                    </Label>
-                    {assignment.submissionType === 'text' ? (
-                      <Textarea
-                        id="content"
-                        value={submissionContent}
-                        onChange={e => setSubmissionContent(e.target.value)}
-                        placeholder="Type your response here..."
-                        className="mt-2 min-h-[200px]"
-                      />
-                    ) : (
-                      <Input
-                        id="content"
-                        value={submissionContent}
-                        onChange={e => setSubmissionContent(e.target.value)}
-                        placeholder="https://..."
-                        className="mt-2"
-                      />
-                    )}
-                  </div>
+                  {/* Video submission mode selector */}
+                  {assignment.submissionType === 'video' && (
+                    <div className="space-y-3">
+                      <Label>Submission Type</Label>
+                      <RadioGroup value={videoSubmissionMode} onValueChange={(value: 'recording' | 'url') => setVideoSubmissionMode(value)}>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="recording" id="recording" />
+                          <Label htmlFor="recording" className="font-normal cursor-pointer">
+                            Select from my recordings
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="url" id="url" />
+                          <Label htmlFor="url" className="font-normal cursor-pointer">
+                            Enter video URL
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                  )}
+
+                  {/* Recording selection for video submissions */}
+                  {assignment.submissionType === 'video' && videoSubmissionMode === 'recording' ? (
+                    <div className="space-y-2">
+                      <Label>Select Recording</Label>
+                      {availableRecordings.length === 0 ? (
+                        <Card>
+                          <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                            <Video className="h-12 w-12 text-muted-foreground mb-2" />
+                            <p className="text-sm text-muted-foreground">
+                              No available recordings. Record a new speech in the Practice Hub first, then submit it here.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        <ScrollArea className="h-64 border rounded-md">
+                          <div className="p-2 space-y-2">
+                            {availableRecordings.map((recording: any) => (
+                              <Card
+                                key={recording.id}
+                                className={`cursor-pointer transition-colors ${
+                                  selectedRecordingId === recording.id
+                                    ? 'border-primary bg-primary/5'
+                                    : 'hover:bg-muted/50'
+                                }`}
+                                onClick={() => {
+                                  setSelectedRecordingId(recording.id);
+                                  setSelectedRecordingTitle(recording.title || 'Untitled Recording');
+                                }}
+                              >
+                                <CardContent className="p-3 flex items-start gap-3">
+                                  <div className={`mt-1 ${selectedRecordingId === recording.id ? 'text-primary' : 'text-muted-foreground'}`}>
+                                    <Play className="h-4 w-4" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-sm truncate">
+                                      {recording.title || 'Untitled Recording'}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {recording.eventType} • {format(new Date(recording.createdAt), 'MMM d, yyyy')}
+                                    </p>
+                                    {recording.duration && (
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        Duration: {recording.duration}
+                                      </p>
+                                    )}
+                                  </div>
+                                  {selectedRecordingId === recording.id && (
+                                    <CheckCircle className="h-5 w-5 text-primary shrink-0" />
+                                  )}
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      )}
+                    </div>
+                  ) : (
+                    /* URL/text input for other submissions */
+                    <div>
+                      <Label htmlFor="content">
+                        {assignment.submissionType === 'text' ? 'Your Response' : 'Link to Submission'}
+                      </Label>
+                      {assignment.submissionType === 'text' ? (
+                        <Textarea
+                          id="content"
+                          value={submissionContent}
+                          onChange={e => setSubmissionContent(e.target.value)}
+                          placeholder="Type your response here..."
+                          className="mt-2 min-h-[200px]"
+                        />
+                      ) : (
+                        <Input
+                          id="content"
+                          value={submissionContent}
+                          onChange={e => setSubmissionContent(e.target.value)}
+                          placeholder="https://..."
+                          className="mt-2"
+                        />
+                      )}
+                    </div>
+                  )}
 
                   <div>
                     <Label htmlFor="notes">Notes (Optional)</Label>
