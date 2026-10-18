@@ -245,14 +245,15 @@ service cloud.firestore {
     /**
      * @description Manages access to assignment submissions.
      * @path /submissions/{submissionId}
-     * Students can create and read their own submissions.
+     * Students can create and read submissions for assignments in their team (for peer feedback).
+     * Students can update submissions to add peer feedback or track feedback given.
      * Coaches/superadmins can read and grade all submissions for their team.
      */
     match /submissions/{submissionId} {
       allow get: if isSignedIn() && (
         isSuperAdmin() ||
         isSuperAdminEmail() ||
-        resource.data.studentId == request.auth.uid ||
+        isSameTeam(getAssignmentTeamId(resource.data.assignmentId)) ||
         (isCoach() && isSameTeam(getAssignmentTeamId(resource.data.assignmentId)))
       );
       allow list: if isSignedIn(); // Allow listing, application will filter by assignmentId or studentId
@@ -263,7 +264,12 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         isSuperAdmin() ||
         isSuperAdminEmail() ||
-        (isCoach() && isSameTeam(getAssignmentTeamId(resource.data.assignmentId)))
+        (isCoach() && isSameTeam(getAssignmentTeamId(resource.data.assignmentId))) ||
+        // Allow students to update their own submission (tracking feedback given)
+        (resource.data.studentId == request.auth.uid && isSameTeam(getAssignmentTeamId(resource.data.assignmentId))) ||
+        // Allow students to add peer feedback to other submissions in their team
+        (isSameTeam(getAssignmentTeamId(resource.data.assignmentId)) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['peerFeedback']))
       );
       allow delete: if isSignedIn() && (
         isSuperAdmin() ||
