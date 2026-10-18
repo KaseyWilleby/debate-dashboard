@@ -83,25 +83,28 @@ export function AssignmentDetailDialog({
 
   const { data: allSubmissions } = useCollection<Submission>(submissionsQuery);
 
+  // Check if this is a video assignment (default to video for backwards compatibility)
+  const isVideoAssignment = !assignment?.submissionType || assignment?.submissionType === 'video';
+
   // Fetch student's saved speeches (for video submissions)
   const savedSpeechesQuery = useMemoFirebase(() => {
-    if (!firestore || !user || assignment?.submissionType !== 'video') return null;
+    if (!firestore || !user || !isVideoAssignment) return null;
     return query(
       collection(firestore, 'savedSpeeches'),
       where('ownerId', '==', user.id)
     );
-  }, [firestore, user, assignment?.submissionType]);
+  }, [firestore, user, isVideoAssignment]);
 
   const { data: savedSpeeches } = useCollection(savedSpeechesQuery);
 
   // Fetch ALL submissions to check which recordings are already used
   const allSubmissionsGlobalQuery = useMemoFirebase(() => {
-    if (!firestore || !user || assignment?.submissionType !== 'video') return null;
+    if (!firestore || !user || !isVideoAssignment) return null;
     return query(
       collection(firestore, 'submissions'),
       where('studentId', '==', user.id)
     );
-  }, [firestore, user, assignment?.submissionType]);
+  }, [firestore, user, isVideoAssignment]);
 
   const { data: myAllSubmissions } = useCollection<Submission>(allSubmissionsGlobalQuery);
 
@@ -191,7 +194,7 @@ export function AssignmentDetailDialog({
     if (!firestore || !user || !assignment) return;
 
     // Validation
-    if (assignment.submissionType === 'video' && videoSubmissionMode === 'recording') {
+    if (isVideoAssignment && videoSubmissionMode === 'recording') {
       if (!selectedRecordingId) {
         toast({
           title: 'Missing Recording',
@@ -227,7 +230,7 @@ export function AssignmentDetailDialog({
       };
 
       // Handle video recordings vs URL/other submissions
-      if (assignment.submissionType === 'video' && videoSubmissionMode === 'recording') {
+      if (isVideoAssignment && videoSubmissionMode === 'recording') {
         submissionData.recordingId = selectedRecordingId;
         submissionData.recordingTitle = selectedRecordingTitle;
         submissionData.content = ''; // No URL content for recordings
@@ -460,7 +463,7 @@ export function AssignmentDetailDialog({
               <TabsContent value="submit" className="mt-0 space-y-4">
                 <div className="space-y-4">
                   {/* Video submission mode selector */}
-                  {assignment.submissionType === 'video' && (
+                  {isVideoAssignment && (
                     <div className="space-y-3">
                       <Label>Submission Type</Label>
                       <RadioGroup value={videoSubmissionMode} onValueChange={(value: 'recording' | 'url') => setVideoSubmissionMode(value)}>
@@ -481,7 +484,7 @@ export function AssignmentDetailDialog({
                   )}
 
                   {/* Recording selection for video submissions */}
-                  {assignment.submissionType === 'video' && videoSubmissionMode === 'recording' ? (
+                  {isVideoAssignment && videoSubmissionMode === 'recording' ? (
                     <div className="space-y-2">
                       <Label>Select Recording</Label>
                       {availableRecordings.length === 0 ? (
