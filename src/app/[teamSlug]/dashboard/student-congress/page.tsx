@@ -571,6 +571,11 @@ export default function StudentCongressPage() {
             return;
         }
 
+        // Save the current topic, speech content, and stance before resetting
+        const currentTopic = selectedTopic;
+        const currentContent = currentSpeechContent;
+        const currentStance = currentSpeechStance;
+
         setIsSaving(true);
         try {
             const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
@@ -603,6 +608,11 @@ export default function StudentCongressPage() {
 
             toast({ title: 'Recording Saved!', description: 'Your practice session has been archived.' });
             resetPractice();
+
+            // Restore the topic, content, and stance so user can record the same bill again
+            setSelectedTopic(currentTopic);
+            setCurrentSpeechContent(currentContent);
+            setCurrentSpeechStance(currentStance);
         } catch (error) {
             console.error("Error saving speech: ", error);
             toast({ variant: "destructive", title: "Save failed", description: "Could not save video." });

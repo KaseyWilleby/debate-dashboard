@@ -583,6 +583,10 @@ export default function PerformanceEventsPage() {
         return;
     }
 
+    // Save the current topic and script before resetting
+    const currentTopic = selectedTopic;
+    const currentScript = scriptContent;
+
     setIsSaving(true);
     try {
         const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
@@ -614,6 +618,10 @@ export default function PerformanceEventsPage() {
         toast({ title: 'Recording Saved!', description: 'Your practice session has been archived.' });
         setIsPracticeSessionOpen(false);
         resetPractice();
+
+        // Restore the topic and script so user can record the same topic/script again
+        setSelectedTopic(currentTopic);
+        setScriptContent(currentScript);
 
     } catch (error) {
         console.error("Error saving speech: ", error);
