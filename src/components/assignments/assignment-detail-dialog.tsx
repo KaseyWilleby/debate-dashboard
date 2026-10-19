@@ -43,7 +43,7 @@ import {
   Video,
 } from 'lucide-react';
 import type { Assignment, Submission, SubmissionFeedback, AssignmentType } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
 interface AssignmentDetailDialogProps {
@@ -421,7 +421,11 @@ export function AssignmentDetailDialog({
                 <div className="grid gap-4">
                   <div>
                     <Label className="text-muted-foreground">Due Date</Label>
-                    <p className="text-lg font-medium">{format(new Date(assignment.dueDate), 'MMMM d, yyyy')}</p>
+                    <p className="text-lg font-medium">
+                      {assignment.dueDate && isValid(new Date(assignment.dueDate))
+                        ? format(new Date(assignment.dueDate), 'MMMM d, yyyy')
+                        : 'No due date'}
+                    </p>
                   </div>
 
                   {assignment.submissionType && (
