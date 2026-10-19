@@ -19,7 +19,7 @@ import {
   FileText
 } from 'lucide-react';
 import type { Assignment, Submission, StudentAssignmentProgress } from '@/lib/types';
-import { format, isPast } from 'date-fns';
+import { format, isPast, isValid } from 'date-fns';
 import { AssignmentDetailDialog } from './assignment-detail-dialog';
 
 interface StudentAssignmentsViewProps {
@@ -76,7 +76,14 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
       })
       .sort((a, b) => {
         // Sort by due date, most recent first
-        return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+        // Handle invalid or missing dates by putting them at the end
+        const dateA = a.dueDate ? new Date(a.dueDate) : null;
+        const dateB = b.dueDate ? new Date(b.dueDate) : null;
+
+        if (!dateA || !isValid(dateA)) return 1; // a goes to end
+        if (!dateB || !isValid(dateB)) return -1; // b goes to end
+
+        return dateB.getTime() - dateA.getTime();
       });
   }, [allAssignments, user]);
 
@@ -140,13 +147,18 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
 
     assignments.forEach(assignment => {
       const progress = assignmentProgress[assignment.id];
-      const dueDate = new Date(assignment.dueDate);
 
       if (progress?.isComplete) {
         completed.push(assignment);
-      } else if (isPast(dueDate) && !progress?.hasSubmitted) {
-        overdue.push(assignment);
+      } else if (assignment.dueDate) {
+        const dueDate = new Date(assignment.dueDate);
+        if (isValid(dueDate) && isPast(dueDate) && !progress?.hasSubmitted) {
+          overdue.push(assignment);
+        } else {
+          active.push(assignment);
+        }
       } else {
+        // No due date or invalid date - treat as active
         active.push(assignment);
       }
     });
@@ -154,10 +166,18 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
     return { active, completed, overdue };
   }, [assignments, assignmentProgress]);
 
-  const formatDueDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const isOverdue = isPast(date) && !assignmentProgress[dateString]?.hasSubmitted;
+  const formatDueDate = (assignment: Assignment) => {
+    if (!assignment.dueDate) {
+      return <span className="text-muted-foreground">No due date</span>;
+    }
+
+    const date = new Date(assignment.dueDate);
+    if (!isValid(date)) {
+      return <span className="text-muted-foreground">Invalid date</span>;
+    }
+
+    const progress = assignmentProgress[assignment.id];
+    const isOverdue = isPast(date) && !progress?.hasSubmitted;
 
     return (
       <span className={isOverdue ? 'text-destructive font-medium' : ''}>
@@ -168,7 +188,6 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
 
   const getStatusBadge = (assignment: Assignment) => {
     const progress = assignmentProgress[assignment.id];
-    const dueDate = new Date(assignment.dueDate);
 
     if (progress?.isComplete) {
       return <Badge variant="default" className="bg-green-500"><CheckCircle className="mr-1 h-3 w-3" /> Complete</Badge>;
@@ -179,9 +198,15 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
     if (progress?.hasSubmitted) {
       return <Badge variant="secondary"><CheckCircle className="mr-1 h-3 w-3" /> Submitted</Badge>;
     }
-    if (isPast(dueDate)) {
-      return <Badge variant="destructive"><AlertCircle className="mr-1 h-3 w-3" /> Overdue</Badge>;
+
+    // Check if due date is valid before checking if overdue
+    if (assignment.dueDate) {
+      const dueDate = new Date(assignment.dueDate);
+      if (isValid(dueDate) && isPast(dueDate)) {
+        return <Badge variant="destructive"><AlertCircle className="mr-1 h-3 w-3" /> Overdue</Badge>;
+      }
     }
+
     return <Badge variant="outline"><Clock className="mr-1 h-3 w-3" /> Pending</Badge>;
   };
 
@@ -211,7 +236,7 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Due Date:</span>
-              {formatDueDate(assignment.dueDate)}
+              {formatDueDate(assignment)}
             </div>
 
             {assignment.submissionType && (
