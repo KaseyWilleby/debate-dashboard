@@ -34,7 +34,7 @@ export interface Team {
   deletedBy?: string; // User ID who deleted it
 }
 
-export type UserRole = 'superadmin' | 'coach' | 'officer' | 'varsity' | 'novice';
+export type UserRole = 'superadmin' | 'coach' | 'officer' | 'varsity' | 'novice' | 'parent';
 
 export type InvoiceStatus = 'pending' | 'paid' | 'overdue' | 'cancelled';
 
@@ -72,6 +72,9 @@ export interface User {
   tabroomEmail?: string; // Tabroom.com login email
   tabroomPassword?: string; // Tabroom.com password (should be encrypted in production)
   tabroomChapterId?: string; // Tabroom chapter ID for accessing results (e.g., 26837 for Cy-Woods)
+  // Parent-child relationship fields
+  parentIds?: string[]; // Parent account IDs linked to this student
+  childIds?: string[]; // Student account IDs linked to this parent (for parent accounts)
   // Officer permissions (for officers only, controlled by coach)
   officerPermissions?: {
     canScheduleAppointments?: boolean;
@@ -425,6 +428,39 @@ export interface TournamentResult {
   nsdaId?: string; // NSDA ID from Tabroom for future matching
   date: string;
   createdAt: string;
+}
+
+// Tournament Pickup System types
+export interface PickupCode {
+  id: string;
+  code: string; // 6-8 character unique code
+  tournamentId: string; // Reference to tournament
+  studentId: string; // Student who can be picked up with this code
+  studentName: string; // For display
+  generatedBy: string; // Parent or coach user ID who created the code
+  generatedByName: string; // Name of person who generated it
+  generatedAt: string; // ISO date when code was created
+  expiresAt: string; // ISO date when code expires (usually end of tournament day)
+  used: boolean; // Whether this code has been used for pickup
+  usedAt?: string; // When it was used
+  active: boolean; // Can be deactivated by parent/coach
+}
+
+export type PickupVerificationStatus = 'verified' | 'unverified' | 'pending';
+
+export interface TournamentPickup {
+  id: string;
+  tournamentId: string; // Reference to tournament
+  studentId: string; // Student being picked up
+  studentName: string; // For display
+  pickupPersonName: string; // Name of person picking up student
+  pickupPhotoUrl: string; // Firebase Storage URL of photo showing student with pickup person
+  pickupCode: string; // The code entered
+  codeVerified: boolean; // Whether the code matched
+  verificationStatus: PickupVerificationStatus; // Overall status
+  pickedUpAt: string; // ISO date of pickup
+  pickedUpBy?: string; // User ID if parent checked out their own child
+  notes?: string; // Any additional notes
 }
 
 // Assignment types
