@@ -107,6 +107,22 @@ export default function TeamManagementPage() {
     }
   };
 
+  const updateUserClassPeriod = async (userId: string, classPeriod: string) => {
+    if (!firestore) return;
+
+    setIsUpdating(true);
+    try {
+      await updateDoc(doc(firestore, "users", userId), {
+        classPeriod: classPeriod || null // Set to null if empty string
+      });
+      await loadData();
+    } catch (error) {
+      console.error("Error updating user class period:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const createNewTeam = async () => {
     if (!firestore || !isSuperAdmin) return;
 
@@ -209,6 +225,7 @@ export default function TeamManagementPage() {
                     <TableHead>Email</TableHead>
                     {isSuperAdmin && <TableHead>Team</TableHead>}
                     <TableHead>Role</TableHead>
+                    <TableHead>Class Period</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -240,6 +257,37 @@ export default function TeamManagementPage() {
                           <Badge className={getRoleBadgeColor(teamUser.role)}>
                             {teamUser.role}
                           </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {(isSuperAdmin || isCoach) ? (
+                          <Select
+                            value={teamUser.classPeriod || ""}
+                            onValueChange={(value) => updateUserClassPeriod(teamUser.id, value)}
+                            disabled={isUpdating}
+                          >
+                            <SelectTrigger className="w-28">
+                              <SelectValue placeholder="None" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">None</SelectItem>
+                              <SelectItem value="1">1st</SelectItem>
+                              <SelectItem value="2">2nd</SelectItem>
+                              <SelectItem value="3">3rd</SelectItem>
+                              <SelectItem value="4">4th</SelectItem>
+                              <SelectItem value="5">5th</SelectItem>
+                              <SelectItem value="6">6th</SelectItem>
+                              <SelectItem value="7">7th</SelectItem>
+                              <SelectItem value="8">8th</SelectItem>
+                              <SelectItem value="A">A Block</SelectItem>
+                              <SelectItem value="B">B Block</SelectItem>
+                              <SelectItem value="C">C Block</SelectItem>
+                              <SelectItem value="D">D Block</SelectItem>
+                              <SelectItem value="Club">Club</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="text-sm">{teamUser.classPeriod || '-'}</span>
                         )}
                       </TableCell>
                       <TableCell>
