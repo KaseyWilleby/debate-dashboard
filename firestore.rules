@@ -569,6 +569,28 @@ service cloud.firestore {
     }
 
     /**
+     * @description Checks if the current user is a parent of a given student.
+     * @param {string} studentId - The student's user ID.
+     * @return {boolean} True if the current user is a parent of the student, false otherwise.
+     */
+    function isParentOf(studentId) {
+      let currentUser = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return isSignedIn() &&
+             currentUser.role == 'parent' &&
+             'childIds' in currentUser &&
+             studentId in currentUser.childIds;
+    }
+
+    /**
+     * @description Gets the teamId for a given tournament.
+     * @param {string} tournamentId - The tournament document ID.
+     * @return {string} The tournament's teamId.
+     */
+    function getTournamentTeamId(tournamentId) {
+      return get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.teamId;
+    }
+
+    /**
      * @description Manages access to user notifications subcollection.
      * @path /users/{userId}/notifications/{notificationId}
      * Users can manage their own notifications. Anyone can create a notification for another user.
@@ -596,6 +618,75 @@ service cloud.firestore {
     match /metadata/{docId} {
       allow read: if isSignedIn();
       allow write: if isSuperAdmin() || isSuperAdminEmail(); // Allow superadmins to update scraper metadata
+    }
+
+    /**
+     * @description Manages access to pickup codes.
+     * @path /pickupCodes/{codeId}
+     * Parents and coaches can create codes for students in their team.
+     * Students can read their own codes.
+     * Coaches can read all codes for their team.
+     */
+    match /pickupCodes/{codeId} {
+      allow get: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        resource.data.studentId == request.auth.uid ||
+        isParentOf(resource.data.studentId) ||
+        (isCoach() && isSameTeam(getTournamentTeamId(resource.data.tournamentId)))
+      );
+      allow list: if isSignedIn(); // Allow listing, application will filter by studentId or tournamentId
+      allow create: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        isParentOf(request.resource.data.studentId) ||
+        (isCoach() && isSameTeam(getTournamentTeamId(request.resource.data.tournamentId)))
+      );
+      allow update: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        isParentOf(resource.data.studentId) ||
+        (isCoach() && isSameTeam(getTournamentTeamId(resource.data.tournamentId)))
+      );
+      allow delete: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(getTournamentTeamId(resource.data.tournamentId)))
+      );
+    }
+
+    /**
+     * @description Manages access to tournament pickups.
+     * @path /tournamentPickups/{pickupId}
+     * Students can create their own pickup records.
+     * Parents can read pickups for their children.
+     * Coaches can read and manage all pickups for their team.
+     */
+    match /tournamentPickups/{pickupId} {
+      allow get: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        resource.data.studentId == request.auth.uid ||
+        isParentOf(resource.data.studentId) ||
+        (isCoach() && isSameTeam(getTournamentTeamId(resource.data.tournamentId)))
+      );
+      allow list: if isSignedIn(); // Allow listing, application will filter by studentId or tournamentId
+      allow create: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        request.resource.data.studentId == request.auth.uid ||
+        (isCoach() && isSameTeam(getTournamentTeamId(request.resource.data.tournamentId)))
+      );
+      allow update: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(getTournamentTeamId(resource.data.tournamentId)))
+      );
+      allow delete: if isSignedIn() && (
+        isSuperAdmin() ||
+        isSuperAdminEmail() ||
+        (isCoach() && isSameTeam(getTournamentTeamId(resource.data.tournamentId)))
+      );
     }
   }
 }
