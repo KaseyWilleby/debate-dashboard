@@ -19,7 +19,7 @@ import {
   FileText
 } from 'lucide-react';
 import type { Assignment, Submission, StudentAssignmentProgress } from '@/lib/types';
-import { format, isPast, isValid } from 'date-fns';
+import { format, isPast, isValid, isToday, startOfDay } from 'date-fns';
 import { AssignmentDetailDialog } from './assignment-detail-dialog';
 
 interface StudentAssignmentsViewProps {
@@ -152,7 +152,9 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
         completed.push(assignment);
       } else if (assignment.dueDate) {
         const dueDate = new Date(assignment.dueDate);
-        if (isValid(dueDate) && isPast(dueDate) && !progress?.hasSubmitted) {
+        // Only mark as overdue if it's past AND not today
+        const isPastDue = isValid(dueDate) && isPast(startOfDay(dueDate)) && !isToday(dueDate);
+        if (isPastDue && !progress?.hasSubmitted) {
           overdue.push(assignment);
         } else {
           active.push(assignment);
@@ -177,7 +179,9 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
     }
 
     const progress = assignmentProgress[assignment.id];
-    const isOverdue = isPast(date) && !progress?.hasSubmitted;
+    // Only show as overdue if it's past AND not due today
+    const isPastDue = isPast(startOfDay(date)) && !isToday(date);
+    const isOverdue = isPastDue && !progress?.hasSubmitted;
 
     return (
       <span className={isOverdue ? 'text-destructive font-medium' : ''}>
@@ -202,7 +206,9 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
     // Check if due date is valid before checking if overdue
     if (assignment.dueDate) {
       const dueDate = new Date(assignment.dueDate);
-      if (isValid(dueDate) && isPast(dueDate)) {
+      // Only mark as overdue if it's past AND not due today
+      const isPastDue = isValid(dueDate) && isPast(startOfDay(dueDate)) && !isToday(dueDate);
+      if (isPastDue) {
         return <Badge variant="destructive"><AlertCircle className="mr-1 h-3 w-3" /> Overdue</Badge>;
       }
     }
