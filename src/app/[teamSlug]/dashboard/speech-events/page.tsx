@@ -185,6 +185,7 @@ export default function ExtempPracticePage() {
     });
     const topics = topicsByMode[mode]; // Get topics for current mode
     const [extempCategory, setExtempCategory] = React.useState<ExtempCategory>('domestic');
+    const [customTopicText, setCustomTopicText] = React.useState('');
 
     // Track previously generated questions to avoid duplicates
     const [questionHistory, setQuestionHistory] = React.useState<{domestic: string[], foreign: string[], impromptu: string[]}>(() => {
@@ -553,6 +554,21 @@ export default function ExtempPracticePage() {
         setIsPracticeSessionOpen(true);
         setSelectedTopic(topicToConfirm);
         setTopicToConfirm(null);
+    };
+
+    const handleStartCustomTopic = () => {
+        if (!customTopicText.trim()) {
+            toast({
+                variant: 'destructive',
+                title: 'Invalid Topic',
+                description: 'Please enter a topic before starting practice.',
+            });
+            return;
+        }
+        resetPractice();
+        setIsPracticeSessionOpen(true);
+        setSelectedTopic({ id: `custom-${Date.now()}`, text: customTopicText.trim() });
+        setCustomTopicText('');
     };
 
     const handleConfirmPractice = () => {
@@ -1183,6 +1199,38 @@ export default function ExtempPracticePage() {
                             )}
                         </CardContent>
                     </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Custom Topic</CardTitle>
+                            <CardDescription>
+                                Enter your own topic to practice with instead of generating one.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex gap-2">
+                                <Input
+                                    type="text"
+                                    placeholder="Enter your custom topic..."
+                                    value={customTopicText}
+                                    onChange={(e) => setCustomTopicText(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleStartCustomTopic();
+                                        }
+                                    }}
+                                    className="flex-1"
+                                />
+                                <Button
+                                    onClick={handleStartCustomTopic}
+                                    disabled={!customTopicText.trim()}
+                                >
+                                    <Play className="mr-2 h-4 w-4" />
+                                    Start Practice
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
                 <TabsContent value="impromptu" className="space-y-6 mt-4">
                      <Card>
@@ -1206,6 +1254,38 @@ export default function ExtempPracticePage() {
                                     {topics.map(renderTopicCard)}
                                 </div>
                             )}
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Custom Topic</CardTitle>
+                            <CardDescription>
+                                Enter your own topic to practice with instead of generating one.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex gap-2">
+                                <Input
+                                    type="text"
+                                    placeholder="Enter your custom topic..."
+                                    value={customTopicText}
+                                    onChange={(e) => setCustomTopicText(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleStartCustomTopic();
+                                        }
+                                    }}
+                                    className="flex-1"
+                                />
+                                <Button
+                                    onClick={handleStartCustomTopic}
+                                    disabled={!customTopicText.trim()}
+                                >
+                                    <Play className="mr-2 h-4 w-4" />
+                                    Start Practice
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
