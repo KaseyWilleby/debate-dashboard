@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import type { Session, Tournament, User, SavedSpeech, PracticeMode } from "@/lib/types";
-import { format, isAfter, parseISO } from "date-fns";
+import { format, isAfter, parseISO, isValid } from "date-fns";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -114,8 +114,17 @@ export default function DashboardPage() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       return tournaments
-        .filter(t => isAfter(parseISO(t.date), today) || parseISO(t.date).toDateString() === today.toDateString())
-        .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())
+        .filter(t => {
+          if (!t.date) return false;
+          const tournamentDate = parseISO(t.date);
+          if (!isValid(tournamentDate)) return false;
+          return isAfter(tournamentDate, today) || tournamentDate.toDateString() === today.toDateString();
+        })
+        .sort((a, b) => {
+          const dateA = parseISO(a.date);
+          const dateB = parseISO(b.date);
+          return dateA.getTime() - dateB.getTime();
+        })
         .slice(0, 3);
     }, [tournaments]);
 
@@ -137,7 +146,9 @@ export default function DashboardPage() {
                         <div className="flex-1">
                           <p className="font-medium">{tournament.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            {format(parseISO(tournament.date), "MMM d, yyyy")}
+                            {tournament.date && isValid(parseISO(tournament.date))
+                              ? format(parseISO(tournament.date), "MMM d, yyyy")
+                              : 'Date TBD'}
                             {tournament.leaveTime && <span className="ml-2">• {tournament.leaveTime}</span>}
                           </p>
                           {userEntry && userEntry.events.length > 0 && (
