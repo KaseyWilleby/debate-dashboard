@@ -495,7 +495,7 @@ export interface Assignment {
   feedbackCount?: number; // How many videos each student must critique (e.g., 3)
   sourceClassPeriods?: string[]; // Which class periods to include in the feedback pool (allows cross-class feedback)
   autoGrade?: boolean; // If true, auto-grade based on completed critiques; if false, manual grading
-  pointsPerCritique?: number; // Points awarded per completed critique (only if autoGrade is true)
+  maxPoints?: number; // Maximum points for the assignment (default 100). Points per critique calculated as maxPoints / assignedCount
   minWordCount?: number; // Minimum word count required for a critique to count as complete
 }
 

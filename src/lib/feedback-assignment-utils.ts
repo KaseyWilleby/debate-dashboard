@@ -117,12 +117,21 @@ export function countWords(text: string): number {
 }
 
 /**
- * Calculates auto-grade for a feedback assignment submission
+ * Calculates auto-grade for a feedback assignment submission using ratio-based scoring
+ *
+ * @param videoFeedback - Array of feedback objects
+ * @param assignedCount - Total number of videos assigned to the student
+ * @param maxPoints - Maximum points for the assignment (default 100)
+ * @returns Calculated grade based on completion ratio
  */
 export function calculateAutoGrade(
   videoFeedback: Array<{ isComplete: boolean }>,
-  pointsPerCritique: number
+  assignedCount: number,
+  maxPoints: number = 100
 ): number {
   const completedCount = videoFeedback.filter(f => f.isComplete).length;
-  return completedCount * pointsPerCritique;
+  const pointsPerCritique = assignedCount > 0 ? maxPoints / assignedCount : 0;
+  const grade = completedCount * pointsPerCritique;
+  // Round to 2 decimal places
+  return Math.round(grade * 100) / 100;
 }

@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Calendar, Edit, Trash2, CheckCircle, XCircle, Loader2, ClipboardList, AlertCircle } from "lucide-react";
+import { Plus, Calendar, Edit, Trash2, CheckCircle, XCircle, Loader2, ClipboardList, AlertCircle, ArrowUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Assignment, Submission } from "@/lib/types";
 import { format } from "date-fns";
@@ -59,8 +59,12 @@ export default function AssignmentsPage() {
   const [feedbackCount, setFeedbackCount] = React.useState(3);
   const [sourceClassPeriods, setSourceClassPeriods] = React.useState<string[]>([]);
   const [autoGrade, setAutoGrade] = React.useState(true);
-  const [pointsPerCritique, setPointsPerCritique] = React.useState(25);
+  const [maxPoints, setMaxPoints] = React.useState(100);
   const [minWordCount, setMinWordCount] = React.useState(50);
+
+  // Sorting and filtering state for coach view
+  const [sortAscending, setSortAscending] = React.useState(true); // true = earliest first
+  const [typeFilter, setTypeFilter] = React.useState<string>('all');
 
   const isCoachOrAdmin = user?.role === 'coach' || user?.role === 'superadmin';
 
@@ -91,6 +95,29 @@ export default function AssignmentsPage() {
   const getSubmissionCount = (assignmentId: string) => {
     return allSubmissions?.filter(s => s.assignmentId === assignmentId).length || 0;
   };
+
+  // Filter and sort assignments for coach view
+  const filteredAndSortedAssignments = React.useMemo(() => {
+    if (!assignments) return [];
+    return assignments
+      .filter(a => {
+        // Filter by type
+        if (typeFilter !== 'all') {
+          const assignmentType = a.submissionType || 'video';
+          if (assignmentType !== typeFilter) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        // Sort by due date
+        const dateA = new Date(a.dueDate);
+        const dateB = new Date(b.dueDate);
+
+        return sortAscending
+          ? dateA.getTime() - dateB.getTime()  // earliest first
+          : dateB.getTime() - dateA.getTime(); // latest first
+      });
+  }, [assignments, typeFilter, sortAscending]);
 
   // Get video assignments that can be used as sources for feedback assignments
   const videoAssignments = React.useMemo(() => {
@@ -132,7 +159,7 @@ export default function AssignmentsPage() {
     setFeedbackCount(3);
     setSourceClassPeriods([]);
     setAutoGrade(true);
-    setPointsPerCritique(25);
+    setMaxPoints(100);
     setMinWordCount(50);
     setEditingAssignment(null);
   };
@@ -206,7 +233,7 @@ export default function AssignmentsPage() {
         assignmentData.sourceClassPeriods = sourceClassPeriods;
         assignmentData.autoGrade = autoGrade;
         if (autoGrade) {
-          assignmentData.pointsPerCritique = pointsPerCritique;
+          assignmentData.maxPoints = maxPoints;
         }
         if (minWordCount > 0) {
           assignmentData.minWordCount = minWordCount;
@@ -261,7 +288,7 @@ export default function AssignmentsPage() {
     setFeedbackCount(assignment.feedbackCount || 3);
     setSourceClassPeriods(assignment.sourceClassPeriods || []);
     setAutoGrade(assignment.autoGrade ?? true);
-    setPointsPerCritique(assignment.pointsPerCritique || 25);
+    setMaxPoints(assignment.maxPoints || 100);
     setMinWordCount(assignment.minWordCount || 50);
 
     setIsCreateDialogOpen(true);
@@ -513,16 +540,16 @@ export default function AssignmentsPage() {
 
                   {autoGrade && (
                     <div className="space-y-2">
-                      <Label htmlFor="pointsPerCritique">Points Per Critique</Label>
+                      <Label htmlFor="maxPoints">Maximum Points</Label>
                       <Input
-                        id="pointsPerCritique"
+                        id="maxPoints"
                         type="number"
                         min="1"
-                        value={pointsPerCritique}
-                        onChange={(e) => setPointsPerCritique(Number(e.target.value))}
+                        value={maxPoints}
+                        onChange={(e) => setMaxPoints(Number(e.target.value))}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Points awarded for each completed critique (e.g., 25 points × 4 critiques = 100 points total)
+                        Maximum points for the assignment. Points per critique calculated automatically based on assigned videos (e.g., 100 points ÷ 2 videos = 50 points per critique)
                       </p>
                     </div>
                   )}
@@ -650,7 +677,35 @@ export default function AssignmentsPage() {
             <CardTitle>All Assignments</CardTitle>
             <CardDescription>Manage your speech assignments and view submissions.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* Sorting and Filtering Controls */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-muted-foreground">Type:</label>
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <option value="all">All Types</option>
+                  <option value="video">Video</option>
+                  <option value="feedback">Feedback</option>
+                  <option value="document">Document</option>
+                  <option value="text">Text</option>
+                  <option value="link">Link</option>
+                </select>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSortAscending(!sortAscending)}
+                className="gap-2"
+              >
+                <ArrowUpDown className="h-4 w-4" />
+                {sortAscending ? 'Earliest First' : 'Latest First'}
+              </Button>
+            </div>
+
             <Table>
               <TableHeader>
                 <TableRow>
@@ -662,7 +717,7 @@ export default function AssignmentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {assignments.map((assignment) => {
+                {filteredAndSortedAssignments.map((assignment) => {
                   // Compare only dates, not times - due date should be past due only if it's a previous day
                   const dueDate = new Date(assignment.dueDate);
                   const today = new Date();

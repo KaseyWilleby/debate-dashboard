@@ -205,8 +205,10 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
 
       // Calculate auto-grade if applicable
       let grade = mySubmission.grade;
-      if (assignment.autoGrade && assignment.pointsPerCritique) {
-        grade = calculateAutoGrade(updatedFeedback, assignment.pointsPerCritique);
+      if (assignment.autoGrade) {
+        const assignedCount = mySubmission.assignedSubmissionIds?.length || 0;
+        const maxPoints = assignment.maxPoints || 100;
+        grade = calculateAutoGrade(updatedFeedback, assignedCount, maxPoints);
       }
 
       // Update submission
@@ -295,11 +297,18 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
         </CardHeader>
         <CardContent>
           <Progress value={progress} className="h-2" />
-          {assignment.autoGrade && assignment.pointsPerCritique && (
-            <p className="text-sm text-muted-foreground mt-2">
-              Current Grade: {mySubmission.grade || 0} / {totalCount * assignment.pointsPerCritique}{' '}
-              points ({assignment.pointsPerCritique} points per complete critique)
-            </p>
+          {assignment.autoGrade && (
+            (() => {
+              const assignedCount = mySubmission?.assignedSubmissionIds?.length || totalCount;
+              const maxPoints = assignment.maxPoints || 100;
+              const pointsPerCritique = assignedCount > 0 ? Math.round((maxPoints / assignedCount) * 100) / 100 : 0;
+              return (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Current Grade: {mySubmission.grade || 0} / {maxPoints}{' '}
+                  points ({pointsPerCritique} points per complete critique)
+                </p>
+              );
+            })()
           )}
         </CardContent>
       </Card>
