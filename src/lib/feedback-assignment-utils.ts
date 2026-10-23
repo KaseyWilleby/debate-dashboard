@@ -5,7 +5,7 @@ import type { Submission, User } from './types';
  *
  * Algorithm:
  * 1. Filter submissions by class periods and remove student's own submission
- * 2. If not enough unique videos, return error
+ * 2. If no videos available, return error. If fewer than requested, assign what's available
  * 3. Distribute videos to ensure each video gets roughly equal feedback
  * 4. Videos can be repeated across students to ensure everyone gets the same count
  *
@@ -14,7 +14,7 @@ import type { Submission, User } from './types';
  * @param feedbackCount - How many videos each student should critique
  * @param sourceClassPeriods - Which class periods to include (empty = all)
  * @param existingAssignments - Map of submissionId -> count of how many times already assigned
- * @returns Array of submission IDs assigned to this student, or error
+ * @returns Array of submission IDs assigned to this student, warning if partial, or error if none available
  */
 export function assignVideosToStudent(
   studentId: string,
@@ -22,7 +22,7 @@ export function assignVideosToStudent(
   feedbackCount: number,
   sourceClassPeriods: string[],
   existingAssignments: Map<string, number> = new Map()
-): { success: true; assignedIds: string[] } | { success: false; error: string } {
+): { success: true; assignedIds: string[]; warning?: string } | { success: false; error: string } {
   // Step 1: Filter submissions
   let availableSubmissions = sourceSubmissions.filter(submission => {
     // Don't assign student's own submission
@@ -40,7 +40,7 @@ export function assignVideosToStudent(
     return true;
   });
 
-  // Step 2: Check if enough unique videos exist
+  // Step 2: Check if any videos exist
   if (availableSubmissions.length === 0) {
     return {
       success: false,
@@ -48,14 +48,11 @@ export function assignVideosToStudent(
     };
   }
 
-  if (availableSubmissions.length < feedbackCount) {
-    return {
-      success: false,
-      error: `Not enough submissions available. Found ${availableSubmissions.length} but need ${feedbackCount}. Please reduce the number of required critiques or wait for more submissions.`
-    };
-  }
+  // Step 3: Determine actual assignment count (assign what's available, even if less than requested)
+  const actualCount = Math.min(feedbackCount, availableSubmissions.length);
+  const isPartial = actualCount < feedbackCount;
 
-  // Step 3: Sort submissions by current assignment count (least assigned first)
+  // Step 4: Sort submissions by current assignment count (least assigned first)
   const submissionsWithCounts = availableSubmissions.map(sub => ({
     submission: sub,
     assignmentCount: existingAssignments.get(sub.id) || 0
@@ -70,10 +67,10 @@ export function assignVideosToStudent(
     return new Date(a.submission.submittedAt).getTime() - new Date(b.submission.submittedAt).getTime();
   });
 
-  // Step 4: Assign videos using round-robin to balance distribution
+  // Step 5: Assign videos using round-robin to balance distribution
   const assignedIds: string[] = [];
 
-  for (let i = 0; i < feedbackCount; i++) {
+  for (let i = 0; i < actualCount; i++) {
     // Use modulo to cycle through available submissions if we need to repeat
     const selectedSubmission = submissionsWithCounts[i % submissionsWithCounts.length];
     assignedIds.push(selectedSubmission.submission.id);
@@ -84,7 +81,10 @@ export function assignVideosToStudent(
 
   return {
     success: true,
-    assignedIds
+    assignedIds,
+    ...(isPartial ? {
+      warning: `Only ${actualCount} video${actualCount === 1 ? '' : 's'} available (requested ${feedbackCount})`
+    } : {})
   };
 }
 

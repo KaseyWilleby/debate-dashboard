@@ -142,7 +142,10 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
 
       toast({
         title: 'Videos Assigned',
-        description: `You have been assigned ${result.assignedIds.length} videos to review.`,
+        description: result.warning
+          ? `${result.warning}. You have been assigned ${result.assignedIds.length} video${result.assignedIds.length === 1 ? '' : 's'} to review.`
+          : `You have been assigned ${result.assignedIds.length} video${result.assignedIds.length === 1 ? '' : 's'} to review.`,
+        variant: result.warning ? 'default' : undefined,
       });
     } catch (error) {
       console.error('Error initializing feedback assignment:', error);

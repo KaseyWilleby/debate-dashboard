@@ -14,7 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Calendar, Edit, Trash2, CheckCircle, XCircle, Loader2, ClipboardList } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Plus, Calendar, Edit, Trash2, CheckCircle, XCircle, Loader2, ClipboardList, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Assignment, Submission } from "@/lib/types";
 import { format } from "date-fns";
@@ -103,6 +104,19 @@ export default function AssignmentsPage() {
       getSubmissionCount(a.id) > 0
     );
   }, [assignments, allSubmissions]);
+
+  // Check if selected source assignment has insufficient submissions
+  const insufficientSubmissions = React.useMemo(() => {
+    if (!sourceAssignmentId || !feedbackCount) return null;
+    const submissionCount = getSubmissionCount(sourceAssignmentId);
+    if (submissionCount < feedbackCount) {
+      return {
+        available: submissionCount,
+        requested: feedbackCount
+      };
+    }
+    return null;
+  }, [sourceAssignmentId, feedbackCount, allSubmissions]);
 
   const resetForm = () => {
     setTitle("");
@@ -430,6 +444,16 @@ export default function AssignmentsPage() {
                       How many videos each student must watch and critique
                     </p>
                   </div>
+
+                  {/* Warning for insufficient submissions */}
+                  {insufficientSubmissions && (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>Warning:</strong> Only {insufficientSubmissions.available} submission{insufficientSubmissions.available === 1 ? '' : 's'} available, but you requested {insufficientSubmissions.requested} per student. Students will be assigned up to {insufficientSubmissions.available} video{insufficientSubmissions.available === 1 ? '' : 's'} each. You can still create this assignment.
+                      </AlertDescription>
+                    </Alert>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="sourceClassPeriods">Include Submissions From (Optional)</Label>
