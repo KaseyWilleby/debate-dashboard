@@ -16,7 +16,8 @@ import {
   AlertCircle,
   Upload,
   MessageSquare,
-  FileText
+  FileText,
+  ArrowUpDown
 } from 'lucide-react';
 import type { Assignment, Submission, StudentAssignmentProgress } from '@/lib/types';
 import { format, isPast, isValid, isToday, startOfDay } from 'date-fns';
@@ -30,6 +31,8 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
   const { user } = useAuth();
   const { firestore } = useFirebase();
   const [selectedAssignment, setSelectedAssignment] = React.useState<Assignment | null>(null);
+  const [sortAscending, setSortAscending] = React.useState(true); // true = earliest first
+  const [typeFilter, setTypeFilter] = React.useState<string>('all');
 
   // Fetch assignments for this student's class
   const assignmentsQuery = useMemoFirebase(() => {
@@ -72,10 +75,16 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
           }
         }
 
+        // Filter by type
+        if (typeFilter !== 'all') {
+          const assignmentType = assignment.submissionType || 'video';
+          if (assignmentType !== typeFilter) return false;
+        }
+
         return true;
       })
       .sort((a, b) => {
-        // Sort by due date, most recent first
+        // Sort by due date
         // Handle invalid or missing dates by putting them at the end
         const dateA = a.dueDate ? new Date(a.dueDate) : null;
         const dateB = b.dueDate ? new Date(b.dueDate) : null;
@@ -83,9 +92,12 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
         if (!dateA || !isValid(dateA)) return 1; // a goes to end
         if (!dateB || !isValid(dateB)) return -1; // b goes to end
 
-        return dateB.getTime() - dateA.getTime();
+        // Sort based on sortAscending state
+        return sortAscending
+          ? dateA.getTime() - dateB.getTime()  // earliest first
+          : dateB.getTime() - dateA.getTime(); // latest first
       });
-  }, [allAssignments, user]);
+  }, [allAssignments, user, typeFilter, sortAscending]);
 
   // Fetch all submissions for progress tracking
   const submissionsQuery = useMemoFirebase(() => {
@@ -305,7 +317,7 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Assignments</h1>
           <p className="text-muted-foreground mt-1">
@@ -322,6 +334,34 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
             </Badge>
           )}
         </div>
+      </div>
+
+      {/* Sorting and Filtering Controls */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-muted-foreground">Type:</label>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <option value="all">All Types</option>
+            <option value="video">Video</option>
+            <option value="feedback">Feedback</option>
+            <option value="document">Document</option>
+            <option value="text">Text</option>
+            <option value="link">Link</option>
+          </select>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setSortAscending(!sortAscending)}
+          className="gap-2"
+        >
+          <ArrowUpDown className="h-4 w-4" />
+          {sortAscending ? 'Earliest First' : 'Latest First'}
+        </Button>
       </div>
 
       <Tabs defaultValue="active" className="w-full">
