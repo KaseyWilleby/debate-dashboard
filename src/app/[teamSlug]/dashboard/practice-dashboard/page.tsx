@@ -15,9 +15,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { cn, getRoleBasedColor, formatTime } from '@/lib/utils';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
-
-const SAVED_SPEECHES_STORAGE_KEY = 'work-session-saved-speeches';
+import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 
 export default function PracticeDashboardPage() {
   const { user, isLoading: isAuthLoading } = useAuth();
@@ -34,24 +32,15 @@ export default function PracticeDashboardPage() {
   }, [firestore, user]);
   const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
 
-  const [savedRecordings, setSavedRecordings] = React.useState<SavedSpeech[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const stored = localStorage.getItem(SAVED_SPEECHES_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(SAVED_SPEECHES_STORAGE_KEY, JSON.stringify(savedRecordings));
-    }
-  }, [savedRecordings]);
+  // Fetch saved speeches from Firestore
+  const recordingsQuery = useMemoFirebase(() => {
+    if (!firestore || !user || !user.teamId) return null;
+    return query(collection(firestore, 'savedSpeeches'), where('teamId', '==', user.teamId));
+  }, [firestore, user]);
+  const { data: savedRecordings, isLoading: areRecordingsLoading } = useCollection<SavedSpeech>(recordingsQuery);
 
   const recentRecordings = React.useMemo(() => {
-    if (!user) return [];
+    if (!user || !savedRecordings) return [];
     return savedRecordings
       .filter((s) => s.ownerId === user.id)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -59,7 +48,7 @@ export default function PracticeDashboardPage() {
   }, [user, savedRecordings]);
 
   const sharedRecordings = React.useMemo(() => {
-    if (!user) return [];
+    if (!user || !savedRecordings) return [];
     return savedRecordings
       .filter((s) => s.ownerId !== user.id && s.sharedWith?.includes(user.id))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -75,8 +64,8 @@ export default function PracticeDashboardPage() {
     setFeedbackText('');
   };
 
-  const handleSubmitFeedback = () => {
-    if (!feedbackText.trim() || !viewingSpeech || !user) {
+  const handleSubmitFeedback = async () => {
+    if (!feedbackText.trim() || !viewingSpeech || !user || !firestore) {
       toast({ variant: 'destructive', title: 'Error', description: 'Please enter feedback text.' });
       return;
     }
@@ -91,16 +80,14 @@ export default function PracticeDashboardPage() {
         timestamp: new Date().toISOString(),
       };
 
-      const updatedSpeech = {
-        ...viewingSpeech,
-        feedback: [...(viewingSpeech.feedback || []), newFeedback],
-      };
+      const updatedFeedback = [...(viewingSpeech.feedback || []), newFeedback];
 
-      setSavedRecordings((prev) =>
-        prev.map((s) => (s.id === updatedSpeech.id ? updatedSpeech : s))
-      );
+      // Update in Firestore
+      await updateDoc(doc(firestore, 'savedSpeeches', viewingSpeech.id), {
+        feedback: updatedFeedback,
+      });
 
-      setViewingSpeech(updatedSpeech);
+      setViewingSpeech({ ...viewingSpeech, feedback: updatedFeedback });
       toast({ title: 'Feedback Submitted', description: 'Your feedback has been added to this recording.' });
       setFeedbackDialogOpen(false);
       setFeedbackText('');
@@ -112,7 +99,7 @@ export default function PracticeDashboardPage() {
     }
   };
 
-  const isLoading = isAuthLoading || areUsersLoading;
+  const isLoading = isAuthLoading || areUsersLoading || areRecordingsLoading;
 
   if (isLoading) {
     return (
