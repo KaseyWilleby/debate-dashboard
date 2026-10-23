@@ -52,6 +52,15 @@ export default function AssignmentsPage() {
   const [feedbackRequired, setFeedbackRequired] = React.useState<number | undefined>(undefined);
   const [randomFeedbackAssignment, setRandomFeedbackAssignment] = React.useState(false);
 
+  // Feedback assignment specific state
+  const [assignmentType, setAssignmentType] = React.useState<'video' | 'feedback'>('video');
+  const [sourceAssignmentId, setSourceAssignmentId] = React.useState("");
+  const [feedbackCount, setFeedbackCount] = React.useState(3);
+  const [sourceClassPeriods, setSourceClassPeriods] = React.useState<string[]>([]);
+  const [autoGrade, setAutoGrade] = React.useState(true);
+  const [pointsPerCritique, setPointsPerCritique] = React.useState(25);
+  const [minWordCount, setMinWordCount] = React.useState(50);
+
   const isCoachOrAdmin = user?.role === 'coach' || user?.role === 'superadmin';
 
   // Show student view for students
@@ -76,11 +85,24 @@ export default function AssignmentsPage() {
     return collection(firestore, 'submissions');
   }, [firestore, user, isCoachOrAdmin]);
 
-  const { data: allSubmissions } = useCollection<Submission>(submissionsQuery);
+  const { data: allSubmissions} = useCollection<Submission>(submissionsQuery);
 
   const getSubmissionCount = (assignmentId: string) => {
     return allSubmissions?.filter(s => s.assignmentId === assignmentId).length || 0;
   };
+
+  // Get video assignments that can be used as sources for feedback assignments
+  const videoAssignments = React.useMemo(() => {
+    if (!assignments) return [];
+    return assignments.filter(a =>
+      // Only video assignments (or default type which is video)
+      (!a.submissionType || a.submissionType === 'video') &&
+      // Not archived
+      !a.isArchived &&
+      // Has submissions
+      getSubmissionCount(a.id) > 0
+    );
+  }, [assignments, allSubmissions]);
 
   const resetForm = () => {
     setTitle("");
@@ -91,6 +113,13 @@ export default function AssignmentsPage() {
     setClassPeriods([]);
     setFeedbackRequired(undefined);
     setRandomFeedbackAssignment(false);
+    setAssignmentType('video');
+    setSourceAssignmentId("");
+    setFeedbackCount(3);
+    setSourceClassPeriods([]);
+    setAutoGrade(true);
+    setPointsPerCritique(25);
+    setMinWordCount(50);
     setEditingAssignment(null);
   };
 
@@ -103,6 +132,26 @@ export default function AssignmentsPage() {
         variant: "destructive",
       });
       return;
+    }
+
+    // Validate feedback assignment requirements
+    if (assignmentType === 'feedback') {
+      if (!sourceAssignmentId) {
+        toast({
+          title: "Missing Source Assignment",
+          description: "Please select a video assignment to use as the source.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!feedbackCount || feedbackCount < 1) {
+        toast({
+          title: "Invalid Feedback Count",
+          description: "Please specify how many videos each student should review.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -119,17 +168,39 @@ export default function AssignmentsPage() {
         dueDate: dueDateObj.toISOString(),
         allowResubmission,
         submissionsOpen,
+        submissionType: assignmentType,
       };
 
-      // Only include optional fields if they have values
-      if (classPeriods.length > 0) {
-        assignmentData.classPeriods = classPeriods;
+      // Video assignment specific fields
+      if (assignmentType === 'video') {
+        // Only include optional fields if they have values
+        if (classPeriods.length > 0) {
+          assignmentData.classPeriods = classPeriods;
+        }
+        if (feedbackRequired !== undefined && feedbackRequired > 0) {
+          assignmentData.feedbackRequired = feedbackRequired;
+        }
+        if (feedbackRequired !== undefined && feedbackRequired > 0) {
+          assignmentData.randomFeedbackAssignment = randomFeedbackAssignment;
+        }
       }
-      if (feedbackRequired !== undefined && feedbackRequired > 0) {
-        assignmentData.feedbackRequired = feedbackRequired;
-      }
-      if (feedbackRequired !== undefined && feedbackRequired > 0) {
-        assignmentData.randomFeedbackAssignment = randomFeedbackAssignment;
+
+      // Feedback assignment specific fields
+      if (assignmentType === 'feedback') {
+        assignmentData.sourceAssignmentId = sourceAssignmentId;
+        assignmentData.feedbackCount = feedbackCount;
+        assignmentData.sourceClassPeriods = sourceClassPeriods;
+        assignmentData.autoGrade = autoGrade;
+        if (autoGrade) {
+          assignmentData.pointsPerCritique = pointsPerCritique;
+        }
+        if (minWordCount > 0) {
+          assignmentData.minWordCount = minWordCount;
+        }
+        // Feedback assignments go to specific class periods
+        if (classPeriods.length > 0) {
+          assignmentData.classPeriods = classPeriods;
+        }
       }
 
       if (editingAssignment) {
@@ -169,6 +240,16 @@ export default function AssignmentsPage() {
     setClassPeriods(assignment.classPeriods || []);
     setFeedbackRequired(assignment.feedbackRequired);
     setRandomFeedbackAssignment(assignment.randomFeedbackAssignment || false);
+
+    // Load feedback assignment specific fields
+    setAssignmentType(assignment.submissionType === 'feedback' ? 'feedback' : 'video');
+    setSourceAssignmentId(assignment.sourceAssignmentId || "");
+    setFeedbackCount(assignment.feedbackCount || 3);
+    setSourceClassPeriods(assignment.sourceClassPeriods || []);
+    setAutoGrade(assignment.autoGrade ?? true);
+    setPointsPerCritique(assignment.pointsPerCritique || 25);
+    setMinWordCount(assignment.minWordCount || 50);
+
     setIsCreateDialogOpen(true);
   };
 
@@ -243,7 +324,9 @@ export default function AssignmentsPage() {
             <DialogHeader>
               <DialogTitle>{editingAssignment ? "Edit Assignment" : "Create New Assignment"}</DialogTitle>
               <DialogDescription>
-                {editingAssignment ? "Update the assignment details below." : "Set up a new assignment for your students to submit recordings."}
+                {editingAssignment
+                  ? "Update the assignment details below."
+                  : "Create a video submission assignment or a feedback assignment for students to critique videos."}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -275,8 +358,155 @@ export default function AssignmentsPage() {
                   onChange={(e) => setDueDate(e.target.value)}
                 />
               </div>
+
+              {/* Assignment Type Selector */}
               <div className="space-y-2">
-                <Label htmlFor="classPeriods">Class Periods (Optional)</Label>
+                <Label htmlFor="assignmentType">Assignment Type *</Label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="assignmentType"
+                      value="video"
+                      checked={assignmentType === 'video'}
+                      onChange={(e) => setAssignmentType('video')}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Video Submission</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="assignmentType"
+                      value="feedback"
+                      checked={assignmentType === 'feedback'}
+                      onChange={(e) => setAssignmentType('feedback')}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Feedback Assignment</span>
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {assignmentType === 'video'
+                    ? "Students submit video recordings"
+                    : "Students critique videos from another assignment"}
+                </p>
+              </div>
+
+              {/* Feedback Assignment Specific Fields */}
+              {assignmentType === 'feedback' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="sourceAssignment">Source Video Assignment *</Label>
+                    <select
+                      id="sourceAssignment"
+                      value={sourceAssignmentId}
+                      onChange={(e) => setSourceAssignmentId(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="">Select an assignment</option>
+                      {videoAssignments.map(assignment => (
+                        <option key={assignment.id} value={assignment.id}>
+                          {assignment.title} ({getSubmissionCount(assignment.id)} submissions)
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      Students will critique videos from this assignment
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="feedbackCount">Videos to Review Per Student *</Label>
+                    <Input
+                      id="feedbackCount"
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={feedbackCount}
+                      onChange={(e) => setFeedbackCount(Number(e.target.value))}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      How many videos each student must watch and critique
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="sourceClassPeriods">Include Submissions From (Optional)</Label>
+                    <MultiSelect
+                      options={[
+                        { label: "1st Period", value: "1" },
+                        { label: "2nd Period", value: "2" },
+                        { label: "3rd Period", value: "3" },
+                        { label: "4th Period", value: "4" },
+                        { label: "5th Period", value: "5" },
+                        { label: "6th Period", value: "6" },
+                        { label: "7th Period", value: "7" },
+                        { label: "8th Period", value: "8" },
+                        { label: "A Block", value: "A" },
+                        { label: "B Block", value: "B" },
+                        { label: "C Block", value: "C" },
+                        { label: "D Block", value: "D" },
+                        { label: "Club", value: "Club" },
+                      ]}
+                      value={sourceClassPeriods}
+                      onValueChange={setSourceClassPeriods}
+                      placeholder="All class periods"
+                      maxCount={5}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Leave empty to include all submissions, or select specific periods for cross-class feedback
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="minWordCount">Minimum Word Count</Label>
+                    <Input
+                      id="minWordCount"
+                      type="number"
+                      min="0"
+                      value={minWordCount}
+                      onChange={(e) => setMinWordCount(Number(e.target.value))}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Minimum words required for each critique to count as complete (0 = no minimum)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="autoGrade">Auto-Grade</Label>
+                      <Switch
+                        id="autoGrade"
+                        checked={autoGrade}
+                        onCheckedChange={setAutoGrade}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Automatically calculate grade based on completed critiques
+                    </p>
+                  </div>
+
+                  {autoGrade && (
+                    <div className="space-y-2">
+                      <Label htmlFor="pointsPerCritique">Points Per Critique</Label>
+                      <Input
+                        id="pointsPerCritique"
+                        type="number"
+                        min="1"
+                        value={pointsPerCritique}
+                        onChange={(e) => setPointsPerCritique(Number(e.target.value))}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Points awarded for each completed critique (e.g., 25 points × 4 critiques = 100 points total)
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="classPeriods">{assignmentType === 'feedback' ? 'Assign To Class Periods (Optional)' : 'Class Periods (Optional)'}</Label>
                 <MultiSelect
                   options={[
                     { label: "1st Period", value: "1" },
@@ -302,48 +532,54 @@ export default function AssignmentsPage() {
                   Leave empty to assign to all students. Select specific periods to limit visibility.
                 </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="feedbackRequired">Peer Feedback Required (Optional)</Label>
-                <Input
-                  id="feedbackRequired"
-                  type="number"
-                  min="0"
-                  placeholder="e.g., 3"
-                  value={feedbackRequired ?? ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFeedbackRequired(val === "" ? undefined : parseInt(val, 10));
-                  }}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Number of peer videos students must provide feedback on as part of this assignment.
-                </p>
-              </div>
-              {(feedbackRequired !== undefined && feedbackRequired > 0) && (
-                <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                  <Switch
-                    id="randomFeedbackAssignment"
-                    checked={randomFeedbackAssignment}
-                    onCheckedChange={setRandomFeedbackAssignment}
-                  />
-                  <div className="flex-1">
-                    <Label htmlFor="randomFeedbackAssignment" className="font-medium text-blue-900 cursor-pointer">
-                      Random Feedback Assignment
-                    </Label>
-                    <p className="text-xs text-blue-700 mt-0.5">
-                      Automatically assign submissions to students one at a time. Ensures even distribution of feedback across all submissions.
+
+              {/* Video Assignment Specific Fields */}
+              {assignmentType === 'video' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="feedbackRequired">Peer Feedback Required (Optional)</Label>
+                    <Input
+                      id="feedbackRequired"
+                      type="number"
+                      min="0"
+                      placeholder="e.g., 3"
+                      value={feedbackRequired ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFeedbackRequired(val === "" ? undefined : parseInt(val, 10));
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Number of peer videos students must provide feedback on as part of this assignment.
                     </p>
                   </div>
-                </div>
+                  {(feedbackRequired !== undefined && feedbackRequired > 0) && (
+                    <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <Switch
+                        id="randomFeedbackAssignment"
+                        checked={randomFeedbackAssignment}
+                        onCheckedChange={setRandomFeedbackAssignment}
+                      />
+                      <div className="flex-1">
+                        <Label htmlFor="randomFeedbackAssignment" className="font-medium text-blue-900 cursor-pointer">
+                          Random Feedback Assignment
+                        </Label>
+                        <p className="text-xs text-blue-700 mt-0.5">
+                          Automatically assign submissions to students one at a time. Ensures even distribution of feedback across all submissions.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="allowResubmission"
+                      checked={allowResubmission}
+                      onCheckedChange={setAllowResubmission}
+                    />
+                    <Label htmlFor="allowResubmission">Allow students to resubmit</Label>
+                  </div>
+                </>
               )}
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="allowResubmission"
-                  checked={allowResubmission}
-                  onCheckedChange={setAllowResubmission}
-                />
-                <Label htmlFor="allowResubmission">Allow students to resubmit</Label>
-              </div>
               <div className="flex items-center space-x-2">
                 <Switch
                   id="submissionsOpen"
