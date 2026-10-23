@@ -464,7 +464,7 @@ export interface TournamentPickup {
 }
 
 // Assignment types
-export type AssignmentType = 'video' | 'document' | 'text' | 'link';
+export type AssignmentType = 'video' | 'document' | 'text' | 'link' | 'feedback';
 export type AssignmentClass = 'varsity' | 'novice' | 'both';
 
 export interface Assignment {
@@ -489,6 +489,14 @@ export interface Assignment {
   randomFeedbackAssignment?: boolean; // Automatically assign random submissions for feedback (ensures even distribution)
   isPublished?: boolean; // Whether students can see the assignment
   isArchived?: boolean; // Soft delete
+
+  // Feedback Assignment specific fields (when submissionType === 'feedback')
+  sourceAssignmentId?: string; // ID of the video assignment to pull submissions from
+  feedbackCount?: number; // How many videos each student must critique (e.g., 3)
+  sourceClassPeriods?: string[]; // Which class periods to include in the feedback pool (allows cross-class feedback)
+  autoGrade?: boolean; // If true, auto-grade based on completed critiques; if false, manual grading
+  pointsPerCritique?: number; // Points awarded per completed critique (only if autoGrade is true)
+  minWordCount?: number; // Minimum word count required for a critique to count as complete
 }
 
 export interface SubmissionFeedback {
@@ -498,6 +506,18 @@ export interface SubmissionFeedback {
   reviewerName: string; // For display
   content: string; // Feedback text
   createdAt: string; // ISO date
+}
+
+export interface VideoFeedback {
+  submissionId: string; // ID of the video submission being reviewed
+  studentName: string; // Name of student whose video was reviewed
+  studentClassPeriod?: string; // Class period of student whose video was reviewed
+  recordingTitle?: string; // Title of the video
+  content: string; // Feedback text
+  wordCount: number; // Word count of the feedback
+  isComplete: boolean; // Whether feedback meets minimum requirements
+  completedAt?: string; // ISO date when feedback was first completed (meets min word count)
+  lastEditedAt: string; // ISO date of last edit
 }
 
 export interface Submission {
@@ -520,6 +540,10 @@ export interface Submission {
   content?: string; // URL for video/document/link, text content for text submissions
   peerFeedback?: SubmissionFeedback[]; // Peer feedback received on this submission
   feedbackGivenTo?: string[]; // Array of submission IDs this student gave feedback to (for tracking)
+
+  // Feedback Assignment specific fields (when type === 'feedback')
+  assignedSubmissionIds?: string[]; // IDs of video submissions assigned for this student to review
+  videoFeedback?: VideoFeedback[]; // Feedback provided on assigned videos
 }
 
 // Appointment System Types

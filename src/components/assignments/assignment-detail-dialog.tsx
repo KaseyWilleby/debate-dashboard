@@ -45,6 +45,7 @@ import {
 import type { Assignment, Submission, SubmissionFeedback, AssignmentType } from '@/lib/types';
 import { format, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { FeedbackAssignmentView } from './feedback-assignment-view';
 
 interface AssignmentDetailDialogProps {
   assignment: Assignment | null;
@@ -371,6 +372,29 @@ export function AssignmentDetailDialog({
   };
 
   if (!assignment) return null;
+
+  // Handle feedback assignments with dedicated view
+  if (assignment.submissionType === 'feedback') {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="p-6 pb-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <DialogTitle className="text-2xl">{assignment.title}</DialogTitle>
+                <DialogDescription className="mt-2">{assignment.description}</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <ScrollArea className="flex-1">
+            <div className="p-6">
+              <FeedbackAssignmentView assignment={assignment} />
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
