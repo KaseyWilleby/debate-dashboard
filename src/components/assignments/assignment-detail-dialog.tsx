@@ -218,16 +218,37 @@ export function AssignmentDetailDialog({
     setIsSubmitting(true);
 
     try {
+      const now = new Date();
+      const dueDate = new Date(assignment.dueDate);
+
+      // Calculate late submission info
+      const isLate = now > dueDate;
+      let daysLate = 0;
+      let latePenaltyApplied = 0;
+
+      if (isLate) {
+        // Calculate full days late (rounded up)
+        const timeDiff = now.getTime() - dueDate.getTime();
+        daysLate = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+
+        // Calculate penalty if configured
+        const penaltyPerDay = assignment.lateSubmissionPenalty || 0;
+        latePenaltyApplied = daysLate * penaltyPerDay;
+      }
+
       const submissionData: Partial<Submission> = {
         assignmentId: assignment.id,
         studentId: user.id,
         studentName: user.name,
-        submittedAt: new Date().toISOString(),
+        submittedAt: now.toISOString(),
         notes: submissionNotes,
         type: assignment.submissionType,
         peerFeedback: [],
         feedbackGivenTo: [],
         classPeriod: user.classPeriod,
+        isLate,
+        daysLate: isLate ? daysLate : undefined,
+        latePenaltyApplied: isLate && latePenaltyApplied > 0 ? latePenaltyApplied : undefined,
       };
 
       // Handle video recordings vs URL/other submissions
@@ -242,8 +263,11 @@ export function AssignmentDetailDialog({
       await addDoc(collection(firestore, 'submissions'), submissionData);
 
       toast({
-        title: 'Success',
-        description: 'Your assignment has been submitted!',
+        title: isLate ? 'Late Submission Recorded' : 'Success',
+        description: isLate
+          ? `Your assignment was submitted ${daysLate} day${daysLate !== 1 ? 's' : ''} late.${latePenaltyApplied > 0 ? ` Penalty: ${latePenaltyApplied} points.` : ''}`
+          : 'Your assignment has been submitted!',
+        variant: isLate ? 'default' : undefined,
       });
 
       setSubmissionContent('');
@@ -625,10 +649,24 @@ export function AssignmentDetailDialog({
                   <div className="space-y-4">
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-lg">Your Submission</CardTitle>
-                        <CardDescription>
-                          Submitted on {format(new Date(mySubmission.submittedAt), 'MMMM d, yyyy')}
-                        </CardDescription>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg">Your Submission</CardTitle>
+                            <CardDescription>
+                              Submitted on {format(new Date(mySubmission.submittedAt), 'MMMM d, yyyy')}
+                            </CardDescription>
+                          </div>
+                          {mySubmission.isLate && (
+                            <Badge variant="destructive" className="ml-2">
+                              Late ({mySubmission.daysLate} day{mySubmission.daysLate !== 1 ? 's' : ''})
+                            </Badge>
+                          )}
+                        </div>
+                        {mySubmission.isLate && mySubmission.latePenaltyApplied && mySubmission.latePenaltyApplied > 0 && (
+                          <p className="text-sm text-destructive mt-2">
+                            Late penalty: -{mySubmission.latePenaltyApplied} points
+                          </p>
+                        )}
                       </CardHeader>
                       <CardContent className="space-y-4">
                         {renderSubmissionContent(mySubmission)}

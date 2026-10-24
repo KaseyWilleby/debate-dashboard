@@ -61,6 +61,7 @@ export default function AssignmentsPage() {
   const [autoGrade, setAutoGrade] = React.useState(true);
   const [maxPoints, setMaxPoints] = React.useState(100);
   const [minWordCount, setMinWordCount] = React.useState(50);
+  const [lateSubmissionPenalty, setLateSubmissionPenalty] = React.useState(0);
 
   // Sorting and filtering state for coach view
   const [sortAscending, setSortAscending] = React.useState(true); // true = earliest first
@@ -161,6 +162,7 @@ export default function AssignmentsPage() {
     setAutoGrade(true);
     setMaxPoints(100);
     setMinWordCount(50);
+    setLateSubmissionPenalty(0);
     setEditingAssignment(null);
   };
 
@@ -210,6 +212,7 @@ export default function AssignmentsPage() {
         allowResubmission,
         submissionsOpen,
         submissionType: assignmentType,
+        lateSubmissionPenalty: lateSubmissionPenalty || 0,
       };
 
       // Video assignment specific fields
@@ -290,6 +293,7 @@ export default function AssignmentsPage() {
     setAutoGrade(assignment.autoGrade ?? true);
     setMaxPoints(assignment.maxPoints || 100);
     setMinWordCount(assignment.minWordCount || 50);
+    setLateSubmissionPenalty(assignment.lateSubmissionPenalty || 0);
 
     setIsCreateDialogOpen(true);
   };
@@ -398,6 +402,21 @@ export default function AssignmentsPage() {
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="lateSubmissionPenalty">Late Submission Penalty (Points Per Day)</Label>
+                <Input
+                  id="lateSubmissionPenalty"
+                  type="number"
+                  min="0"
+                  value={lateSubmissionPenalty}
+                  onChange={(e) => setLateSubmissionPenalty(Number(e.target.value))}
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Points deducted per day late. Set to 0 for no penalty. Example: 5 points/day means a submission 3 days late loses 15 points.
+                </p>
               </div>
 
               {/* Assignment Type Selector */}

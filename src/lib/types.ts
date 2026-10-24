@@ -489,6 +489,7 @@ export interface Assignment {
   randomFeedbackAssignment?: boolean; // Automatically assign random submissions for feedback (ensures even distribution)
   isPublished?: boolean; // Whether students can see the assignment
   isArchived?: boolean; // Soft delete
+  lateSubmissionPenalty?: number; // Points deducted per day late (0 = no penalty)
 
   // Feedback Assignment specific fields (when submissionType === 'feedback')
   sourceAssignmentId?: string; // ID of the video assignment to pull submissions from
@@ -534,6 +535,11 @@ export interface Submission {
   gradedBy?: string; // Coach user ID who graded
   gradedAt?: string; // ISO date when graded
   classPeriod?: string; // Student's class period at time of submission
+
+  // Late submission tracking
+  isLate?: boolean; // Whether this submission was late
+  daysLate?: number; // Number of days past the due date
+  latePenaltyApplied?: number; // Points deducted for late submission
 
   // Peer feedback support
   type?: AssignmentType; // Type of submission (video, document, text, link)
