@@ -427,31 +427,30 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Video Player / Link */}
+                {/* Video Player */}
                 {(() => {
                   const recording = video.recordingId ? recordingsMap.get(video.recordingId) : null;
                   const videoUrl = recording?.videoUrl || video.content || '#';
                   const hasValidUrl = videoUrl !== '#';
 
-                  return (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      asChild={hasValidUrl}
-                      disabled={!hasValidUrl}
-                    >
-                      {hasValidUrl ? (
-                        <a href={videoUrl} target="_blank" rel="noopener noreferrer">
-                          <Play className="mr-2 h-4 w-4" />
-                          Watch Video
-                        </a>
-                      ) : (
-                        <>
-                          <Play className="mr-2 h-4 w-4" />
-                          Video Unavailable
-                        </>
-                      )}
-                    </Button>
+                  return hasValidUrl ? (
+                    <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
+                      <video
+                        controls
+                        className="w-full h-full"
+                        src={videoUrl}
+                        preload="metadata"
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
+                  ) : (
+                    <div className="w-full aspect-video bg-muted rounded-lg flex items-center justify-center">
+                      <div className="text-center text-muted-foreground">
+                        <Video className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">Video Unavailable</p>
+                      </div>
+                    </div>
                   );
                 })()}
 
