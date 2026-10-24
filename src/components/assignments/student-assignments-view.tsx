@@ -132,9 +132,20 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
       const feedbackRequiredCount = assignment.feedbackSubmissionsRequired || 0;
       const feedbackReceivedCount = mySubmission?.peerFeedback?.length || 0;
 
-      const isComplete =
-        !!mySubmission &&
-        (!assignment.requiresPeerFeedback || feedbackGivenCount >= feedbackRequiredCount);
+      // For feedback assignments, check if all critiques are completed
+      let isComplete = false;
+      if (assignment.submissionType === 'feedback') {
+        if (mySubmission && mySubmission.videoFeedback) {
+          const completedCritiques = mySubmission.videoFeedback.filter(vf => vf.isComplete).length;
+          const totalAssigned = mySubmission.assignedSubmissionIds?.length || 0;
+          isComplete = completedCritiques === totalAssigned && totalAssigned > 0;
+        }
+      } else {
+        // Regular assignments and video assignments
+        isComplete =
+          !!mySubmission &&
+          (!assignment.requiresPeerFeedback || feedbackGivenCount >= feedbackRequiredCount);
+      }
 
       progress[assignment.id] = {
         assignmentId: assignment.id,
@@ -369,11 +380,11 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
           <TabsTrigger value="active">
             Active ({active.length})
           </TabsTrigger>
-          <TabsTrigger value="completed">
-            Completed ({completed.length})
-          </TabsTrigger>
           <TabsTrigger value="overdue">
             Overdue ({overdue.length})
+          </TabsTrigger>
+          <TabsTrigger value="completed">
+            Completed ({completed.length})
           </TabsTrigger>
         </TabsList>
 
@@ -391,20 +402,6 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
           )}
         </TabsContent>
 
-        <TabsContent value="completed" className="space-y-4 mt-6">
-          {completed.length === 0 ? (
-            <Card>
-              <CardContent className="flex items-center justify-center h-32">
-                <p className="text-muted-foreground">No completed assignments yet</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {completed.map(renderAssignmentCard)}
-            </div>
-          )}
-        </TabsContent>
-
         <TabsContent value="overdue" className="space-y-4 mt-6">
           {overdue.length === 0 ? (
             <Card>
@@ -415,6 +412,20 @@ export function StudentAssignmentsView({ teamSlug }: StudentAssignmentsViewProps
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {overdue.map(renderAssignmentCard)}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="completed" className="space-y-4 mt-6">
+          {completed.length === 0 ? (
+            <Card>
+              <CardContent className="flex items-center justify-center h-32">
+                <p className="text-muted-foreground">No completed assignments yet</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {completed.map(renderAssignmentCard)}
             </div>
           )}
         </TabsContent>
