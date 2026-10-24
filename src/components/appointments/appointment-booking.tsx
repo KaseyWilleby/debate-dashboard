@@ -244,8 +244,24 @@ export function AppointmentBooking() {
     setCurrentWeekStart(newStart);
   };
 
+  const isSlotInPast = (dateStr: string, startTime: string): boolean => {
+    const now = new Date();
+    const slotDateTime = new Date(`${dateStr}T${startTime}`);
+    return slotDateTime < now;
+  };
+
   const handleSlotClick = (slot: GeneratedSlot) => {
     if (!user) return;
+
+    // Check if slot is in the past
+    if (isSlotInPast(slot.date, slot.startTime)) {
+      toast({
+        title: "Slot Expired",
+        description: "This appointment time has already passed.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // If slot is already booked, show details but don't allow booking
     if (slot.existingAppointment) {
@@ -498,21 +514,36 @@ export function AppointmentBooking() {
               {Array.from(slotsByProvider.entries()).map(([providerId, providerSlots]) => {
                 const providerName = providers.find(p => p.id === providerId)?.name || 'Unknown';
 
+                // Check if any slots in this column are expired
+                const hasExpiredSlots = providerSlots.some(slot => isSlotInPast(slot.date, slot.startTime));
+                const allSlotsExpired = providerSlots.every(slot => isSlotInPast(slot.date, slot.startTime));
+
                 return (
-                  <div key={providerId} className="flex flex-col min-w-0 max-w-[200px]">
+                  <div
+                    key={providerId}
+                    className={`flex flex-col min-w-0 max-w-[200px] rounded-lg border ${
+                      allSlotsExpired
+                        ? 'bg-destructive/5 border-destructive/20'
+                        : hasExpiredSlots
+                        ? 'bg-orange-500/5 border-orange-500/20'
+                        : 'border-transparent'
+                    }`}
+                  >
                     <div className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2 border-b mb-3">
-                      <h4 className="font-semibold text-sm flex items-center gap-1.5 truncate">
+                      <h4 className="font-semibold text-sm flex items-center gap-1.5 truncate px-2">
                         <User className="h-3.5 w-3.5 flex-shrink-0" />
                         <span className="truncate">{providerName}</span>
                       </h4>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-[10px] text-muted-foreground px-2">
                         {providerSlots.length} slot{providerSlots.length !== 1 ? 's' : ''}
+                        {allSlotsExpired && <span className="text-destructive ml-1">(All Expired)</span>}
                       </p>
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 px-2 pb-2">
                       {providerSlots.map((slot, idx) => {
                         const isBooked = slot.existingAppointment && slot.existingAppointment.status !== 'available';
                         const isMyAppointment = slot.existingAppointment?.attendeeId === user?.id;
+                        const isPast = isSlotInPast(slot.date, slot.startTime);
                         const slotDate = new Date(slot.date + 'T00:00:00');
                         const dayName = DAYS_OF_WEEK[slotDate.getDay()];
 
@@ -524,21 +555,23 @@ export function AppointmentBooking() {
                           <React.Fragment key={`${slot.date}-${slot.startTime}-${slot.providerId}-${idx}`}>
                             {isNewDay && idx > 0 && (
                               <div className="border-t my-2 pt-1">
-                                <p className="text-[10px] font-medium text-muted-foreground px-1">
+                                <p className={`text-[10px] font-medium px-1 ${isPast ? 'text-muted-foreground/50 line-through' : 'text-muted-foreground'}`}>
                                   {dayName} {formatShortDate(slot.date)}
                                 </p>
                               </div>
                             )}
                             {isNewDay && idx === 0 && (
-                              <p className="text-[10px] font-medium text-muted-foreground px-1 mb-1">
+                              <p className={`text-[10px] font-medium px-1 mb-1 ${isPast ? 'text-muted-foreground/50 line-through' : 'text-muted-foreground'}`}>
                                 {dayName} {formatShortDate(slot.date)}
                               </p>
                             )}
                             <Button
-                              variant={isBooked ? "secondary" : "outline"}
-                              className="h-auto w-full p-1.5 flex items-center justify-between text-left"
-                              onClick={() => !isBooked && handleSlotClick(slot)}
-                              disabled={isBooked && !isMyAppointment}
+                              variant={isPast ? "ghost" : isBooked ? "secondary" : "outline"}
+                              className={`h-auto w-full p-1.5 flex items-center justify-between text-left ${
+                                isPast ? 'opacity-40 cursor-not-allowed bg-muted/20' : ''
+                              }`}
+                              onClick={() => !isBooked && !isPast && handleSlotClick(slot)}
+                              disabled={isPast || (isBooked && !isMyAppointment)}
                             >
                               <div className="flex items-center gap-1">
                                 <Clock className="h-3 w-3 flex-shrink-0" />
@@ -546,11 +579,15 @@ export function AppointmentBooking() {
                                   {formatTime(slot.startTime)}
                                 </span>
                               </div>
-                              {isBooked && (
+                              {isPast ? (
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 opacity-50">
+                                  Expired
+                                </Badge>
+                              ) : isBooked ? (
                                 <Badge variant={isMyAppointment ? "default" : "secondary"} className="text-[9px] px-1 py-0 h-4">
                                   {isMyAppointment ? "Yours" : "Booked"}
                                 </Badge>
-                              )}
+                              ) : null}
                             </Button>
                           </React.Fragment>
                         );
