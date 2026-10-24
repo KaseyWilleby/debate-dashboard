@@ -426,83 +426,90 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                   )}
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Video Player */}
-                {(() => {
-                  const recording = video.recordingId ? recordingsMap.get(video.recordingId) : null;
-                  const videoUrl = recording?.videoUrl || video.content || '#';
-                  const hasValidUrl = videoUrl !== '#';
+              <CardContent>
+                {/* Side-by-side layout on larger screens */}
+                <div className="grid lg:grid-cols-2 gap-6">
+                  {/* Video Player */}
+                  <div className="space-y-4">
+                    {(() => {
+                      const recording = video.recordingId ? recordingsMap.get(video.recordingId) : null;
+                      const videoUrl = recording?.videoUrl || video.content || '#';
+                      const hasValidUrl = videoUrl !== '#';
 
-                  return hasValidUrl ? (
-                    <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
-                      <video
-                        controls
-                        className="w-full h-full"
-                        src={videoUrl}
-                        preload="metadata"
-                      >
-                        Your browser does not support the video tag.
-                      </video>
-                    </div>
-                  ) : (
-                    <div className="w-full aspect-video bg-muted rounded-lg flex items-center justify-center">
-                      <div className="text-center text-muted-foreground">
-                        <Video className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">Video Unavailable</p>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                <Separator />
-
-                {/* Feedback Textarea */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Your Feedback</label>
-                    <span className="text-xs text-muted-foreground">
-                      {wordCount} / {minWords > 0 ? `${minWords} min` : '∞'} words
-                    </span>
+                      return hasValidUrl ? (
+                        <div className="w-full aspect-video bg-black rounded-lg overflow-hidden lg:sticky lg:top-4">
+                          <video
+                            controls
+                            className="w-full h-full"
+                            src={videoUrl}
+                            preload="metadata"
+                          >
+                            Your browser does not support the video tag.
+                          </video>
+                        </div>
+                      ) : (
+                        <div className="w-full aspect-video bg-muted rounded-lg flex items-center justify-center">
+                          <div className="text-center text-muted-foreground">
+                            <Video className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">Video Unavailable</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
-                  <Textarea
-                    value={draftContent}
-                    onChange={(e) =>
-                      setFeedbackDrafts(prev => ({ ...prev, [video.id]: e.target.value }))
-                    }
-                    placeholder="Provide constructive feedback on this speech..."
-                    className="min-h-[150px]"
-                  />
-                  {minWords > 0 && wordCount < minWords && (
-                    <p className="text-xs text-muted-foreground">
-                      {minWords - wordCount} more words needed for credit
-                    </p>
-                  )}
+
+                  {/* Feedback Area */}
+                  <div className="space-y-4">
+                    <Separator className="lg:hidden" />
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium">Your Feedback</label>
+                        <span className="text-xs text-muted-foreground">
+                          {wordCount} / {minWords > 0 ? `${minWords} min` : '∞'} words
+                        </span>
+                      </div>
+                      <Textarea
+                        value={draftContent}
+                        onChange={(e) =>
+                          setFeedbackDrafts(prev => ({ ...prev, [video.id]: e.target.value }))
+                        }
+                        placeholder="Provide constructive feedback on this speech..."
+                        className="min-h-[300px] lg:min-h-[400px]"
+                      />
+                      {minWords > 0 && wordCount < minWords && (
+                        <p className="text-xs text-muted-foreground">
+                          {minWords - wordCount} more words needed for credit
+                        </p>
+                      )}
+                    </div>
+
+                    <Button
+                      onClick={() => handleSaveFeedback(video.id)}
+                      disabled={isSaving}
+                      className="w-full"
+                      variant={isComplete ? 'outline' : 'default'}
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          {isComplete ? 'Update Feedback' : 'Save Feedback'}
+                        </>
+                      )}
+                    </Button>
+
+                    {existingFeedback?.lastEditedAt && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        Last edited: {new Date(existingFeedback.lastEditedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
                 </div>
-
-                <Button
-                  onClick={() => handleSaveFeedback(video.id)}
-                  disabled={isSaving}
-                  className="w-full"
-                  variant={isComplete ? 'outline' : 'default'}
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      {isComplete ? 'Update Feedback' : 'Save Feedback'}
-                    </>
-                  )}
-                </Button>
-
-                {existingFeedback?.lastEditedAt && (
-                  <p className="text-xs text-muted-foreground text-center">
-                    Last edited: {new Date(existingFeedback.lastEditedAt).toLocaleString()}
-                  </p>
-                )}
               </CardContent>
             </Card>
           </div>
