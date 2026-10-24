@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { useFirebase, useCollection, useDocument, useMemoFirebase } from '@/firebase';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import {
   collection,
   query,
@@ -26,8 +26,10 @@ import {
   Loader2,
   Save,
   Video,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
-import type { Assignment, Submission, VideoFeedback } from '@/lib/types';
+import type { Assignment, Submission, VideoFeedback, SavedSpeech } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import {
   assignVideosToStudent,
@@ -48,6 +50,7 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
   const [isInitializing, setIsInitializing] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [feedbackDrafts, setFeedbackDrafts] = React.useState<Record<string, string>>({});
+  const [currentVideoIndex, setCurrentVideoIndex] = React.useState(0);
 
   // Fetch source assignment submissions
   const sourceSubmissionsQuery = useMemoFirebase(() => {
@@ -84,6 +87,31 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
       .map(id => sourceSubmissions.find(s => s.id === id))
       .filter((s): s is Submission => s !== undefined);
   }, [mySubmission, sourceSubmissions]);
+
+  // Fetch SavedSpeech documents for assigned videos
+  const recordingIds = React.useMemo(() => {
+    return assignedVideos
+      .map(v => v.recordingId)
+      .filter((id): id is string => !!id);
+  }, [assignedVideos]);
+
+  const recordingsQuery = useMemoFirebase(() => {
+    if (!firestore || recordingIds.length === 0) return null;
+    return collection(firestore, 'savedSpeeches');
+  }, [firestore, recordingIds]);
+
+  const { data: allRecordings } = useCollection<SavedSpeech>(recordingsQuery);
+
+  // Map recordings by ID for quick lookup
+  const recordingsMap = React.useMemo(() => {
+    const map = new Map<string, SavedSpeech>();
+    if (allRecordings) {
+      allRecordings.forEach(rec => {
+        map.set(rec.id, rec);
+      });
+    }
+    return map;
+  }, [allRecordings]);
 
   // Initialize feedback drafts from existing feedback
   React.useEffect(() => {
@@ -313,24 +341,64 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
         </CardContent>
       </Card>
 
-      {/* Assigned Videos */}
-      <div className="space-y-4">
-        {assignedVideos.map((video, index) => {
-          const existingFeedback = mySubmission.videoFeedback?.find(
-            vf => vf.submissionId === video.id
-          );
-          const draftContent = feedbackDrafts[video.id] || '';
-          const wordCount = countWords(draftContent);
-          const minWords = assignment.minWordCount || 0;
-          const isComplete = existingFeedback?.isComplete || false;
+      {/* Assigned Videos with Horizontal Navigation */}
+      {assignedVideos.length > 0 && (() => {
+        const video = assignedVideos[currentVideoIndex];
+        const existingFeedback = mySubmission.videoFeedback?.find(
+          vf => vf.submissionId === video.id
+        );
+        const draftContent = feedbackDrafts[video.id] || '';
+        const wordCount = countWords(draftContent);
+        const minWords = assignment.minWordCount || 0;
+        const isComplete = existingFeedback?.isComplete || false;
 
-          return (
-            <Card key={video.id}>
+        return (
+          <div className="space-y-4">
+            {/* Navigation Controls */}
+            <div className="flex items-center justify-between">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentVideoIndex(prev => Math.max(0, prev - 1))}
+                disabled={currentVideoIndex === 0}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+
+              <div className="flex items-center gap-2">
+                {assignedVideos.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentVideoIndex(index)}
+                    className={`h-2 rounded-full transition-all ${
+                      index === currentVideoIndex
+                        ? 'w-8 bg-primary'
+                        : 'w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                    }`}
+                    aria-label={`Go to video ${index + 1}`}
+                  />
+                ))}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentVideoIndex(prev => Math.min(assignedVideos.length - 1, prev + 1))}
+                disabled={currentVideoIndex === assignedVideos.length - 1}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+
+            {/* Current Video Card */}
+            <Card>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <span>Video {index + 1}</span>
+                      <span>Video {currentVideoIndex + 1} of {assignedVideos.length}</span>
                       {isComplete && <CheckCircle className="h-5 w-5 text-green-500" />}
                       {!isComplete && draftContent && <Clock className="h-5 w-5 text-yellow-500" />}
                     </CardTitle>
@@ -360,12 +428,32 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Video Player / Link */}
-                <Button variant="outline" className="w-full" asChild>
-                  <a href={video.content || '#'} target="_blank" rel="noopener noreferrer">
-                    <Play className="mr-2 h-4 w-4" />
-                    Watch Video
-                  </a>
-                </Button>
+                {(() => {
+                  const recording = video.recordingId ? recordingsMap.get(video.recordingId) : null;
+                  const videoUrl = recording?.videoUrl || video.content || '#';
+                  const hasValidUrl = videoUrl !== '#';
+
+                  return (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      asChild={hasValidUrl}
+                      disabled={!hasValidUrl}
+                    >
+                      {hasValidUrl ? (
+                        <a href={videoUrl} target="_blank" rel="noopener noreferrer">
+                          <Play className="mr-2 h-4 w-4" />
+                          Watch Video
+                        </a>
+                      ) : (
+                        <>
+                          <Play className="mr-2 h-4 w-4" />
+                          Video Unavailable
+                        </>
+                      )}
+                    </Button>
+                  );
+                })()}
 
                 <Separator />
 
@@ -418,9 +506,9 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                 )}
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
