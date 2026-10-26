@@ -49,6 +49,7 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
 
   const [isInitializing, setIsInitializing] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [feedbackDrafts, setFeedbackDrafts] = React.useState<Record<string, string>>({});
   const [currentVideoIndex, setCurrentVideoIndex] = React.useState(0);
 
@@ -263,10 +264,70 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
     }
   };
 
+  // Handle final submission
+  const handleSubmitAssignment = async () => {
+    if (!firestore || !user || !mySubmission) return;
+
+    const minWords = assignment.minWordCount || 0;
+    const incompleteFeedback: string[] = [];
+
+    // Check each assigned video for incomplete feedback
+    assignedVideos.forEach((video, index) => {
+      const feedback = mySubmission.videoFeedback?.find(vf => vf.submissionId === video.id);
+      const wordCount = feedback?.wordCount || 0;
+
+      if (!feedback || wordCount < minWords) {
+        incompleteFeedback.push(`Video ${index + 1}: ${video.studentName} (${wordCount}/${minWords} words)`);
+      }
+    });
+
+    if (incompleteFeedback.length > 0) {
+      toast({
+        title: 'Incomplete Feedback',
+        description: (
+          <div>
+            <p className="mb-2">Please complete the following feedback before submitting:</p>
+            <ul className="list-disc list-inside">
+              {incompleteFeedback.map((item, i) => (
+                <li key={i} className="text-sm">{item}</li>
+              ))}
+            </ul>
+          </div>
+        ),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await updateDoc(doc(firestore, 'submissions', mySubmission.id), {
+        submittedAt: new Date().toISOString(),
+        isComplete: true,
+      });
+
+      toast({
+        title: 'Assignment Submitted',
+        description: 'Your feedback assignment has been successfully submitted!',
+      });
+    } catch (error) {
+      console.error('Error submitting assignment:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to submit assignment. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Calculate progress
   const completedCount = mySubmission?.videoFeedback?.filter(vf => vf.isComplete).length || 0;
   const totalCount = assignment.feedbackCount || 0;
   const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+  const allFeedbackComplete = completedCount === totalCount && totalCount > 0;
 
   // If no submission exists yet, show initialization screen
   if (!mySubmission) {
@@ -323,7 +384,7 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
             </Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <Progress value={progress} className="h-2" />
           {assignment.autoGrade && (
             (() => {
@@ -331,12 +392,40 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
               const maxPoints = assignment.maxPoints || 100;
               const pointsPerCritique = assignedCount > 0 ? Math.round((maxPoints / assignedCount) * 100) / 100 : 0;
               return (
-                <p className="text-sm text-muted-foreground mt-2">
+                <p className="text-sm text-muted-foreground">
                   Current Grade: {mySubmission.grade || 0} / {maxPoints}{' '}
                   points ({pointsPerCritique} points per complete critique)
                 </p>
               );
             })()
+          )}
+          {!mySubmission?.isComplete && (
+            <Button
+              onClick={handleSubmitAssignment}
+              disabled={isSubmitting || !allFeedbackComplete}
+              className="w-full"
+              size="lg"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Submit Assignment
+                </>
+              )}
+            </Button>
+          )}
+          {mySubmission?.isComplete && (
+            <Alert className="border-green-500 bg-green-50">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                Assignment submitted successfully!
+              </AlertDescription>
+            </Alert>
           )}
         </CardContent>
       </Card>

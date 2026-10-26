@@ -46,6 +46,7 @@ import type { Assignment, Submission, SubmissionFeedback, AssignmentType } from 
 import { format, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { FeedbackAssignmentView } from './feedback-assignment-view';
+import { FeedbackAssignmentCoachView } from './feedback-assignment-coach-view';
 
 interface AssignmentDetailDialogProps {
   assignment: Assignment | null;
@@ -399,6 +400,8 @@ export function AssignmentDetailDialog({
 
   // Handle feedback assignments with dedicated view
   if (assignment.submissionType === 'feedback') {
+    const isCoach = user?.role === 'coach';
+
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-[95vw] w-[95vw] max-h-[90vh] flex flex-col p-0">
@@ -412,7 +415,11 @@ export function AssignmentDetailDialog({
           </DialogHeader>
           <ScrollArea className="flex-1 overflow-y-auto">
             <div className="p-6 pt-2">
-              <FeedbackAssignmentView assignment={assignment} />
+              {isCoach ? (
+                <FeedbackAssignmentCoachView assignment={assignment} />
+              ) : (
+                <FeedbackAssignmentView assignment={assignment} />
+              )}
             </div>
           </ScrollArea>
         </DialogContent>
