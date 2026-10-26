@@ -426,21 +426,21 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                   )}
                 </div>
               </CardHeader>
-              <CardContent>
-                {/* Side-by-side layout on larger screens - video takes 2/3, feedback takes 1/3 */}
-                <div className="grid lg:grid-cols-[2fr_1fr] gap-6">
+              <CardContent className="p-4">
+                {/* Side-by-side layout on larger screens - video takes 75%, feedback takes 25% */}
+                <div className="grid lg:grid-cols-[3fr_1fr] gap-4 max-h-[calc(100vh-350px)]">
                   {/* Video Player */}
-                  <div className="space-y-4">
+                  <div>
                     {(() => {
                       const recording = video.recordingId ? recordingsMap.get(video.recordingId) : null;
                       const videoUrl = recording?.videoUrl || video.content || '#';
                       const hasValidUrl = videoUrl !== '#';
 
                       return hasValidUrl ? (
-                        <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
+                        <div className="w-full h-full bg-black rounded-lg overflow-hidden flex items-center justify-center">
                           <video
                             controls
-                            className="w-full h-full"
+                            className="w-full h-full max-h-[calc(100vh-350px)]"
                             src={videoUrl}
                             preload="metadata"
                           >
@@ -459,10 +459,10 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                   </div>
 
                   {/* Feedback Area */}
-                  <div className="space-y-4">
+                  <div className="flex flex-col gap-3">
                     <Separator className="lg:hidden" />
 
-                    <div className="space-y-2">
+                    <div className="flex-1 flex flex-col gap-2">
                       <div className="flex items-center justify-between">
                         <label className="text-sm font-medium">Your Feedback</label>
                         <span className="text-xs text-muted-foreground">
@@ -475,8 +475,7 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                           setFeedbackDrafts(prev => ({ ...prev, [video.id]: e.target.value }))
                         }
                         placeholder="Provide constructive feedback on this speech..."
-                        className="min-h-[250px] resize-none"
-                        style={{ height: 'calc(100vh - 500px)', minHeight: '250px', maxHeight: '600px' }}
+                        className="flex-1 resize-none"
                       />
                       {minWords > 0 && wordCount < minWords && (
                         <p className="text-xs text-muted-foreground">
