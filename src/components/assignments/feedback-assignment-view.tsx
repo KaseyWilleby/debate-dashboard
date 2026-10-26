@@ -437,11 +437,10 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                       const hasValidUrl = videoUrl !== '#';
 
                       return hasValidUrl ? (
-                        <div className="w-full bg-black rounded-lg overflow-hidden flex items-center justify-center" style={{ maxHeight: '450px' }}>
+                        <div className="w-full bg-black rounded-lg overflow-hidden flex items-center justify-center" style={{ height: '380px' }}>
                           <video
                             controls
-                            className="w-full object-contain"
-                            style={{ maxHeight: '450px' }}
+                            className="w-full h-full object-contain"
                             src={videoUrl}
                             preload="metadata"
                           >
@@ -449,7 +448,7 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                           </video>
                         </div>
                       ) : (
-                        <div className="w-full aspect-video bg-muted rounded-lg flex items-center justify-center" style={{ maxHeight: '450px' }}>
+                        <div className="w-full bg-muted rounded-lg flex items-center justify-center" style={{ height: '380px' }}>
                           <div className="text-center text-muted-foreground">
                             <Video className="h-12 w-12 mx-auto mb-2 opacity-50" />
                             <p className="text-sm">Video Unavailable</p>
@@ -460,10 +459,10 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                   </div>
 
                   {/* Feedback Area */}
-                  <div className="flex flex-col gap-3" style={{ height: '450px' }}>
+                  <div className="flex flex-col gap-2" style={{ height: '380px' }}>
                     <Separator className="lg:hidden" />
 
-                    <div className="flex-1 flex flex-col gap-2 min-h-0">
+                    <div className="flex-1 flex flex-col gap-2 min-h-0 overflow-hidden">
                       <div className="flex items-center justify-between flex-shrink-0">
                         <label className="text-sm font-medium">Your Feedback</label>
                         <span className="text-xs text-muted-foreground">
@@ -485,30 +484,32 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                       )}
                     </div>
 
-                    <Button
-                      onClick={() => handleSaveFeedback(video.id)}
-                      disabled={isSaving}
-                      className="w-full flex-shrink-0"
-                      variant={isComplete ? 'outline' : 'default'}
-                    >
-                      {isSaving ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="mr-2 h-4 w-4" />
-                          {isComplete ? 'Update Feedback' : 'Save Feedback'}
-                        </>
-                      )}
-                    </Button>
+                    <div className="flex-shrink-0 space-y-2">
+                      <Button
+                        onClick={() => handleSaveFeedback(video.id)}
+                        disabled={isSaving}
+                        className="w-full"
+                        variant={isComplete ? 'outline' : 'default'}
+                      >
+                        {isSaving ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            {isComplete ? 'Update Feedback' : 'Save Feedback'}
+                          </>
+                        )}
+                      </Button>
 
-                    {existingFeedback?.lastEditedAt && (
-                      <p className="text-xs text-muted-foreground text-center flex-shrink-0">
-                        Last edited: {new Date(existingFeedback.lastEditedAt).toLocaleString()}
-                      </p>
-                    )}
+                      {existingFeedback?.lastEditedAt && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          Last edited: {new Date(existingFeedback.lastEditedAt).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
