@@ -67,23 +67,32 @@ export function assignVideosToStudent(
     return new Date(a.submission.submittedAt).getTime() - new Date(b.submission.submittedAt).getTime();
   });
 
-  // Step 5: Assign videos using round-robin to balance distribution
+  // Step 5: Assign videos (ensure no duplicates for the same student)
   const assignedIds: string[] = [];
+  const assignedSet = new Set<string>();
 
-  for (let i = 0; i < actualCount; i++) {
-    // Use modulo to cycle through available submissions if we need to repeat
-    const selectedSubmission = submissionsWithCounts[i % submissionsWithCounts.length];
-    assignedIds.push(selectedSubmission.submission.id);
+  for (let i = 0; i < submissionsWithCounts.length && assignedIds.length < actualCount; i++) {
+    const selectedSubmission = submissionsWithCounts[i];
 
-    // Update the count for this submission for future assignments
-    selectedSubmission.assignmentCount++;
+    // Only assign if not already assigned to this student
+    if (!assignedSet.has(selectedSubmission.submission.id)) {
+      assignedIds.push(selectedSubmission.submission.id);
+      assignedSet.add(selectedSubmission.submission.id);
+
+      // Update the count for this submission for future students
+      selectedSubmission.assignmentCount++;
+    }
   }
+
+  // If we couldn't assign enough unique videos, warn about it
+  const finalCount = assignedIds.length;
+  const needsMoreUnique = finalCount < feedbackCount;
 
   return {
     success: true,
     assignedIds,
-    ...(isPartial ? {
-      warning: `Only ${actualCount} video${actualCount === 1 ? '' : 's'} available (requested ${feedbackCount})`
+    ...(needsMoreUnique ? {
+      warning: `Only ${finalCount} unique video${finalCount === 1 ? '' : 's'} available (requested ${feedbackCount}). Students cannot review the same video twice.`
     } : {})
   };
 }
