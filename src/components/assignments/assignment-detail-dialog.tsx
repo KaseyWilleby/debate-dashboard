@@ -410,7 +410,7 @@ export function AssignmentDetailDialog({
               </div>
             </div>
           </DialogHeader>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 overflow-y-auto">
             <div className="p-6 pt-2">
               <FeedbackAssignmentView assignment={assignment} />
             </div>
