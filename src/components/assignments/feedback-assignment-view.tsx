@@ -427,8 +427,8 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                 </div>
               </CardHeader>
               <CardContent>
-                {/* Side-by-side layout on larger screens */}
-                <div className="grid lg:grid-cols-2 gap-6">
+                {/* Side-by-side layout on larger screens - video takes 2/3, feedback takes 1/3 */}
+                <div className="grid lg:grid-cols-[2fr_1fr] gap-6">
                   {/* Video Player */}
                   <div className="space-y-4">
                     {(() => {
@@ -437,7 +437,7 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                       const hasValidUrl = videoUrl !== '#';
 
                       return hasValidUrl ? (
-                        <div className="w-full aspect-video bg-black rounded-lg overflow-hidden lg:sticky lg:top-4">
+                        <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
                           <video
                             controls
                             className="w-full h-full"
@@ -475,7 +475,8 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                           setFeedbackDrafts(prev => ({ ...prev, [video.id]: e.target.value }))
                         }
                         placeholder="Provide constructive feedback on this speech..."
-                        className="min-h-[300px] lg:min-h-[400px]"
+                        className="min-h-[250px] resize-none"
+                        style={{ height: 'calc(100vh - 500px)', minHeight: '250px', maxHeight: '600px' }}
                       />
                       {minWords > 0 && wordCount < minWords && (
                         <p className="text-xs text-muted-foreground">
