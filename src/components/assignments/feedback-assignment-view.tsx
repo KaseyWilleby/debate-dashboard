@@ -437,10 +437,11 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                       const hasValidUrl = videoUrl !== '#';
 
                       return hasValidUrl ? (
-                        <div className="w-full bg-black rounded-lg overflow-hidden flex items-center justify-center" style={{ maxHeight: 'calc(100vh - 320px)' }}>
+                        <div className="w-full bg-black rounded-lg overflow-hidden flex items-center justify-center" style={{ maxHeight: 'calc(90vh - 360px)' }}>
                           <video
                             controls
-                            className="w-full max-h-[calc(100vh-320px)] object-contain"
+                            className="w-full object-contain"
+                            style={{ maxHeight: 'calc(90vh - 360px)' }}
                             src={videoUrl}
                             preload="metadata"
                           >
@@ -448,7 +449,7 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                           </video>
                         </div>
                       ) : (
-                        <div className="w-full aspect-video bg-muted rounded-lg flex items-center justify-center" style={{ maxHeight: 'calc(100vh - 320px)' }}>
+                        <div className="w-full aspect-video bg-muted rounded-lg flex items-center justify-center" style={{ maxHeight: 'calc(90vh - 360px)' }}>
                           <div className="text-center text-muted-foreground">
                             <Video className="h-12 w-12 mx-auto mb-2 opacity-50" />
                             <p className="text-sm">Video Unavailable</p>
@@ -459,7 +460,7 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                   </div>
 
                   {/* Feedback Area */}
-                  <div className="flex flex-col gap-3" style={{ maxHeight: 'calc(100vh - 320px)' }}>
+                  <div className="flex flex-col gap-3" style={{ height: 'calc(90vh - 360px)' }}>
                     <Separator className="lg:hidden" />
 
                     <div className="flex-1 flex flex-col gap-2 min-h-0">
@@ -475,8 +476,7 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                           setFeedbackDrafts(prev => ({ ...prev, [video.id]: e.target.value }))
                         }
                         placeholder="Provide constructive feedback on this speech..."
-                        className="resize-none"
-                        style={{ height: 'calc(100vh - 480px)', minHeight: '200px' }}
+                        className="flex-1 resize-none min-h-0"
                       />
                       {minWords > 0 && wordCount < minWords && (
                         <p className="text-xs text-muted-foreground flex-shrink-0">
