@@ -312,9 +312,9 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-none w-full">
       {/* Progress Overview */}
-      <Card>
+      <Card className="max-w-none">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Feedback Progress</span>

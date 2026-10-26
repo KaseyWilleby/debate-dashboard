@@ -401,7 +401,7 @@ export function AssignmentDetailDialog({
   if (assignment.submissionType === 'feedback') {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
+        <DialogContent className="max-w-[95vw] w-[95vw] max-h-[90vh] flex flex-col p-0">
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-start justify-between">
               <div>
@@ -411,7 +411,7 @@ export function AssignmentDetailDialog({
             </div>
           </DialogHeader>
           <ScrollArea className="flex-1">
-            <div className="p-6">
+            <div className="p-6 pt-2">
               <FeedbackAssignmentView assignment={assignment} />
             </div>
           </ScrollArea>
