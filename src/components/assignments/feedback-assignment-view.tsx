@@ -392,9 +392,9 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
               </Button>
             </div>
 
-            {/* Current Video Card */}
-            <Card>
-              <CardHeader>
+            {/* Current Video Card - Full Width */}
+            <Card className="w-full max-w-none">
+              <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -426,21 +426,21 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                   )}
                 </div>
               </CardHeader>
-              <CardContent className="p-4">
-                {/* Side-by-side layout on larger screens - video takes 75%, feedback takes 25% */}
-                <div className="grid lg:grid-cols-[3fr_1fr] gap-4 max-h-[calc(100vh-350px)]">
+              <CardContent className="p-4 pt-0">
+                {/* Side-by-side layout - video takes 75%, feedback takes 25% */}
+                <div className="grid lg:grid-cols-[3fr_1fr] gap-4 h-[calc(100vh-280px)] min-h-[400px]">
                   {/* Video Player */}
-                  <div>
+                  <div className="h-full">
                     {(() => {
                       const recording = video.recordingId ? recordingsMap.get(video.recordingId) : null;
                       const videoUrl = recording?.videoUrl || video.content || '#';
                       const hasValidUrl = videoUrl !== '#';
 
                       return hasValidUrl ? (
-                        <div className="w-full h-full bg-black rounded-lg overflow-hidden flex items-center justify-center">
+                        <div className="w-full h-full bg-black rounded-lg overflow-hidden">
                           <video
                             controls
-                            className="w-full h-full max-h-[calc(100vh-350px)]"
+                            className="w-full h-full object-contain"
                             src={videoUrl}
                             preload="metadata"
                           >
@@ -448,7 +448,7 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                           </video>
                         </div>
                       ) : (
-                        <div className="w-full aspect-video bg-muted rounded-lg flex items-center justify-center">
+                        <div className="w-full h-full bg-muted rounded-lg flex items-center justify-center">
                           <div className="text-center text-muted-foreground">
                             <Video className="h-12 w-12 mx-auto mb-2 opacity-50" />
                             <p className="text-sm">Video Unavailable</p>
@@ -459,11 +459,11 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                   </div>
 
                   {/* Feedback Area */}
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-3 h-full">
                     <Separator className="lg:hidden" />
 
-                    <div className="flex-1 flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
+                    <div className="flex-1 flex flex-col gap-2 min-h-0">
+                      <div className="flex items-center justify-between flex-shrink-0">
                         <label className="text-sm font-medium">Your Feedback</label>
                         <span className="text-xs text-muted-foreground">
                           {wordCount} / {minWords > 0 ? `${minWords} min` : '∞'} words
@@ -475,10 +475,10 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                           setFeedbackDrafts(prev => ({ ...prev, [video.id]: e.target.value }))
                         }
                         placeholder="Provide constructive feedback on this speech..."
-                        className="flex-1 resize-none"
+                        className="flex-1 resize-none min-h-0"
                       />
                       {minWords > 0 && wordCount < minWords && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground flex-shrink-0">
                           {minWords - wordCount} more words needed for credit
                         </p>
                       )}
@@ -487,7 +487,7 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                     <Button
                       onClick={() => handleSaveFeedback(video.id)}
                       disabled={isSaving}
-                      className="w-full"
+                      className="w-full flex-shrink-0"
                       variant={isComplete ? 'outline' : 'default'}
                     >
                       {isSaving ? (
@@ -504,7 +504,7 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                     </Button>
 
                     {existingFeedback?.lastEditedAt && (
-                      <p className="text-xs text-muted-foreground text-center">
+                      <p className="text-xs text-muted-foreground text-center flex-shrink-0">
                         Last edited: {new Date(existingFeedback.lastEditedAt).toLocaleString()}
                       </p>
                     )}
