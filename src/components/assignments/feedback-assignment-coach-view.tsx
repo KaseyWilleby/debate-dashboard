@@ -34,6 +34,21 @@ export function FeedbackAssignmentCoachView({ assignment }: FeedbackAssignmentCo
 
   const { data: submissions, isLoading } = useCollection<Submission>(feedbackSubmissionsQuery);
 
+  // Debug: log submissions to see what data we have
+  React.useEffect(() => {
+    if (submissions) {
+      console.log('Coach view - submissions:', submissions);
+      submissions.forEach(sub => {
+        console.log(`Submission ${sub.id}:`, {
+          studentName: sub.studentName,
+          videoFeedback: sub.videoFeedback,
+          assignedSubmissionIds: sub.assignedSubmissionIds,
+          isComplete: sub.isComplete
+        });
+      });
+    }
+  }, [submissions]);
+
   // Fetch source submissions to get video info
   const sourceSubmissionsQuery = useMemoFirebase(() => {
     if (!firestore || !assignment.sourceAssignmentId) return null;
