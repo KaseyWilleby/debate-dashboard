@@ -112,6 +112,14 @@ export function FeedbackAssignmentCoachView({ assignment }: FeedbackAssignmentCo
 
   return (
     <div className="space-y-4">
+      {/* Debug info */}
+      <div className="bg-yellow-100 border border-yellow-400 rounded p-3 text-sm">
+        <p><strong>Debug Info:</strong></p>
+        <p>Total submissions: {submissions.length}</p>
+        <p>Assignment ID: {assignment.id}</p>
+        <p>Source Assignment ID: {assignment.sourceAssignmentId || 'None'}</p>
+      </div>
+
       {submissions.map(submission => {
         const completedCount = submission.videoFeedback?.filter(vf => vf.isComplete).length || 0;
         const totalCount = submission.assignedSubmissionIds?.length || 0;
@@ -139,6 +147,17 @@ export function FeedbackAssignmentCoachView({ assignment }: FeedbackAssignmentCo
               </div>
             </CardHeader>
             <CardContent>
+              {/* Debug info for this submission */}
+              <div className="bg-blue-50 border border-blue-300 rounded p-2 text-xs mb-3">
+                <p><strong>Submission Debug:</strong></p>
+                <p>videoFeedback exists: {submission.videoFeedback ? 'Yes' : 'No'}</p>
+                <p>videoFeedback length: {submission.videoFeedback?.length || 0}</p>
+                <p>assignedSubmissionIds: {submission.assignedSubmissionIds?.length || 0}</p>
+                {submission.videoFeedback && submission.videoFeedback.length > 0 && (
+                  <p>First feedback has content: {submission.videoFeedback[0].content ? 'Yes' : 'No'}</p>
+                )}
+              </div>
+
               {submission.videoFeedback && submission.videoFeedback.length > 0 ? (
                 <div className="space-y-4">
                   {submission.videoFeedback.map((feedback, index) => {
