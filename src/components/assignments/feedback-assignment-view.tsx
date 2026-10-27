@@ -516,8 +516,8 @@ export function FeedbackAssignmentView({ assignment }: FeedbackAssignmentViewPro
                 </div>
               </CardHeader>
               <CardContent className="p-4 pt-0">
-                {/* Side-by-side layout - video takes 75%, feedback takes 25% */}
-                <div className="grid lg:grid-cols-[3fr_1fr] gap-4">
+                {/* Side-by-side layout - video takes 60%, feedback takes 40% */}
+                <div className="grid lg:grid-cols-[3fr_2fr] gap-4">
                   {/* Video Player */}
                   <div className="flex items-center justify-center">
                     {(() => {
