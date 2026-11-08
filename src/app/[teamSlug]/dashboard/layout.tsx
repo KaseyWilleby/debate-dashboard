@@ -17,8 +17,9 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { BookOpenCheck, Calendar, Gavel, BookOpen, Briefcase, BookCopy, ClipboardList, Trophy, Users, Mic, Flag, Drama, BrainCircuit, LayoutDashboard, Globe, FileText, Video, BarChart3, Download, TestTube2, X, Settings, ClipboardCheck, Award, CalendarDays, MessageSquare } from "lucide-react";
+import { BookOpenCheck, Calendar, Gavel, BookOpen, Briefcase, BookCopy, ClipboardList, Trophy, Users, Mic, Flag, Drama, BrainCircuit, LayoutDashboard, Globe, FileText, Video, BarChart3, Download, TestTube2, X, Settings, ClipboardCheck, Award, CalendarDays } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
+import { MessagesIcon } from "./messages-icon";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useState } from "react";
@@ -48,11 +49,6 @@ const TeamNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoach: b
                 <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/sessions-list`)} tooltip="My Sessions">
                   <Link href={`/${teamSlug}/dashboard/sessions-list`}><Briefcase /><span>My Sessions</span></Link>
                 </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/messages`)} tooltip="Messages">
-                <Link href={`/${teamSlug}/dashboard/messages`}><MessageSquare /><span>Messages</span></Link>
-              </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/session-manager`)} tooltip="Session Manager">
@@ -372,7 +368,8 @@ export default function DashboardLayout({
 
           <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 sm:px-6">
             <SidebarTrigger className="sm:hidden" />
-            <div className="ml-auto flex items-center gap-4">
+            <div className="ml-auto flex items-center gap-2">
+              <MessagesIcon />
               <NotificationBell />
               <UserMenu />
             </div>
