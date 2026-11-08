@@ -17,7 +17,7 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { BookOpenCheck, Calendar, Gavel, BookOpen, Briefcase, BookCopy, ClipboardList, Trophy, Users, Mic, Flag, Drama, BrainCircuit, LayoutDashboard, Globe, FileText, Video, BarChart3, Download, TestTube2, X, Settings, ClipboardCheck, Award, CalendarDays } from "lucide-react";
+import { BookOpenCheck, Calendar, Gavel, BookOpen, Briefcase, BookCopy, ClipboardList, Trophy, Users, Mic, Flag, Drama, BrainCircuit, LayoutDashboard, Globe, FileText, Video, BarChart3, Download, TestTube2, X, Settings, ClipboardCheck, Award, CalendarDays, MessageSquare } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/contexts/auth-context";
@@ -48,6 +48,11 @@ const TeamNav = ({ pathname, isCoach, teamSlug }: { pathname: string; isCoach: b
                 <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/sessions-list`)} tooltip="My Sessions">
                   <Link href={`/${teamSlug}/dashboard/sessions-list`}><Briefcase /><span>My Sessions</span></Link>
                 </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/messages`)} tooltip="Messages">
+                <Link href={`/${teamSlug}/dashboard/messages`}><MessageSquare /><span>Messages</span></Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith(`/${teamSlug}/dashboard/session-manager`)} tooltip="Session Manager">

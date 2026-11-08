@@ -93,6 +93,54 @@ export interface Message {
   timestamp: string;
 }
 
+// Messaging system types (synced with mobile app)
+export type ConversationType = 'direct' | 'group' | 'announcement';
+export type ChatMessageType = 'text' | 'image' | 'document' | 'video';
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: UserRole;
+  content: string;
+  type: ChatMessageType;
+  timestamp: string;
+  readBy: string[];
+  deliveredTo: string[];
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
+  fileMimeType?: string;
+}
+
+export interface Conversation {
+  id: string;
+  teamId: string;
+  type: ConversationType;
+  title?: string;
+  participants: string[];
+  participantDetails: {
+    [userId: string]: {
+      name: string;
+      role: UserRole;
+      avatarUrl?: string;
+    };
+  };
+  lastMessage?: {
+    content: string;
+    senderId: string;
+    senderName: string;
+    timestamp: string;
+    type: ChatMessageType;
+  };
+  isAnnouncement?: boolean;
+  canReply?: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type SessionStatus = 'available' | 'booked' | 'completed' | 'cancelled';
 
 export type PracticeRoom = 'Room A' | 'Room B' | 'Room C';
