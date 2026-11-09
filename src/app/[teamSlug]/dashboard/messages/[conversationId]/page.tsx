@@ -129,9 +129,9 @@ export default function ConversationPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-[calc(100vh-8rem)]">
       {/* Header */}
-      <div className="border-b p-4 flex items-center gap-4 bg-background">
+      <div className="border-b p-4 flex items-center gap-4 bg-background shrink-0">
         <Button
           variant="ghost"
           size="icon"
@@ -211,7 +211,7 @@ export default function ConversationPage() {
       </ScrollArea>
 
       {/* Input */}
-      <div className="border-t p-4 bg-background">
+      <div className="border-t p-4 bg-background shrink-0">
         <form onSubmit={handleSendMessage} className="flex items-center gap-2">
           <Button
             type="button"
