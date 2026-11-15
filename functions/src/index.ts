@@ -985,3 +985,134 @@ function generatePurchaseOrderHtml(data: {
   `;
 }
 
+/**
+ * Cloud Function to send push notifications when new messages are created
+ */
+export const sendMessageNotifications = functions.firestore
+  .document('conversations/{conversationId}/messages/{messageId}')
+  .onCreate(async (snapshot, context) => {
+    const { Expo } = await import('expo-server-sdk');
+    const expo = new Expo();
+
+    const message = snapshot.data();
+    const conversationId = context.params.conversationId;
+    const messageId = context.params.messageId;
+
+    try {
+      // Get conversation to find participants
+      const conversationDoc = await admin
+        .firestore()
+        .doc(`conversations/${conversationId}`)
+        .get();
+
+      if (!conversationDoc.exists) {
+        console.log('Conversation not found');
+        return null;
+      }
+
+      const conversation = conversationDoc.data();
+      if (!conversation) {
+        console.log('Conversation data is empty');
+        return null;
+      }
+
+      const participants = conversation.participants || [];
+      const conversationTitle = conversation.title || '';
+      const conversationType = conversation.type || 'direct';
+
+      // Get device tokens for all participants except the sender
+      const recipientIds = participants.filter((id: string) => id !== message.senderId);
+
+      if (recipientIds.length === 0) {
+        console.log('No recipients to notify');
+        return null;
+      }
+
+      // Fetch device tokens for recipients
+      const tokenSnapshots = await Promise.all(
+        recipientIds.map((userId: string) =>
+          admin
+            .firestore()
+            .collection('deviceTokens')
+            .where('userId', '==', userId)
+            .where('isActive', '==', true)
+            .get()
+        )
+      );
+
+      // Collect all valid Expo push tokens
+      const pushTokens: string[] = [];
+      tokenSnapshots.forEach((snapshot) => {
+        snapshot.docs.forEach((doc: admin.firestore.QueryDocumentSnapshot) => {
+          const token = doc.data().token;
+          if (Expo.isExpoPushToken(token)) {
+            pushTokens.push(token);
+          }
+        });
+      });
+
+      if (pushTokens.length === 0) {
+        console.log('No valid push tokens found');
+        return null;
+      }
+
+      // Determine notification title and body
+      let title = '';
+      let body = message.content || '';
+
+      if (conversationType === 'direct') {
+        title = message.senderName || 'New Message';
+      } else if (conversationType === 'group') {
+        title = conversationTitle || 'Group Chat';
+        body = `${message.senderName}: ${message.content || 'Sent a file'}`;
+      } else if (conversationType === 'announcement') {
+        title = conversationTitle || 'Team Announcement';
+        body = `${message.senderName}: ${message.content || 'Sent an announcement'}`;
+      }
+
+      // Handle non-text messages
+      if (message.type !== 'text') {
+        const typeLabels: { [key: string]: string } = {
+          image: 'an image',
+          document: 'a document',
+          video: 'a video',
+        };
+        body = `Sent ${typeLabels[message.type] || 'a file'}`;
+      }
+
+      // Create notification messages
+      const messages = pushTokens.map((token) => ({
+        to: token,
+        sound: 'default',
+        title,
+        body,
+        data: {
+          type: 'new_message',
+          conversationId,
+          messageId,
+          senderId: message.senderId,
+        },
+        badge: 1, // This will be updated by the app based on actual unread count
+      }));
+
+      // Send notifications in chunks (Expo recommends max 100 per request)
+      const chunks = expo.chunkPushNotifications(messages);
+      const tickets = [];
+
+      for (const chunk of chunks) {
+        try {
+          const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
+          tickets.push(...ticketChunk);
+        } catch (error) {
+          console.error('Error sending push notification chunk:', error);
+        }
+      }
+
+      console.log(`Sent ${tickets.length} push notifications for message ${messageId}`);
+      return { success: true, ticketCount: tickets.length };
+    } catch (error) {
+      console.error('Error sending push notifications:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
