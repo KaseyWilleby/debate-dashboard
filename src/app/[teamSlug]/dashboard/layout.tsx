@@ -21,6 +21,7 @@ import { BookOpenCheck, Calendar, Gavel, BookOpen, Briefcase, BookCopy, Clipboar
 import { NotificationBell } from "./notification-bell";
 import { MessagesIcon } from "./messages-icon";
 import { UserMenu } from "@/components/user-menu";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useState } from "react";
 import { useFirebase } from "@/firebase";
@@ -369,6 +370,7 @@ export default function DashboardLayout({
           <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 sm:px-6">
             <SidebarTrigger className="sm:hidden" />
             <div className="ml-auto flex items-center gap-2">
+              <ThemeToggle />
               <MessagesIcon />
               <NotificationBell />
               <UserMenu />
